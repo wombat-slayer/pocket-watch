@@ -352,18 +352,17 @@ export default function App() {
   const editTx     = (tx)  => { pushUndo(); setTransactions(ts=>ts.map(t=>t.id===tx.id?tx:t)); };
   const deleteTx   = (id)  => {
     pushUndo();
-    setTransactions(ts => {
-      const target = ts.find(t => t.id === id);
-      if (target?.transferId) {
-        const both = ts.filter(t => t.transferId === target.transferId);
-        setAccounts(as => as.map(a => {
-          const side = both.find(t => t.account === a.id);
-          return side ? { ...a, balance: +(a.balance - side.amount).toFixed(2) } : a;
-        }));
-        return ts.filter(t => t.transferId !== target.transferId);
-      }
-      return ts.filter(t => t.id !== id);
-    });
+    const target = transactions.find(t => t.id === id);
+    if (target?.transferId) {
+      const both = transactions.filter(t => t.transferId === target.transferId);
+      setAccounts(as => as.map(a => {
+        const side = both.find(t => t.account === a.id);
+        return side ? { ...a, balance: +(a.balance - side.amount).toFixed(2) } : a;
+      }));
+      setTransactions(ts => ts.filter(t => t.transferId !== target.transferId));
+    } else {
+      setTransactions(ts => ts.filter(t => t.id !== id));
+    }
   };
   const bulkDelete = (ids) => { pushUndo(); const s=new Set(ids); setTransactions(ts=>ts.filter(t=>!s.has(t.id))); };
   const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); };

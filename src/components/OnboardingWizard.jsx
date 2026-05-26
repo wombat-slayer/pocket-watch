@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import { uid, parseAmount } from '../constants.js';
-
-const ACCOUNT_TYPES = [
-  { value: 'checking',    label: 'Checking' },
-  { value: 'savings',     label: 'Savings' },
-  { value: 'investment',  label: 'Investment' },
-  { value: 'credit',      label: 'Credit Card' },
-  { value: 'cash',        label: 'Cash' },
-];
+import { uid, parseAmount, ACCOUNT_TYPES } from '../constants.js';
 
 const BUDGET_CATEGORIES = [
   { name: 'Food & Drink',    icon: '🍔', placeholder: '500' },
@@ -194,7 +186,7 @@ function StepWelcome({ onNext }) {
   );
 }
 
-function StepAccount({ onNext, onSkip }) {
+function StepAccount({ onNext }) {
   const [name,    setName]    = useState('');
   const [type,    setType]    = useState('checking');
   const [balance, setBalance] = useState('');

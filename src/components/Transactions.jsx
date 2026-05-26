@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, Fragment } from 'react';
-import { CATEGORIES, getAllCategories, catIcon, fmt, fmtDate, parseAmount, download } from '../constants.js';
+import { getAllCategories, catIcon, fmt, fmtDate, parseAmount, download } from '../constants.js';
 import Modal from './Modal.jsx';
 import TransactionForm from './TransactionForm.jsx';
 import CSVImport from './CSVImport.jsx';
@@ -353,17 +353,17 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
 
       {showAdd && (
         <Modal title="Add Transaction" onClose={()=>setShowAdd(false)}>
-          <TransactionForm accounts={accounts} onSave={tx=>{ onAdd(tx); setShowAdd(false); }} onClose={()=>setShowAdd(false)} userCategories={userCategories} />
+          <TransactionForm accounts={accounts} onSave={tx=>{ onAdd(tx); setShowAdd(false); }} onClose={()=>setShowAdd(false)} userCategories={userCategories} existingTransactions={transactions} />
         </Modal>
       )}
       {editTx && (
         <Modal title="Edit Transaction" onClose={()=>setEditTx(null)}>
-          <TransactionForm initial={editTx} accounts={accounts} onSave={tx=>{ onEdit(tx); setEditTx(null); }} onClose={()=>setEditTx(null)} userCategories={userCategories} />
+          <TransactionForm initial={editTx} accounts={accounts} onSave={tx=>{ onEdit(tx); setEditTx(null); }} onClose={()=>setEditTx(null)} userCategories={userCategories} existingTransactions={transactions} />
         </Modal>
       )}
       {showCSV && (
         <Modal title="Import CSV" onClose={()=>setShowCSV(false)}>
-          <CSVImport accounts={accounts} existingTxs={existingTxs} onImport={rows=>{ onCSVImport(rows); setShowCSV(false); }} onClose={()=>setShowCSV(false)} />
+          <CSVImport accounts={accounts} existingTxs={existingTxs} onImport={rows=>{ onCSVImport(rows); setShowCSV(false); }} userCategories={userCategories} />
         </Modal>
       )}
     </div>

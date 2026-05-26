@@ -14,10 +14,12 @@ export function useChart(canvasRef, configFn, deps) {
   const typeRef     = useRef(null);
 
   useEffect(() => {
+    let cancelled = false;
     if (!canvasRef.current) return;
     const config = configFn();
 
     getChart().then(ChartClass => {
+      if (cancelled) return;
       const existing = instanceRef.current;
       if (existing && typeRef.current === config.type) {
         // In-place update — no flash
@@ -32,9 +34,7 @@ export function useChart(canvasRef, configFn, deps) {
       }
     });
 
-    return () => {
-      // Only destroy on unmount, not on dep changes
-    };
+    return () => { cancelled = true; };
   }, deps); // eslint-disable-line
 
   // Destroy on actual unmount
@@ -45,5 +45,5 @@ export function useChart(canvasRef, configFn, deps) {
         instanceRef.current = null;
       }
     };
-  }, []); // eslint-disable-line
-}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+};

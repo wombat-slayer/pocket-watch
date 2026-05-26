@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { download, CATEGORIES, getAllCategories } from '../constants.js';
+import { download, getAllCategories, thisMonth } from '../constants.js';
 import { promptNewDataFile } from '../dataLayer.js';
 
 export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory }) {
@@ -7,13 +7,12 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   const [confirmDemo,  setConfirmDemo]  = useState(false);
   const [importError,  setImportError]  = useState('');
   const [importOk,     setImportOk]     = useState(false);
-  const [changingFile, setChangingFile] = useState(false);
   const [newCatName,  setNewCatName]  = useState('');
   const [newCatIcon,  setNewCatIcon]  = useState('📦');
   const [newCatColor, setNewCatColor] = useState('#94a3b8');
 
   // Update states
-  const [updateStatus, setUpdateStatus] = useState('idle'); // idle | checking | available | uptodate | error
+  const [updateStatus, setUpdateStatus] = useState('idle'); // idle | checking | available | uptodate | installing | restart | error
   const [updateInfo,   setUpdateInfo]   = useState(null);
 
 
@@ -56,7 +55,6 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
     const newPath = await promptNewDataFile();
     if (!newPath) return;
     await onChangeDataFile(newPath);
-    setChangingFile(false);
   };
 
   const handleCheckUpdate = async () => {
@@ -79,9 +77,9 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   const handleInstallUpdate = async () => {
     if (!updateInfo) return;
     try {
+      setUpdateStatus('installing');
       await updateInfo.downloadAndInstall();
-      const { relaunch } = await import('@tauri-apps/plugin-process');
-      await relaunch();
+      setUpdateStatus('restart');
     } catch (e) {
       console.error('Install failed:', e);
       setUpdateStatus('error');
@@ -99,7 +97,9 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       newestTx: transactions.length ? transactions.reduce((a,b) => a.date > b.date ? a : b).date : null,
       unclearedOld: transactions.filter(t=>!t.cleared && t.date < cutoff30 && t.type==='expense').length,
       accountsNoActivity: accounts.filter(a => !transactions.some(t=>t.account===a.id && t.date>=cutoff60)).length,
-      budgetsNoSpend: budgets.filter(b => !transactions.some(t=>t.category===b.category && t.date.startsWith(b.month))).length,
+      budgetsNoSpend: budgets
+        .filter(b => b.month === thisMonth())
+        .filter(b => !transactions.some(t => t.category === b.category && t.date.startsWith(b.month))).length,
       untagged: transactions.filter(t=>(!t.tags||t.tags.length===0) && t.type==='expense').length,
     };
   }, [transactions, accounts, budgets]);
@@ -208,6 +208,12 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
               <span style={{ color:'#f59e0b',fontSize:13 }}>🆕 Update available: v{updateInfo.version}</span>
               <button className="btn btn-primary" onClick={handleInstallUpdate}>⬇ Install Update</button>
             </>
+          )}
+          {updateStatus === 'installing' && (
+            <span style={{ color:'#60a5fa',fontSize:13 }}>⏳ Downloading and installing…</span>
+          )}
+          {updateStatus === 'restart' && (
+            <span style={{ color:'#4ade80',fontSize:13 }}>✅ Update installed — please restart Pocket Watch to finish.</span>
           )}
           {updateStatus === 'error' && (
             <span style={{ color:'#c2735a',fontSize:13 }}>❌ Update check failed. Check your internet connection.</span>

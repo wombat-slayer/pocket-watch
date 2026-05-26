@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo, useEffect } from 'react';
-import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth } from '../constants.js';
+import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 
 const DEFAULT_PREFS = {
@@ -47,25 +47,19 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
     if (monthIncome > 0) return 0;
     return (recurrences ?? [])
       .filter(r => r.active && r.type === 'income' && r.startDate <= selMonth + '-28')
-      .reduce((s, r) => {
-        switch (r.frequency) {
-          case 'weekly':    return s + Math.abs(r.amount) * 4.33;
-          case 'biweekly':  return s + Math.abs(r.amount) * 2.17;
-          case 'monthly':   return s + Math.abs(r.amount);
-          case 'quarterly': return s + Math.abs(r.amount) / 3;
-          case 'yearly':    return s + Math.abs(r.amount) / 12;
-          default: return s;
-        }
-      }, 0);
+      .reduce((s, r) => s + Math.abs(monthlyEquivalent(r)), 0);
   }, [recurrences, selMonth, monthIncome]);
   const effectiveIncome = monthIncome + projectedIncome;
   const isProjected = projectedIncome > 0;
   const savingsRate = effectiveIncome > 0 ? Math.max(0, (effectiveIncome - monthSpend) / effectiveIncome * 100) : 0;
 
   const prevMonth = useMemo(()=>{ const d=new Date(selMonth+'-01'); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); },[selMonth]);
-  const prevTxs   = transactions.filter(t => t.date.startsWith(prevMonth) && t.type !== 'adjustment');
-  const prevSpend = prevTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+Math.abs(t.amount),0);
-  const prevIncome= prevTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const { prevSpend, prevIncome } = useMemo(() => {
+    const prevTxs   = transactions.filter(t => t.date.startsWith(prevMonth) && t.type !== 'adjustment');
+    const prevSpend = prevTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+Math.abs(t.amount),0);
+    const prevIncome= prevTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    return { prevSpend, prevIncome };
+  }, [transactions, prevMonth]);
   const delta = (cur, prev) => {
     if (prev === 0) return null;
     const pct = ((cur - prev) / prev * 100).toFixed(0);
@@ -92,8 +86,8 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
     const m = d.toISOString().slice(0,7);
     return {
       label: d.toLocaleDateString('en-US',{month:'short'}),
-      spend:  transactions.filter(t => t.type==='expense' && t.type!=='adjustment' && t.date.startsWith(m)).reduce((s,t)=>s+Math.abs(t.amount),0),
-      income: transactions.filter(t => t.type==='income'  && t.type!=='adjustment' && t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0),
+      spend:  transactions.filter(t => t.type==='expense' && t.date.startsWith(m)).reduce((s,t)=>s+Math.abs(t.amount),0),
+      income: transactions.filter(t => t.type==='income'  && t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0),
     };
   }), [transactions]);
 
@@ -105,7 +99,7 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
     });
     const avg3 = {};
     months3.forEach(m => {
-      transactions.filter(t=>t.type==='expense'&&t.type!=='adjustment'&&t.date.startsWith(m)).forEach(t=>{
+      transactions.filter(t=>t.type==='expense'&&t.date.startsWith(m)).forEach(t=>{
         avg3[t.category] = (avg3[t.category]||0) + Math.abs(t.amount);
       });
     });
@@ -172,7 +166,7 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
       return d.toLocaleDateString('en-US',{month:'short'});
     });
     const actualData     = points.map(p=>p.y);
-    const forecastValues = [7,8,9].map(i => Math.max(0, slope*i + intercept));
+    const forecastValues = [6,7,8].map(i => Math.max(0, slope*i + intercept));
     return {
       labels:         [...labels,...future],
       actualData:     [...actualData,...Array(3).fill(null)],

@@ -56,7 +56,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
 
   const spend = useMemo(() => {
     const map = {};
-    transactions.filter(t=>t.type==='expense'&&t.type!=='adjustment'&&t.date.startsWith(month)).forEach(t=>{
+    transactions.filter(t=>t.type==='expense'&&t.date.startsWith(month)).forEach(t=>{
       map[t.category] = (map[t.category]||0) + Math.abs(t.amount);
     });
     return map;
@@ -65,7 +65,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
   const prevMonthStr = prevMonth(month);
   const prevSpend = useMemo(() => {
     const map = {};
-    transactions.filter(t=>t.type==='expense'&&t.type!=='adjustment'&&t.date.startsWith(prevMonthStr)).forEach(t=>{
+    transactions.filter(t=>t.type==='expense'&&t.date.startsWith(prevMonthStr)).forEach(t=>{
       map[t.category] = (map[t.category]||0) + Math.abs(t.amount);
     });
     return map;
@@ -102,7 +102,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
     const map = {};
     history6.forEach(m => {
       map[m] = {};
-      transactions.filter(t=>t.type==='expense'&&t.type!=='adjustment'&&t.date.startsWith(m)).forEach(t=>{
+      transactions.filter(t=>t.type==='expense'&&t.date.startsWith(m)).forEach(t=>{
         map[m][t.category] = (map[m][t.category]||0) + Math.abs(t.amount);
       });
     });
@@ -342,7 +342,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         <div style={{ fontSize:15,fontWeight:700,color:over?'#c2735a':'#e2e8f0' }}>{fmt(spent)}</div>
                         <div style={{ fontSize:12,color:'#64748b' }}>of {fmt(effLimit)}</div>
                       </div>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>setEditB(b)}>Edit</button>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>{ setEditB(b); setShowAdd(true); }}>Edit</button>
                       <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
                         onClick={()=>{ if(confirm('Remove this budget?')) onDelete(b.id); }}>Delete</button>
                     </div>
@@ -462,7 +462,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                           );
                         })}
                         <td style={{ textAlign:'right', padding:'10px 10px', fontWeight:600 }}>
-                          {fmt(Object.values(row.spent).reduce((s,v)=>s+v,0))}
+                          {fmt(annualCategories.reduce((s, cat) => s + (row.spent[cat] || 0), 0))}
                           <div style={{ fontSize:10, color:'#475569' }}>of {fmt(annualCategories.reduce((s,c)=>s+(annualBudgetMap[row.month]?.[c]||0),0))}</div>
                         </td>
                       </tr>

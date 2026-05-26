@@ -1,10 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { fmt, thisMonth, getAllCategories } from '../constants.js';
 
 export default function MonthClose({ transactions, accounts, budgets, netWorthHistory, userCategories, onEditTx, onAdjustBalance, onClose }) {
   const [step, setStep] = useState(1);
   const [catEdits, setCatEdits] = useState({}); // txId → newCategory
   const [balanceEdits, setBalanceEdits] = useState({}); // acctId → newBalance
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
 
   const month = thisMonth();
   const allCats = getAllCategories(userCategories);
@@ -208,13 +214,10 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
-              <button className="btn btn-primary" style={{ padding: '10px 28px', fontSize: 15 }} onClick={onClose}>
-                Close Month
-              </button>
+              <button className="btn btn-primary" onClick={onClose}>Done ✓</button>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

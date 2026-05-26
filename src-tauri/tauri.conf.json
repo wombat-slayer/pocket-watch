@@ -13,9 +13,10 @@
     "windows": [
       { "title": "Pocket Watch", "width": 1100, "height": 720 }
     ],
-    "security": { "csp": null },
+    "security": { "csp": null }
+  },
+  "plugins": {
     "updater": {
-      "active": true,
       "endpoints": [
         "https://github.com/wombat-slayer/pocket-watch/releases/latest/download/latest.json"
       ],

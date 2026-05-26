@@ -7,6 +7,10 @@ export default function AdjustmentForm({ accounts, onSave, onClose }) {
   const [date,       setDate]       = useState(today());
   const [notes,      setNotes]      = useState('');
 
+  if (accounts.length === 0) return (
+    <p style={{ color: '#64748b', padding: '16px 0' }}>No accounts found. Add an account first.</p>
+  );
+
   const acct   = accounts.find(a => a.id === acctId);
   const parsed = parseAmount(String(newBalance));
   const delta  = !isNaN(parsed) && acct ? parsed - acct.balance : null;
@@ -51,9 +55,7 @@ export default function AdjustmentForm({ accounts, onSave, onClose }) {
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" onClick={handleSave}
-          disabled={!acctId || isNaN(parsed) || newBalance === ''}>
-          📊 Update Balance
-        </button>
+          disabled={!acctId || isNaN(parsed) || newBalance === ""}>Save Adjustment</button>
       </div>
     </div>
   );

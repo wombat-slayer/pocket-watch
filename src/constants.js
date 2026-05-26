@@ -27,6 +27,7 @@ export const ACCOUNT_TYPES = [
   { value: 'investment', label: 'Investment',       color: '#8b5cf6', isDebt: false },
   { value: 'asset',      label: 'Asset / Property', color: '#06b6d4', isDebt: false },
   { value: 'loan',       label: 'Loan / Debt',      color: '#f87171', isDebt: true  },
+  { value: 'cash',       label: 'Cash',             color: '#34d399', isDebt: false },
   { value: 'other',      label: 'Other',            color: '#94a3b8', isDebt: false },
 ];
 
@@ -138,6 +139,19 @@ export function autoCategory(desc, amount) {
   return 'Other';
 }
 
+// ─── Recurring monthly equivalent ────────────────────────────────────────────
+/** Convert a recurrence's amount to its monthly equivalent value */
+export function monthlyEquivalent(r) {
+  switch (r.frequency) {
+    case 'weekly':    return r.amount * 52 / 12;
+    case 'biweekly':  return r.amount * 26 / 12;
+    case 'monthly':   return r.amount;
+    case 'quarterly': return r.amount / 3;
+    case 'yearly':    return r.amount / 12;
+    default:          return r.amount;
+  }
+}
+
 // ─── Balance helpers ──────────────────────────────────────────────────────────
 /**
  * Compute account balance from transaction history.
@@ -150,7 +164,7 @@ export function computeBalance(accountId, transactions, accountType) {
     .reduce((s, t) => s + t.amount, 0);
 }
 
-// ─── Dynamic category helpers ────────────────────────────────────────────────
+// ─── Dynamic category helpers ────────────────────────────────────────────
 /** Returns built-in + user-defined categories merged */
 export function getAllCategories(userCategories = []) {
   return [...CATEGORIES, ...userCategories];

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CATEGORIES, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory } from '../constants.js';
+import { CATEGORIES, getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory } from '../constants.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 
 const CSV_PRESETS = {
@@ -34,7 +34,7 @@ const findDuplicates = (newTxs, existingTxs) => {
   });
 };
 
-export default function CSVImport({ accounts, existingTxs, onImport, onClose }) {
+export default function CSVImport({ accounts, existingTxs, onImport, onClose, userCategories = [] }) {
   const [step,      setStep]      = useState('upload');
   const [rows,      setRows]      = useState([]);
   const [error,     setError]     = useState('');
@@ -237,7 +237,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose }) 
                   <td>
                     <div style={{ display:'flex', alignItems:'center', gap:5 }}>
                       <select value={r.category} onChange={e => updateRow(r.id,'category',e.target.value)} style={{ minWidth:140 }}>
-                        {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+                        {getAllCategories(userCategories).map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
                       </select>
                       {r._memorized && (
                         <span style={{ fontSize:10, background:'#f59e0b22', color:'#f59e0b', padding:'1px 5px', borderRadius:8, whiteSpace:'nowrap', flexShrink:0 }}>
@@ -287,7 +287,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose }) 
         <div style={{ color:'#64748b', fontSize:13, marginTop:4 }}>{fmtDate(ucRow.date)} · <span style={{ color: ucRow.amount>=0?'#4ade80':'#c2735a', fontWeight:600 }}>{fmt(ucRow.amount)}</span></div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
-        {CATEGORIES.filter(c => c.name !== 'Other').map(c => (
+        {getAllCategories(userCategories).filter(c => c.name !== 'Other').map(c => (
           <button key={c.name} className="btn btn-secondary" style={{ justifyContent:'flex-start', gap:8 }}
             onClick={() => { updateRow(ucRow.id,'category',c.name); if (ucIdx < uncatRows.length-1) setUcIdx(i=>i+1); else setStep('review-all'); }}>
             <span>{c.icon}</span><span>{c.name}</span>
@@ -296,7 +296,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose }) 
       </div>
       <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
         <button className="btn btn-ghost btn-sm" onClick={() => { if (ucIdx < uncatRows.length-1) setUcIdx(i=>i+1); else setStep('review-all'); }}>Skip →</button>
-        <button className="btn btn-secondary btn-sm" onClick={() => setStep('review-all')}>Back to full list</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => setStep('review-all')}>← Back to Review</button>
       </div>
     </div>
   );

@@ -431,7 +431,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
       amount:      value,
       category:    'Income',
       type:        'income',
-      account:     grant.linkedAccountId ?? '',
+      account:     '', // account set by VestAccountModal
       notes:       `RSU/equity vest: ${grant.ticker || grant.name}`,
       tags:        ['equity', 'vest'],
     };

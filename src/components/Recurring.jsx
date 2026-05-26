@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { CATEGORIES, getAllCategories, FREQUENCIES, catIcon, fmt, fmtDate, today, uid, parseAmount, getNextRecurDate, freqLabel } from '../constants.js';
+import { monthlyEquivalent, getAllCategories, FREQUENCIES, catIcon, fmt, fmtDate, today, uid, parseAmount, getNextRecurDate, freqLabel } from '../constants.js';
 import Modal from './Modal.jsx';
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
@@ -139,6 +139,7 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
       // Check if amounts are consistent (within 5%)
       const amounts = txs.map(t => Math.abs(t.amount));
       const avgAmt = amounts.reduce((s, a) => s + a, 0) / amounts.length;
+      if (avgAmt === 0) return;
       const consistent = amounts.every(a => Math.abs(a - avgAmt) / avgAmt < 0.05);
       if (!consistent) return;
 
@@ -181,43 +182,14 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
   }, [transactions, recurrences]);
 
   const active   = recurrences.filter(r => r.active).length;
-  const monthly  = recurrences
-    .filter(r => r.active)
-    .reduce((s, r) => {
-      const amt = Math.abs(r.amount);
-      switch (r.frequency) {
-        case 'weekly':    return s + amt * 4.33;
-        case 'biweekly':  return s + amt * 2.17;
-        case 'monthly':   return s + amt;
-        case 'quarterly': return s + amt / 3;
-        case 'yearly':    return s + amt / 12;
-        default: return s;
-      }
-    }, 0);
 
-  const expenses = recurrences.filter(r => r.active && r.type === 'expense')
-    .reduce((s, r) => {
-      switch (r.frequency) {
-        case 'weekly':    return s + Math.abs(r.amount) * 4.33;
-        case 'biweekly':  return s + Math.abs(r.amount) * 2.17;
-        case 'monthly':   return s + Math.abs(r.amount);
-        case 'quarterly': return s + Math.abs(r.amount) / 3;
-        case 'yearly':    return s + Math.abs(r.amount) / 12;
-        default: return s;
-      }
-    }, 0);
+  const expenses = recurrences
+    .filter(r => r.active && r.type === 'expense')
+    .reduce((s, r) => s + Math.abs(monthlyEquivalent(r)), 0);
 
-  const income = recurrences.filter(r => r.active && r.type === 'income')
-    .reduce((s, r) => {
-      switch (r.frequency) {
-        case 'weekly':    return s + Math.abs(r.amount) * 4.33;
-        case 'biweekly':  return s + Math.abs(r.amount) * 2.17;
-        case 'monthly':   return s + Math.abs(r.amount);
-        case 'quarterly': return s + Math.abs(r.amount) / 3;
-        case 'yearly':    return s + Math.abs(r.amount) / 12;
-        default: return s;
-      }
-    }, 0);
+  const income = recurrences
+    .filter(r => r.active && r.type === 'income')
+    .reduce((s, r) => s + Math.abs(monthlyEquivalent(r)), 0);
 
   return (
     <div className="fade-in" style={{ padding: '24px 28px' }}>

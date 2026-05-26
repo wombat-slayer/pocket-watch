@@ -11,6 +11,10 @@ export default function TransferForm({ accounts, onSave, onClose }) {
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  if (accounts.length < 2) return (
+    <p style={{ color: '#64748b', padding: '16px 0' }}>You need at least 2 accounts to make a transfer.</p>
+  );
+
   const handleSave = () => {
     if (!form.fromAccount || !form.toAccount || form.fromAccount === form.toAccount) return;
     const raw = parseAmount(String(form.amount));
@@ -86,10 +90,7 @@ export default function TransferForm({ accounts, onSave, onClose }) {
       </div>
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={handleSave}
-          disabled={!form.amount || form.fromAccount === form.toAccount}>
-          ↔️ Create Transfer
-        </button>
+        <button className="btn btn-primary" onClick={handleSave}>Transfer</button>
       </div>
     </div>
   );

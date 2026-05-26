@@ -1,5 +1,5 @@
 // src/hooks/useCategoryMemory.js
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 
 /**
  * Build a category memory map from existing transactions.
@@ -25,7 +25,7 @@ export function useCategoryMemory(transactions) {
     return map;
   }, [transactions]);
 
-  const suggest = (description) => {
+  const suggest = useCallback((description) => {
     if (!description) return null;
     const key = normalizeDesc(description);
     if (memoryMap[key]) return memoryMap[key];
@@ -37,7 +37,7 @@ export function useCategoryMemory(transactions) {
       }
     }
     return null;
-  };
+  }, [memoryMap]);
 
   return { suggest, memoryMap };
 }
@@ -49,5 +49,5 @@ function normalizeDesc(desc) {
     .replace(/\d{4,}/g, '')   // strip long numbers (card numbers, ref numbers)
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 40);             // cap at 40 chars for matching
+    .slice(0, 40);
 }

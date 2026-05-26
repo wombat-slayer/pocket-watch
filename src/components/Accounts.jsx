@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance } from '../constants.js';
+import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import Modal from './Modal.jsx';
 
@@ -36,17 +36,6 @@ function AccountForm({ initial, onSave, onClose }) {
   );
 }
 
-function monthlyEquivalent(r) {
-  const amt = r.amount; // signed
-  switch (r.frequency) {
-    case 'weekly':    return amt * 4.33;
-    case 'biweekly':  return amt * 2.17;
-    case 'monthly':   return amt;
-    case 'quarterly': return amt / 3;
-    case 'yearly':    return amt / 12;
-    default: return 0;
-  }
-}
 
 export default function Accounts({ accounts, transactions, netWorthHistory, recurrences, onAdd, onEdit, onDelete, onToggleCleared, onReconcile, onUpdateStatementDate }) {
   const canvasNW       = useRef(null);
@@ -216,7 +205,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
             <button className="btn btn-primary btn-sm" onClick={()=>setReconcileAllMode(false)}>Done</button>
           </div>
           {accounts.map(acct => {
-            const acctTxs = transactions.filter(t => t.account === acct.id && !t.cleared && t.type !== 'adjustment');
+            const acctTxs = transactions.filter(t => t.account === acct.id && !t.cleared);
             const computed = transactions.filter(t => t.account === acct.id && t.type !== 'adjustment').reduce((s,t) => s+t.amount, 0);
             const discrepancy = Math.abs(acct.balance - computed);
             const hasDiscrepancy = discrepancy > 0.01;
@@ -242,7 +231,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                     <div style={{ fontSize:12, color:'#94a3b8', marginBottom:6 }}>Uncleared transactions:</div>
                     {acctTxs.sort((a,b)=>b.date.localeCompare(a.date)).map(t => (
                       <div key={t.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 0', borderBottom:'1px solid #1e273640' }}>
-                        <input type="checkbox" checked={false} onChange={()=>{ if(onToggleCleared) onToggleCleared(t.id); }} />
+                        <input type="checkbox" checked={t.cleared} onChange={()=>{ if(onToggleCleared) onToggleCleared(t.id); }} />
                         <span style={{ fontSize:12, color:'#94a3b8', width:80, flexShrink:0 }}>{t.date}</span>
                         <span style={{ fontSize:12, color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.description}</span>
                         <span style={{ fontSize:12, fontWeight:600, color:t.amount>=0?'#4ade80':'#c2735a', flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
