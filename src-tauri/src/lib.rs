@@ -7,10 +7,21 @@ use tauri::{
 };
 
 fn validate_data_path(path: &str) -> Result<(), String> {
+    // Reject null bytes
+    if path.contains('\0') {
+        return Err("Data path must not contain null bytes".to_string());
+    }
     let p = std::path::Path::new(path);
+    // Must be absolute — no relative traversal starting from CWD
     if !p.is_absolute() {
         return Err("Data path must be absolute".to_string());
     }
+    // Reject any ".." component — prevents path traversal attacks
+    use std::path::Component;
+    if p.components().any(|c| matches!(c, Component::ParentDir)) {
+        return Err("Data path must not contain '..' components".to_string());
+    }
+    // Must end with .json
     match p.extension().and_then(|e| e.to_str()) {
         Some("json") => Ok(()),
         _ => Err("Data path must have a .json extension".to_string()),
@@ -93,18 +104,4 @@ pub fn run() {
                 .build(app)?;
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                let _ = window.hide();
-                api.prevent_close();
-            }
-        })
-        .invoke_handler(tauri::generate_handler![
-            load_data,
-            save_data,
-            data_file_exists,
-            get_default_data_path,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
+        .on_win

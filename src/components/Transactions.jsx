@@ -5,22 +5,48 @@ import Modal from './Modal.jsx';
 import TransactionForm from './TransactionForm.jsx';
 import CSVImport from './CSVImport.jsx';
 
-export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive }) {
-  const [search,      setSearch]      = useState('');
-  const [catFilter,   setCatFilter]   = useState(() => initialCatFilter ?? 'All');
+// Persist filter state across navigation using sessionStorage
+const FILTER_KEY = 'pw_tx_filters';
+function loadFilters() {
+  try { return JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}'); } catch { return {}; }
+}
+function saveFilters(patch) {
+  try {
+    const cur = loadFilters();
+    sessionStorage.setItem(FILTER_KEY, JSON.stringify({ ...cur, ...patch }));
+  } catch {}
+}
 
-  // Sync catFilter when the initialCatFilter prop changes (e.g. drill-down from Reports)
+export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive }) {
+  const saved = loadFilters();
+  const [search,      setSearch]      = useState(saved.search      ?? '');
+  const [catFilter,   setCatFilter]   = useState(() => initialCatFilter && initialCatFilter !== 'All' ? initialCatFilter : (saved.catFilter ?? 'All'));
+  const [typeFilter,  setTypeFilter]  = useState(saved.typeFilter  ?? 'All');
+  const [monthFilter, setMonthFilter] = useState(saved.monthFilter ?? 'All');
+  const [acctFilter,  setAcctFilter]  = useState(saved.acctFilter  ?? 'All');
+  const [dateFrom,    setDateFrom]    = useState(saved.dateFrom    ?? '');
+  const [dateTo,      setDateTo]      = useState(saved.dateTo      ?? '');
+  const [tagFilter,   setTagFilter]   = useState(saved.tagFilter   ?? 'All');
+  const [showAdvanced, setShowAdvanced] = useState(saved.showAdvanced ?? false);
+
+  // Persist filter changes to sessionStorage
+  useEffect(() => { saveFilters({ search });       }, [search]);
+  useEffect(() => { saveFilters({ catFilter });    }, [catFilter]);
+  useEffect(() => { saveFilters({ typeFilter });   }, [typeFilter]);
+  useEffect(() => { saveFilters({ monthFilter });  }, [monthFilter]);
+  useEffect(() => { saveFilters({ acctFilter });   }, [acctFilter]);
+  useEffect(() => { saveFilters({ dateFrom });     }, [dateFrom]);
+  useEffect(() => { saveFilters({ dateTo });       }, [dateTo]);
+  useEffect(() => { saveFilters({ tagFilter });    }, [tagFilter]);
+  useEffect(() => { saveFilters({ showAdvanced }); }, [showAdvanced]);
+
+  // Sync catFilter when drill-down arrives from Reports
   useEffect(() => {
     if (initialCatFilter && initialCatFilter !== 'All') {
       setCatFilter(initialCatFilter);
     }
   }, [initialCatFilter]);
-  const [typeFilter,  setTypeFilter]  = useState('All');
-  const [monthFilter, setMonthFilter] = useState('All');
-  const [acctFilter,  setAcctFilter]  = useState('All');
-  const [dateFrom,    setDateFrom]    = useState('');
-  const [dateTo,      setDateTo]      = useState('');
-  const [tagFilter,   setTagFilter]   = useState('All');
+
   const [showCSV,     setShowCSV]     = useState(false);
   const [showAdd,     setShowAdd]     = useState(false);
   const [editTx,      setEditTx]      = useState(null);
@@ -30,7 +56,6 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
   const [cellVal,     setCellVal]     = useState('');
   const [expandedSplit, setExpandedSplit] = useState(new Set());
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const PER = 50;
 
   // Debounce search input by 200ms to avoid filtering on every keystroke
@@ -378,19 +403,4 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                             <td className="cell-editable" onClick={()=>{ if(!isEditing(t,'category')) startEdit(t,'category'); }}>
                               {isEditing(t,'category')
                                 ? <select className="inline-input" autoFocus value={cellVal}
-                                    onChange={e=>{setCellVal(e.target.value);onEdit({...t,category:e.target.value});setEditCell(null);}}
-                                    onBlur={cancelCell} onClick={e=>e.stopPropagation()} style={{ width:160 }}>
-                                    {getAllCategories(userCategories).map(c=><option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
-                                  </select>
-                                : isSplit
-                                  ? <span className="tag" style={{ cursor:'pointer' }} onClick={e=>{ e.stopPropagation(); toggleSplitExpand(t.id); }}>
-                                      🔀 Split {isExpanded ? '▲' : '▼'}
-                                    </span>
-                                  : isTransfer
-                                    ? <span className="tag">↔️ Transfer</span>
-                                    : <span className="tag">{catIcon(t.category)} {t.category}</span>
-                              }
-                            </td>
-                            <td style={{ color:'#64748b',fontSize:13 }}>{acctName(t.account)}</td>
-                            <td className="cell-editable" style={{ textAlign:'right' }} onClick={()=>startEdit(t,'amount')}>
-                     
+              

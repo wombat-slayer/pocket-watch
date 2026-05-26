@@ -98,7 +98,10 @@ export default function App() {
   const redoStack = useRef([]);
   const recurGenerated = useRef(false);
   const [undoLen, setUndoLen] = useState(0);
-  const snapshot = useCallback(() => ({ transactions, accounts, budgets, goals }), [transactions, accounts, budgets, goals]);
+  const snapshot = useCallback(() => ({
+    transactions, accounts, budgets, goals,
+    recurrences, grants, userCategories,
+  }), [transactions, accounts, budgets, goals, recurrences, grants, userCategories]);
 
   const pushUndo = useCallback(() => {
     undoStack.current.push(snapshot());
@@ -115,6 +118,9 @@ export default function App() {
     setAccounts(prev.accounts);
     setBudgets(prev.budgets);
     setGoals(prev.goals);
+    setRecurrences(prev.recurrences);
+    setGrants(prev.grants);
+    setUserCategories(prev.userCategories);
     setUndoLen(undoStack.current.length);
   }, [snapshot]);
 
@@ -126,6 +132,9 @@ export default function App() {
     setAccounts(next.accounts);
     setBudgets(next.budgets);
     setGoals(next.goals);
+    setRecurrences(next.recurrences);
+    setGrants(next.grants);
+    setUserCategories(next.userCategories);
     setUndoLen(undoStack.current.length);
   }, [snapshot]);
 
@@ -433,9 +442,9 @@ export default function App() {
   };
 
   // ── Grant (equity) handlers ───────────────────────────────────────────────────
-  const addGrant    = (g)  => setGrants(gs => [...gs, g]);
-  const editGrant   = (g)  => setGrants(gs => gs.map(x => x.id === g.id ? g : x));
-  const deleteGrant = (id) => setGrants(gs => gs.filter(g => g.id !== id));
+  const addGrant    = (g)  => { pushUndo(); setGrants(gs => [...gs, g]); };
+  const editGrant   = (g)  => { pushUndo(); setGrants(gs => gs.map(x => x.id === g.id ? g : x)); };
+  const deleteGrant = (id) => { pushUndo(); setGrants(gs => gs.filter(g => g.id !== id)); };
 
   // ── Equity vest + price handlers ─────────────────────────────────────────────
   const vestToAccount = useCallback((accountId, amount) =>
@@ -487,14 +496,14 @@ export default function App() {
   const handleSaveApiKeys = (keys) => setApiKeys(prev => ({ ...prev, ...keys }));
 
   // ── User category handlers ──────────────────────────────────────────────────
-  const addUserCategory    = (c)    => setUserCategories(cs => [...cs, c]);
-  const deleteUserCategory = (name) => setUserCategories(cs => cs.filter(c => c.name !== name));
+  const addUserCategory    = (c)    => { pushUndo(); setUserCategories(cs => [...cs, c]); };
+  const deleteUserCategory = (name) => { pushUndo(); setUserCategories(cs => cs.filter(c => c.name !== name)); };
 
   // ── Recurrence handlers ───────────────────────────────────────────────────────
-  const addRecurrence    = (r)  => setRecurrences(rs => [...rs, r]);
-  const editRecurrence   = (r)  => setRecurrences(rs => rs.map(x => x.id === r.id ? r : x));
-  const deleteRecurrence = (id) => setRecurrences(rs => rs.filter(r => r.id !== id));
-  const toggleRecurrence = (id) => setRecurrences(rs => rs.map(r => r.id === id ? { ...r, active: !r.active } : r));
+  const addRecurrence    = (r)  => { pushUndo(); setRecurrences(rs => [...rs, r]); };
+  const editRecurrence   = (r)  => { pushUndo(); setRecurrences(rs => rs.map(x => x.id === r.id ? r : x)); };
+  const deleteRecurrence = (id) => { pushUndo(); setRecurrences(rs => rs.filter(r => r.id !== id)); };
+  const toggleRecurrence = (id) => { pushUndo(); setRecurrences(rs => rs.map(r => r.id === id ? { ...r, active: !r.active } : r)); };
 
   // ── Settings handlers ────────────────────────────────────────────────────────
   // ── Net worth history import ──────────────────────────────────────────────────
@@ -666,9 +675,4 @@ export default function App() {
         </Modal>
       )}
       {showPalette && (
-        <CommandPalette transactions={transactions} accounts={accounts} goals={goals}
-          onClose={()=>setShowPalette(false)} onNavigate={(p)=>{ setPage(p); setShowPalette(false); }} />
-      )}
-      {showHelp && (
-        <div style={{ position:'fixed',inset:0,background:'#00000088',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center' }} onClick={()=>setShowHelp(false)}>
-          <div style={{ background:'#161d2b',border:'1px solid #1e2736',borderRadius:12,padding:'24px 28px',min
+        <CommandPalette transactions={transactions} a
