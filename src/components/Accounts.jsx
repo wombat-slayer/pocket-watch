@@ -767,11 +767,11 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             );
                           })()}
                         </div>
-                        <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}>\ud83d\udce5</button>
-                        <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>\u2696\ufe0f</button>
-                        <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>\u270f\ufe0f</button>
+                        <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}>📥</button>
+                        <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>⚖️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>✏️</button>
                         <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
-                          onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>\ud83d\uddd1</button>
+                          onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>🗑</button>
                       </div>
                       {isReconciling && (
                         <div style={{ background:'#161d2b',border:'1px solid #2d3748',borderRadius:10,padding:14,marginTop:4 }}>
