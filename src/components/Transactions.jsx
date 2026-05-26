@@ -30,6 +30,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
   const [cellVal,     setCellVal]     = useState('');
   const [expandedSplit, setExpandedSplit] = useState(new Set());
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const PER = 50;
 
   // Debounce search input by 200ms to avoid filtering on every keystroke
@@ -76,6 +77,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
   };
   const hasFilters = search || catFilter!=='All' || typeFilter!=='All' || monthFilter!=='All'
     || acctFilter!=='All' || dateFrom || dateTo || tagFilter!=='All';
+  const hasAdvancedFilters = dateFrom || dateTo || tagFilter !== 'All';
 
   const runningBalances = useMemo(() => {
     if (acctFilter === 'All') return null;
@@ -155,7 +157,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
       Account:        acctName(t.account),
       Notes:          t.notes ?? '',
       Tags:           (t.tags ?? []).join(', '),
-      'Tax Deductible': t.taxDeductible ? 'Yes' : 'No',
+      'Tax Deductible': (t.tags ?? []).includes('tax-deductible') ? 'Yes' : 'No',
     }));
     const wsTx = XLSX.utils.json_to_sheet(txRows);
     wsTx['!cols'] = [{ wch:12 },{ wch:36 },{ wch:20 },{ wch:12 },{ wch:10 },{ wch:20 },{ wch:28 },{ wch:20 },{ wch:14 }];
@@ -234,40 +236,51 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
 
       {/* Filters */}
       <div className="card" style={{ marginBottom:16, padding:14 }}>
+        {/* Primary filter row */}
         <div className="filter-bar" style={{ flexWrap:'wrap', gap:8 }}>
-          <input type="text" placeholder="🔍 Search description…" value={search}
-            onChange={e=>{ setSearch(e.target.value); setPage(0); }} style={{ width:200 }} />
-          <input type="date" title="Date from" value={dateFrom}
-            onChange={e=>{ setDateFrom(e.target.value); setPage(0); }} style={{ width:145 }} />
-          <input type="date" title="Date to" value={dateTo}
-            onChange={e=>{ setDateTo(e.target.value); setPage(0); }} style={{ width:145 }} />
+          <input type="text" placeholder="🔍 Search…" value={search}
+            onChange={e=>{ setSearch(e.target.value); setPage(0); }} style={{ width:190 }} />
           <select value={monthFilter} onChange={e=>{ setMonthFilter(e.target.value); setPage(0); }} style={{ width:150 }}>
             {months.map(m => <option key={m} value={m}>{m==='All'?'All Months':new Date(m+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</option>)}
           </select>
-          <select value={acctFilter} onChange={e=>{ setAcctFilter(e.target.value); setPage(0); }} style={{ width:150 }}>
+          <select value={acctFilter} onChange={e=>{ setAcctFilter(e.target.value); setPage(0); }} style={{ width:148 }}>
             <option value="All">All Accounts</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
-          <select value={catFilter} onChange={e=>{ setCatFilter(e.target.value); setPage(0); }} style={{ width:160 }}>
+          <select value={catFilter} onChange={e=>{ setCatFilter(e.target.value); setPage(0); }} style={{ width:158 }}>
             <option value="All">All Categories</option>
             {getAllCategories(userCategories).map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
           </select>
-          <select value={typeFilter} onChange={e=>{ setTypeFilter(e.target.value); setPage(0); }} style={{ width:150 }}>
+          <select value={typeFilter} onChange={e=>{ setTypeFilter(e.target.value); setPage(0); }} style={{ width:130 }}>
             <option value="All">All Types</option>
             <option value="expense">Expense</option>
             <option value="income">Income</option>
             <option value="adjustment">Adjustment</option>
           </select>
-          {allTags.length > 1 && (
-            <select value={tagFilter} onChange={e=>{ setTagFilter(e.target.value); setPage(0); }} style={{ fontSize:13 }}>
-              {allTags.map(tag => <option key={tag} value={tag}>{tag === 'All' ? '🏷 All Tags' : `#${tag}`}</option>)}
-            </select>
-          )}
-          {hasFilters && <button className="btn btn-ghost btn-sm" onClick={clearFilters}>✕ Clear filters</button>}
+          <button
+            className={`btn btn-ghost btn-sm${hasAdvancedFilters ? '' : ''}`}
+            style={{ fontSize:12, color: hasAdvancedFilters ? '#7fa88b' : '#64748b', border: hasAdvancedFilters ? '1px solid #7fa88b55' : undefined }}
+            onClick={() => setShowAdvanced(v => !v)}
+            title="Date range and tag filters"
+          >
+            {showAdvanced ? '▲' : '▼'} Advanced{hasAdvancedFilters ? ' ●' : ''}
+          </button>
+          {hasFilters && <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }} onClick={clearFilters}>✕ Clear</button>}
         </div>
-        {acctFilter !== 'All' && runningBalances && (
-          <div style={{ marginTop:10, fontSize:12, color:'#64748b' }}>
-            💡 Running Balance column shows the account balance at each transaction.
+
+        {/* Advanced filter row (collapsible) */}
+        {(showAdvanced || hasAdvancedFilters) && (
+          <div className="filter-bar" style={{ flexWrap:'wrap', gap:8, marginTop:8, paddingTop:8, borderTop:'1px solid #1e2736' }}>
+            <input type="date" title="From date" value={dateFrom}
+              onChange={e=>{ setDateFrom(e.target.value); setPage(0); }} style={{ width:145 }} />
+            <span style={{ color:'#475569', fontSize:13, alignSelf:'center' }}>→</span>
+            <input type="date" title="To date" value={dateTo}
+              onChange={e=>{ setDateTo(e.target.value); setPage(0); }} style={{ width:145 }} />
+            {allTags.length > 1 && (
+              <select value={tagFilter} onChange={e=>{ setTagFilter(e.target.value); setPage(0); }} style={{ fontSize:13, width:160 }}>
+                {allTags.map(tag => <option key={tag} value={tag}>{tag === 'All' ? '🏷 All Tags' : `#${tag}`}</option>)}
+              </select>
+            )}
           </div>
         )}
       </div>

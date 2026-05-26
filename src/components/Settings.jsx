@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { download, getAllCategories, thisMonth } from '../constants.js';
 import { promptNewDataFile } from '../dataLayer.js';
 
@@ -12,6 +12,9 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   const [newCatColor, setNewCatColor] = useState('#94a3b8');
   const [finnhubInput, setFinnhubInput] = useState(apiKeys.finnhub ?? '');
   const [apiKeySaved,  setApiKeySaved]  = useState(false);
+
+  // Keep the input in sync if apiKeys prop is updated externally
+  useEffect(() => { setFinnhubInput(apiKeys.finnhub ?? ''); }, [apiKeys.finnhub]);
   const [nwImportError,  setNwImportError]  = useState('');
   const [nwImportResult, setNwImportResult] = useState('');
   const [archiveBefore, setArchiveBefore] = useState(() => {
@@ -94,7 +97,6 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       setUpdateStatus('error');
     }
   };
-
 
   const dataHealth = useMemo(() => {
     const now = new Date();

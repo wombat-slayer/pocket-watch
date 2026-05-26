@@ -311,7 +311,6 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
                 </label>
               ))}
             </div>
-
           </div>
         </div>
       )}

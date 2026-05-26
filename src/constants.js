@@ -46,7 +46,7 @@ export const today   = () => new Date().toISOString().split('T')[0];
 export const thisMonth  = () => new Date().toISOString().slice(0, 7);
 export const nextMonth  = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 7); };
 export const prevMonth  = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); };
-export const uid     = () => Math.random().toString(36).slice(2, 10);
+export const uid     = () => self.crypto.randomUUID();
 
 // ─── File download helper ─────────────────────────────────────────────────────
 export const download = (filename, content, type = 'text/plain') => {

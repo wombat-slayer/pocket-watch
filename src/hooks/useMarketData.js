@@ -81,8 +81,11 @@ export function useMarketData(tickersInput, finnhubKey) {
       for (const ticker of stocks) {
         if (ctrl.signal.aborted) break;
         try {
-          const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${encodeURIComponent(key)}`;
-          const r = await fetch(url, { signal: ctrl.signal });
+          const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}`;
+          const r = await fetch(url, {
+            signal: ctrl.signal,
+            headers: { 'X-Finnhub-Token': key },
+          });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const d = await r.json();
           if (typeof d.c === 'number' && d.c > 0) {
