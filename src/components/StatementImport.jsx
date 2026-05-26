@@ -88,44 +88,67 @@ function isDuplicate(tx, existing) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StatementImport({ account, existingTransactions, onImport, onClose }) {
-  const [step,     setStep]     = useState('upload'); // upload | preview | done
-  const [rows,     setRows]     = useState([]);
-  const [selected, setSelected] = useState(new Set());
-  const [error,    setError]    = useState('');
+  const [step,      setStep]      = useState('upload'); // upload | preview | done
+  const [rows,      setRows]      = useState([]);
+  const [selected,  setSelected]  = useState(new Set());
+  const [error,     setError]     = useState('');
+  const [fileNames, setFileNames] = useState([]);
+  const [processing,setProcessing]= useState(false);
   const fileRef = useRef(null);
 
   const acctTxs = existingTransactions.filter(t => t.account === account.id);
 
-  // ── File handler ──────────────────────────────────────────────────────────
-  const handleFile = async (file) => {
-    if (!file) return;
+  // ── Multi-file handler ────────────────────────────────────────────────────
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList).filter(Boolean);
+    if (!files.length) return;
     setError('');
-    try {
-      const text = await file.text();
-      let parsed = [];
-      const lower = file.name.toLowerCase();
-      if (lower.endsWith('.ofx') || lower.endsWith('.qfx') || /<OFX/i.test(text)) {
-        parsed = parseOFX(text);
-      } else {
-        parsed = parseStatementCSV(text);
+    setProcessing(true);
+    setFileNames(files.map(f => f.name));
+
+    let allParsed = [];
+    const skipped = [];
+
+    for (const file of files) {
+      try {
+        const text = await file.text();
+        const lower = file.name.toLowerCase();
+        const parsed = (lower.endsWith('.ofx') || lower.endsWith('.qfx') || /<OFX/i.test(text))
+          ? parseOFX(text)
+          : parseStatementCSV(text);
+        allParsed = allParsed.concat(parsed);
+      } catch (e) {
+        skipped.push(file.name);
       }
-      if (parsed.length === 0) {
-        setError('No transactions found. Ensure the file is a valid CSV, OFX, or QFX bank statement.');
-        return;
-      }
-      const annotated = parsed.map(r => ({
-        ...r,
-        id:       uid(),
-        category: autoCategory(r.description, r.amount),
-        isDup:    isDuplicate(r, acctTxs),
-      }));
-      setRows(annotated);
-      // Pre-select all non-duplicates
-      setSelected(new Set(annotated.filter(r => !r.isDup).map(r => r.id)));
-      setStep('preview');
-    } catch (e) {
-      setError('Could not read file: ' + String(e?.message ?? e));
     }
+
+    setProcessing(false);
+
+    if (allParsed.length === 0) {
+      setError('No transactions found in any selected file. Check that files are valid CSV, OFX, or QFX bank statements.');
+      return;
+    }
+
+    // Deduplicate within the batch (same date + amount + description prefix)
+    const seen = new Set();
+    const deduped = allParsed.filter(r => {
+      const key = `${r.date}|${r.amount.toFixed(2)}|${r.description.toLowerCase().slice(0, 20)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const annotated = deduped.map(r => ({
+      ...r,
+      id:       uid(),
+      category: autoCategory(r.description, r.amount),
+      isDup:    isDuplicate(r, acctTxs),
+    }));
+
+    setRows(annotated);
+    setSelected(new Set(annotated.filter(r => !r.isDup).map(r => r.id)));
+    if (skipped.length) setError(`⚠ Could not read ${skipped.length} file(s): ${skipped.join(', ')}`);
+    setStep('preview');
   };
 
   // ── Selection helpers ─────────────────────────────────────────────────────
@@ -168,6 +191,7 @@ export default function StatementImport({ account, existingTransactions, onImpor
       <div style={{ fontSize:16, fontWeight:700, color:'#e2e8f0', marginBottom:6 }}>Import complete</div>
       <div style={{ fontSize:13, color:'#64748b', marginBottom:28 }}>
         {selectedRows.length} transaction{selectedRows.length !== 1 ? 's' : ''} added to <strong style={{ color:'#94a3b8' }}>{account.name}</strong>
+        {fileNames.length > 1 && <span> from {fileNames.length} files</span>}
       </div>
       <button className="btn btn-primary" onClick={onClose}>Done</button>
     </div>
@@ -178,36 +202,42 @@ export default function StatementImport({ account, existingTransactions, onImpor
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
       <p style={{ fontSize:13, color:'#94a3b8', margin:0 }}>
         Import transactions into <strong style={{ color:'#e2e8f0' }}>{account.name}</strong>.
-        Supports CSV exports from most banks, plus OFX / QFX files.
+        Select one file or multiple years of statements at once.
       </p>
       <div
         style={{
           border:'2px dashed #2d3748', borderRadius:12, padding:'36px 24px',
-          textAlign:'center', cursor:'pointer', transition:'border-color 0.2s',
+          textAlign:'center', cursor: processing ? 'wait' : 'pointer', transition:'border-color 0.2s',
+          opacity: processing ? 0.7 : 1,
         }}
-        onClick={() => fileRef.current?.click()}
+        onClick={() => !processing && fileRef.current?.click()}
         onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#7fa88b'; }}
         onDragLeave={e => { e.currentTarget.style.borderColor = '#2d3748'; }}
         onDrop={e => {
           e.preventDefault();
           e.currentTarget.style.borderColor = '#2d3748';
-          handleFile(e.dataTransfer.files[0]);
+          handleFiles(e.dataTransfer.files);
         }}
       >
-        <div style={{ fontSize:40, marginBottom:10 }}>📄</div>
+        <div style={{ fontSize:40, marginBottom:10 }}>{processing ? '⏳' : '📄'}</div>
         <div style={{ fontSize:14, fontWeight:600, color:'#e2e8f0', marginBottom:4 }}>
-          Drop your statement here
+          {processing ? 'Processing files…' : 'Drop statements here'}
         </div>
-        <div style={{ fontSize:12, color:'#64748b' }}>or click to browse · CSV, OFX, QFX</div>
+        <div style={{ fontSize:12, color:'#64748b' }}>
+          {processing ? 'Reading transactions from all files' : 'or click to browse · CSV, OFX, QFX · multiple files OK'}
+        </div>
         <input
-          ref={fileRef} type="file" accept=".csv,.ofx,.qfx"
+          ref={fileRef} type="file" accept=".csv,.ofx,.qfx" multiple
           style={{ display:'none' }}
-          onChange={e => handleFile(e.target.files[0])}
+          onChange={e => handleFiles(e.target.files)}
         />
+      </div>
+      <div style={{ fontSize:12, color:'#475569', background:'#0d1117', borderRadius:8, padding:'10px 14px' }}>
+        💡 <strong style={{ color:'#64748b' }}>Tip:</strong> Select all your statement files at once — the importer will merge and deduplicate them automatically. Great for loading 1–2 years of history.
       </div>
       {error && (
         <div style={{ color:'#c2735a', fontSize:13, background:'#c2735a11', borderRadius:8, padding:'10px 14px' }}>
-          ⚠️ {error}
+          {error}
         </div>
       )}
       <div style={{ display:'flex', justifyContent:'flex-end' }}>
@@ -222,7 +252,14 @@ export default function StatementImport({ account, existingTransactions, onImpor
       {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
         <div>
-          <div style={{ fontSize:14, fontWeight:700, color:'#e2e8f0' }}>{rows.length} transactions found</div>
+          <div style={{ fontSize:14, fontWeight:700, color:'#e2e8f0' }}>
+            {rows.length} transactions found
+            {fileNames.length > 1 && (
+              <span style={{ marginLeft:10, fontSize:12, fontWeight:400, color:'#64748b' }}>
+                from {fileNames.length} files
+              </span>
+            )}
+          </div>
           <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>
             Account: <strong style={{ color:'#94a3b8' }}>{account.name}</strong>
             {dupCount > 0 && (
@@ -231,8 +268,13 @@ export default function StatementImport({ account, existingTransactions, onImpor
               </span>
             )}
           </div>
+          {fileNames.length > 1 && (
+            <div style={{ fontSize:11, color:'#475569', marginTop:4 }}>
+              {fileNames.join(' · ')}
+            </div>
+          )}
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={() => setStep('upload')}>← Different file</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => { setStep('upload'); setFileNames([]); setError(''); }}>← Different files</button>
       </div>
 
       {/* Table */}

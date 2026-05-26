@@ -155,6 +155,31 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
     return map;
   }, [budgets]);
 
+  // ── 3-month rolling average spend per category ────────────────────────────
+  const rollingAvg3 = useMemo(() => {
+    const map = {};
+    // Last 3 months prior to the selected month
+    const recentMonths = Array.from({length: 3}, (_, i) => {
+      const d = new Date(month + '-01');
+      d.setMonth(d.getMonth() - (i + 1));
+      return d.toISOString().slice(0, 7);
+    });
+    // Collect all categories in current month's budgets
+    const cats = new Set(monthBudgets.map(b => b.category));
+    cats.forEach(cat => {
+      const monthlyAmounts = recentMonths.map(m =>
+        transactions
+          .filter(t => t.type === 'expense' && t.category === cat && t.date.startsWith(m))
+          .reduce((s, t) => s + Math.abs(t.amount), 0)
+      );
+      const nonZero = monthlyAmounts.filter(v => v > 0);
+      map[cat] = nonZero.length > 0
+        ? monthlyAmounts.reduce((s, v) => s + v, 0) / 3  // always divide by 3 (zero months count)
+        : null; // null = no data for this category in last 3 months
+    });
+    return map;
+  }, [transactions, month, monthBudgets]);
+
   useEffect(() => {
     if (!onBudgetAlert) return;
     const curBudgets = budgets.filter(b => b.month === thisMonth());
@@ -316,11 +341,21 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
 
           {monthBudgets.length === 0
             ? (
-              <div className="card">
-                <div className="empty-state">
-                  <div className="empty-icon">🎯</div>
-                  <p>No budgets for this month</p>
-                  <button className="btn btn-primary" style={{ marginTop:12 }} onClick={()=>setShowAdd(true)}>+ Add Budget</button>
+              <div className="card" style={{ padding:'40px 32px', textAlign:'center' }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
+                <div style={{ fontSize:16, fontWeight:600, color:'#e2e8f0', marginBottom:8 }}>No budgets for this month</div>
+                <div style={{ fontSize:13, color:'#64748b', marginBottom:20, maxWidth:400, margin:'0 auto 20px' }}>
+                  Set category limits to control your spending. Use a template to apply last month's budgets instantly, or add them one at a time.
+                </div>
+                <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+                  <button className="btn btn-primary" onClick={()=>setShowAdd(true)}>+ Add Budget</button>
+                  {budgetTemplates.length > 0 && (
+                    <select defaultValue="" onChange={e => { const tpl = budgetTemplates.find(t=>t.name===e.target.value); if (tpl && onLoadTemplate) onLoadTemplate(tpl); }}
+                      style={{ fontSize:13, background:'#1e2736', border:'1px solid #334155', borderRadius:6, color:'#94a3b8', padding:'6px 10px', cursor:'pointer' }}>
+                      <option value="" disabled>📂 Load template…</option>
+                      {budgetTemplates.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                    </select>
+                  )}
                 </div>
               </div>
             )
@@ -330,6 +365,13 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                 const rolloverAmt= effLimit - b.amount;
                 const pct        = effLimit > 0 ? Math.min(100, (spent/effLimit)*100) : 0;
                 const over       = effLimit > 0 && spent > effLimit;
+                const avg3       = rollingAvg3[b.category];
+                // Trend: is current spend tracking above or below 3-month avg? (scaled to full month)
+                const today      = new Date();
+                const daysInMonth= new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+                const dayOfMonth = today.getDate();
+                const projectedSpend = dayOfMonth > 0 ? (spent / dayOfMonth) * daysInMonth : spent;
+                const trendPct   = avg3 > 0 ? ((projectedSpend - avg3) / avg3 * 100) : null;
                 return (
                   <div key={b.id} className="card-sm" style={{ marginBottom:10 }}>
                     <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
@@ -337,12 +379,25 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                       <div style={{ flex:1 }}>
                         <div style={{ fontWeight:600,fontSize:14 }}>{b.category}</div>
                         {b.rollover && <div style={{ fontSize:11,color:'#64748b' }}>Rollover enabled</div>}
+                        {avg3 !== null && (
+                          <div style={{ fontSize:11,color:'#64748b',marginTop:2 }}>
+                            3-mo avg: <span style={{ color:'#94a3b8' }}>{fmt(avg3)}/mo</span>
+                            {trendPct !== null && (
+                              <span style={{ marginLeft:8, color: Math.abs(trendPct) < 5 ? '#64748b' : trendPct > 0 ? '#c2735a' : '#4ade80', fontWeight:600 }}>
+                                {trendPct > 0 ? '▲' : '▼'} {Math.abs(trendPct).toFixed(0)}% vs avg
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div style={{ textAlign:'right' }}>
                         <div style={{ fontSize:15,fontWeight:700,color:over?'#c2735a':'#e2e8f0' }}>{fmt(spent)}</div>
                         <div style={{ fontSize:12,color:'#64748b' }}>of {fmt(effLimit)}</div>
+                        {avg3 !== null && b.amount > 0 && avg3 > b.amount * 1.1 && (
+                          <div style={{ fontSize:10,color:'#f59e0b',marginTop:2 }} title="Your 3-month average spend exceeds this budget">⚠ avg &gt; budget</div>
+                        )}
                       </div>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>{ setEditB(b); setShowAdd(true); }}>Edit</button>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>setEditB(b)}>Edit</button>
                       <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
                         onClick={()=>{ if(confirm('Remove this budget?')) onDelete(b.id); }}>Delete</button>
                     </div>
@@ -424,69 +479,50 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                     <th style={{ textAlign:'left', padding:'12px 16px', color:'#64748b', borderBottom:'1px solid #1e2736', whiteSpace:'nowrap' }}>Month</th>
                     {annualCategories.map(cat => (
                       <th key={cat} style={{ textAlign:'right', padding:'12px 10px', color:'#64748b', borderBottom:'1px solid #1e2736', whiteSpace:'nowrap', fontSize:11 }}>
-                        {catIcon(cat)} {cat}
+                        {cat}
                       </th>
                     ))}
-                    <th style={{ textAlign:'right', padding:'12px 10px', color:'#64748b', borderBottom:'1px solid #1e2736', whiteSpace:'nowrap' }}>Total Budgeted</th>
-                    <th style={{ textAlign:'right', padding:'12px 10px', color:'#64748b', borderBottom:'1px solid #1e2736', whiteSpace:'nowrap' }}>Total Spent</th>
                   </tr>
                 </thead>
                 <tbody>
                   {annualData.map(row => {
-                    const budgetRow = annualBudgetMap[row.month] || {};
-                    const totalBud = annualCategories.reduce((s, cat) => s + (budgetRow[cat] || 0), 0);
-                    const totalSp  = annualCategories.reduce((s, cat) => s + (row.spent[cat] || 0), 0);
-                    const isCur = row.month === thisMonth();
+                    const label = new Date(row.month + '-02').toLocaleString('default', { month: 'short' });
                     return (
-                      <tr key={row.month} style={{ borderBottom:'1px solid #1e273666', background: isCur ? '#ffffff08' : 'transparent' }}>
-                        <td style={{ padding:'10px 16px', fontWeight: isCur ? 700 : 400, color: isCur ? '#e2e8f0' : '#94a3b8', whiteSpace:'nowrap' }}>
-                          {new Date(row.month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-                          {isCur && <span style={{ fontSize:10, color:'#7fa88b', marginLeft:6 }}>(now)</span>}
-                        </td>
+                      <tr key={row.month} style={{ borderBottom:'1px solid #1e273640' }}>
+                        <td style={{ padding:'10px 16px', color:'#94a3b8', fontWeight:600, whiteSpace:'nowrap' }}>{label}</td>
                         {annualCategories.map(cat => {
-                          const spent = row.spent[cat] || 0;
-                          const limit = budgetRow[cat] || 0;
-                          const pct   = limit > 0 ? spent / limit : 0;
-                          const bg    = limit === 0 ? 'transparent' : pct >= 1 ? '#c2735a33' : pct >= 0.8 ? '#f59e0b22' : spent > 0 ? '#4ade8011' : 'transparent';
+                          const spent  = row.spent[cat] ?? 0;
+                          const budget = annualBudgetMap[row.month]?.[cat] ?? 0;
+                          const over   = budget > 0 && spent > budget;
                           return (
-                            <td key={cat} style={{ textAlign:'right', padding:'10px 10px', background: bg }}>
-                              {limit > 0 ? (
-                                <>
-                                  <div style={{ fontWeight:600, color: pct >= 1 ? '#c2735a' : pct >= 0.8 ? '#f59e0b' : '#e2e8f0' }}>{fmt(spent)}</div>
-                                  <div style={{ fontSize:10, color:'#475569' }}>of {fmt(limit)}</div>
-                                </>
-                              ) : (
-                                <span style={{ color:'#334155' }}>-</span>
-                              )}
+                            <td key={cat} style={{ textAlign:'right', padding:'10px 10px', whiteSpace:'nowrap' }}>
+                              {spent > 0 ? (
+                                <span style={{ color: over ? '#c2735a' : '#e2e8f0', fontWeight: over ? 700 : 400 }}>
+                                  {fmt(spent)}
+                                  {budget > 0 && <span style={{ color:'#64748b', fontSize:11, marginLeft:4 }}>/ {fmt(budget)}</span>}
+                                </span>
+                              ) : <span style={{ color:'#334155', fontSize:12 }}>-</span>}
                             </td>
                           );
                         })}
-                        <td style={{ textAlign:'right', padding:'10px 10px', fontWeight:600 }}>
-                          {fmt(annualCategories.reduce((s, cat) => s + (row.spent[cat] || 0), 0))}
-                          <div style={{ fontSize:10, color:'#475569' }}>of {fmt(annualCategories.reduce((s,c)=>s+(annualBudgetMap[row.month]?.[c]||0),0))}</div>
-                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-              )
-            }
-          </div>
-        )}
+            )
+          }
+        </div>
+      )}
 
       {showAdd && (
-        <Modal title={editB ? 'Edit Budget' : 'Add Budget'} onClose={() => { setShowAdd(false); setEditB(null); }}>
-          <BudgetForm
-            initial={editB}
-            defaultMonth={month}
-            userCategories={userCategories}
-            onSave={b => {
-              if (editB) onEdit(b); else onAdd(b);
-              setShowAdd(false); setEditB(null);
-            }}
-            onClose={() => { setShowAdd(false); setEditB(null); }}
-          />
+        <Modal title="Add Budget" onClose={()=>setShowAdd(false)}>
+          <BudgetForm defaultMonth={month} onSave={b=>{onAdd(b);setShowAdd(false);}} onClose={()=>setShowAdd(false)} userCategories={userCategories} />
+        </Modal>
+      )}
+      {editB && (
+        <Modal title="Edit Budget" onClose={()=>setEditB(null)}>
+          <BudgetForm initial={editB} defaultMonth={month} onSave={b=>{onEdit(b);setEditB(null);}} onClose={()=>setEditB(null)} userCategories={userCategories} />
         </Modal>
       )}
     </div>

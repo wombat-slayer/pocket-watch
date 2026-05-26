@@ -115,7 +115,16 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
       )}
 
       {goals.length === 0
-        ? <div className="empty-state"><div className="empty-icon">🎯</div><p>No goals yet. Create one to start tracking your savings!</p></div>
+        ? (
+          <div className="card" style={{ textAlign:'center', padding:'48px 32px' }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🎯</div>
+            <div style={{ fontSize:17, fontWeight:600, color:'#e2e8f0', marginBottom:8 }}>No goals yet</div>
+            <div style={{ fontSize:13, color:'#64748b', marginBottom:24, maxWidth:380, margin:'0 auto 24px' }}>
+              Set a savings goal — vacation, emergency fund, down payment — and Pocket Watch will track your progress automatically.
+            </div>
+            <button className="btn btn-primary" onClick={()=>setShowAdd(true)}>+ Create Your First Goal</button>
+          </div>
+        )
         : <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16 }}>
             {goals.map(g => {
               const current  = resolvedCurrent(g);

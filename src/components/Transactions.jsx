@@ -191,7 +191,21 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
       {/* Table */}
       <div className="card" style={{ padding:0, overflow:'hidden', position:'relative' }}>
         {filtered.length === 0
-          ? <div className="empty-state"><div className="empty-icon">🔍</div><p>No transactions match your filters</p></div>
+          ? transactions.length === 0
+            ? (
+              <div style={{ padding:'48px 32px', textAlign:'center' }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>💳</div>
+                <div style={{ fontSize:17, fontWeight:600, color:'#e2e8f0', marginBottom:8 }}>No transactions yet</div>
+                <div style={{ fontSize:13, color:'#64748b', marginBottom:24, maxWidth:360, margin:'0 auto 24px' }}>
+                  Add transactions manually, or import bank statements from the Accounts page to load months or years of history at once.
+                </div>
+                <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
+                  <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Transaction</button>
+                  <button className="btn btn-secondary" onClick={() => setShowCSV(true)}>📂 Import CSV</button>
+                </div>
+              </div>
+            )
+            : <div className="empty-state"><div className="empty-icon">🔍</div><p>No transactions match your filters</p></div>
           : <>
               <div className="table-wrap">
                 <table>

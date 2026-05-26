@@ -223,8 +223,33 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
     },
   }), [JSON.stringify(nwTrajectoryData), JSON.stringify(goals)]);
 
+  const isNewUser = accounts.length === 0 && transactions.length === 0;
+
   return (
     <div className="fade-in" style={{ padding:'24px 28px' }}>
+      {isNewUser && (
+        <div style={{ background:'linear-gradient(135deg,#0d1f17,#0d1117)', border:'1px solid #14532d55', borderRadius:14, padding:'28px 32px', marginBottom:24 }}>
+          <div style={{ fontSize:36, marginBottom:10 }}>⌚</div>
+          <div style={{ fontWeight:700, fontSize:20, color:'#e2e8f0', marginBottom:6 }}>Welcome to Pocket Watch</div>
+          <div style={{ fontSize:14, color:'#64748b', marginBottom:20, lineHeight:1.7 }}>
+            Your data lives only on this machine — private, fast, and yours forever. Here's how to get started:
+          </div>
+          <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20 }}>
+            {[
+              { num:'1', label:'Add your accounts', desc:'Checking, savings, credit cards, investments — press 3 to go to Accounts' },
+              { num:'2', label:'Import bank statements', desc:'Drop CSV or OFX files from your bank — years of history at once' },
+              { num:'3', label:'Set a budget', desc:'Budget by category so you always know where your money is going — press 4' },
+            ].map(step => (
+              <div key={step.num} style={{ flex:'1 1 180px', background:'#0d1117', border:'1px solid #1e2736', borderRadius:10, padding:'14px 16px' }}>
+                <div style={{ width:24, height:24, borderRadius:6, background:'#14532d', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#4ade80', marginBottom:10 }}>{step.num}</div>
+                <div style={{ fontWeight:600, fontSize:13, color:'#e2e8f0', marginBottom:4 }}>{step.label}</div>
+                <div style={{ fontSize:12, color:'#475569', lineHeight:1.5 }}>{step.desc}</div>
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={onAddTx}>+ Add First Transaction</button>
+        </div>
+      )}
       <div className="section-header">
         <div>
           <div className="section-title">Dashboard</div>
@@ -398,31 +423,23 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
         }
       </div>
 
-      {/* Insights panel — Forecast + Net Worth Trajectory */}
-      <div style={{ marginTop:20, border:'1px solid #1e2736', borderRadius:10, overflow:'hidden' }}>
-        <div
-          style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 18px', background:'#111827', cursor:'pointer', userSelect:'none' }}
-          onClick={() => setInsightsOpen(o => !o)}
-        >
-          <span style={{ fontWeight:600, fontSize:14, color:'#e2e8f0' }}>📈 Insights</span>
-          <span style={{ fontSize:16, color:'#64748b', display:'inline-block', transform:insightsOpen?'rotate(0deg)':'rotate(-90deg)', transition:'transform 0.2s' }}>⌄</span>
-        </div>
+            {/* Insights panel — Forecast + Net Worth Trajectory */}
+      <div style={{ marginTop:20, border:'1px solid #1e2736', borderRadius:12, overflow:'hidden' }}>
+        <button
+          onClick={()=>setInsightsOpen(o=>!o)}
+          style={{ width:'100%', background:'#111827', border:'none', padding:'14px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', color:'#e2e8f0' }}>
+          <span style={{ fontWeight:600, fontSize:14 }}>Insights &amp; Forecast</span>
+          <span style={{ fontSize:12, color:'#64748b' }}>{insightsOpen ? '▲ Collapse' : '▼ Expand'}</span>
+        </button>
         {insightsOpen && (
-          <div style={{ padding:'16px 18px', display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))', gap:14 }}>
-            <div className="card" style={{ margin:0 }}>
-              <div style={{ fontWeight:600, fontSize:14, marginBottom:4 }}>Spending Forecast</div>
-              <div style={{ fontSize:12, color:'#64748b', marginBottom:14 }}>3-month projection via linear regression on last 6 months</div>
-              <div className="chart-container" style={{ height:220 }}><canvas ref={canvasForecast} /></div>
+          <div style={{ padding:20 }}>
+            <div style={{ marginBottom:24 }}>
+              <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Spending Forecast — Next 3 Months</div>
+              <div className="chart-container" style={{ height:200 }}><canvas ref={canvasForecast} /></div>
             </div>
-            <div className="card" style={{ margin:0 }}>
-              <div style={{ fontWeight:600, fontSize:14, marginBottom:4 }}>Net Worth Trajectory</div>
-              <div style={{ fontSize:12, color:'#64748b', marginBottom:14 }}>
-                {goals.filter(g=>g.target>0).length > 0 ? 'Goal targets shown as dashed lines' : 'Historical net worth over time'}
-              </div>
-              {nwTrajectoryData.labels.length === 0
-                ? <div className="empty-state" style={{ height:220 }}><div className="empty-icon">📈</div><p>No net worth history yet</p></div>
-                : <div className="chart-container" style={{ height:220 }}><canvas ref={canvasNWTrajectory} /></div>
-              }
+            <div>
+              <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Net Worth Trajectory</div>
+              <div className="chart-container" style={{ height:200 }}><canvas ref={canvasNWTrajectory} /></div>
             </div>
           </div>
         )}

@@ -4,6 +4,230 @@ import { useChart } from '../hooks/useChart.js';
 import Modal from './Modal.jsx';
 import StatementImport from './StatementImport.jsx';
 
+// ─── Debt Payoff Calculator ──────────────────────────────────────────────────
+function DebtPayoffPanel({ debts }) {
+  const canvasPayoff = useRef(null);
+  const [extra,  setExtra]  = useState(200);
+  const [method, setMethod] = useState('avalanche'); // 'avalanche' | 'snowball'
+
+  // Build a debt list with estimated APR via per-account minimum payment heuristic.
+  // User can override APR per card via inline inputs.
+  const [aprs, setAprs] = useState(() =>
+    Object.fromEntries(debts.map(d => [d.id, 20])) // default 20% APR
+  );
+  const [mins, setMins] = useState(() =>
+    Object.fromEntries(debts.map(d => [d.id, Math.max(25, Math.round(d.balance * 0.02))])) // 2% or $25
+  );
+
+  const totalDebt = debts.reduce((s, d) => s + d.balance, 0);
+  const totalMin  = debts.reduce((s, d) => s + (mins[d.id] ?? 25), 0);
+  const budget    = totalMin + (parseFloat(extra) || 0);
+
+  // Run the payoff simulation
+  const simulation = useMemo(() => {
+    if (!debts.length || budget <= 0) return { months: [], totalInterest: 0, order: [] };
+
+    // Build mutable debt objects
+    let accounts = debts.map(d => ({
+      id: d.id,
+      name: d.name,
+      balance: d.balance,
+      apr: (aprs[d.id] ?? 20) / 100,
+      min: mins[d.id] ?? 25,
+    })).filter(d => d.balance > 0);
+
+    // Sort by method
+    const sortAccounts = (arr) => {
+      if (method === 'avalanche') return [...arr].sort((a, b) => b.apr - a.apr);
+      return [...arr].sort((a, b) => a.balance - b.balance); // snowball: lowest balance first
+    };
+
+    const months = [];
+    let totalInterest = 0;
+    const MAX_MONTHS = 600; // 50 years hard stop
+
+    for (let mo = 0; mo < MAX_MONTHS && accounts.length > 0; mo++) {
+      const sorted = sortAccounts(accounts);
+      let remaining = budget;
+
+      // Apply interest first
+      accounts = accounts.map(a => ({
+        ...a,
+        balance: a.balance * (1 + a.apr / 12),
+      }));
+
+      // Count interest added this month
+      const interestThisMonth = accounts.reduce((s, a) => {
+        const orig = debts.find(d => d.id === a.id)?.balance ?? 0;
+        return s; // rough: track separately
+      }, 0);
+
+      // Apply minimums first
+      accounts = accounts.map(a => {
+        const pay = Math.min(a.min, a.balance);
+        remaining -= pay;
+        return { ...a, balance: Math.max(0, a.balance - pay) };
+      }).filter(a => a.balance > 0);
+
+      // Apply extra to the priority target
+      const sortedForExtra = sortAccounts(accounts);
+      for (let i = 0; i < sortedForExtra.length && remaining > 0.01; i++) {
+        const target = sortedForExtra[i];
+        const pay = Math.min(remaining, target.balance);
+        remaining -= pay;
+        const idx = accounts.findIndex(a => a.id === target.id);
+        if (idx >= 0) {
+          accounts[idx] = { ...accounts[idx], balance: Math.max(0, accounts[idx].balance - pay) };
+          if (accounts[idx].balance < 0.01) accounts.splice(idx, 1);
+        }
+      }
+
+      const snapshotTotal = accounts.reduce((s, a) => s + a.balance, 0);
+      months.push({
+        mo: mo + 1,
+        label: (() => { const d = new Date(); d.setMonth(d.getMonth() + mo + 1); return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); })(),
+        remaining: snapshotTotal,
+      });
+    }
+
+    const totalPaid = budget * months.length;
+    const totalInterestCalc = Math.max(0, totalPaid - totalDebt);
+
+    return { months, totalInterest: totalInterestCalc, payoffMonths: months.length };
+  }, [debts, aprs, mins, extra, method, totalDebt, budget]);
+
+  // Chart: remaining debt over time
+  const chartData = useMemo(() => {
+    const pts = [{ label: 'Now', remaining: totalDebt }, ...simulation.months];
+    // Thin to max 60 points for readability
+    if (pts.length <= 60) return pts;
+    const step = Math.ceil(pts.length / 60);
+    return pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+  }, [simulation.months, totalDebt]);
+
+  useChart(canvasPayoff, () => ({
+    type: 'line',
+    data: {
+      labels: chartData.map(p => p.label),
+      datasets: [{
+        label: 'Total Debt Remaining',
+        data: chartData.map(p => p.remaining),
+        borderColor: '#c2735a',
+        backgroundColor: '#c2735a22',
+        tension: 0.3, fill: true,
+        pointRadius: chartData.length > 30 ? 0 : 3,
+        pointBackgroundColor: '#c2735a',
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Remaining: ${fmt(ctx.raw)}` } } },
+      scales: {
+        x: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', maxTicksLimit: 12 } },
+        y: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) }, min: 0 },
+      },
+    },
+  }), [JSON.stringify(chartData)]);
+
+  const yrs = Math.floor(simulation.payoffMonths / 12);
+  const mos = simulation.payoffMonths % 12;
+  const payoffStr = simulation.payoffMonths
+    ? `${yrs > 0 ? `${yrs}yr ` : ''}${mos > 0 ? `${mos}mo` : ''}`.trim()
+    : '—';
+
+  return (
+    <div style={{ background:'#0d1117', border:'1px solid #7f1d1d44', borderRadius:12, padding:20, marginTop:8 }}>
+      <div style={{ fontSize:14, fontWeight:700, color:'#e2e8f0', marginBottom:4 }}>💳 Debt Payoff Planner</div>
+      <div style={{ fontSize:12, color:'#64748b', marginBottom:16 }}>
+        How fast can you eliminate your {debts.length} debt{debts.length !== 1 ? 's' : ''}? Adjust the settings below.
+      </div>
+
+      {/* Controls */}
+      <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginBottom:16, alignItems:'flex-end' }}>
+        <div>
+          <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Extra monthly payment ($)</label>
+          <input type="number" min="0" step="50" value={extra}
+            onChange={e => setExtra(e.target.value)}
+            style={{ width:120, padding:'6px 10px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:13 }} />
+        </div>
+        <div>
+          <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Method</label>
+          <div style={{ display:'flex', gap:6 }}>
+            <button className={`btn btn-sm ${method === 'avalanche' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMethod('avalanche')}>
+              🏔 Avalanche
+            </button>
+            <button className={`btn btn-sm ${method === 'snowball' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMethod('snowball')}>
+              ⛄ Snowball
+            </button>
+          </div>
+        </div>
+        <div style={{ fontSize:11, color:'#475569', maxWidth:260, lineHeight:1.5 }}>
+          <strong style={{ color:'#64748b' }}>{method === 'avalanche' ? 'Avalanche' : 'Snowball'}:</strong>{' '}
+          {method === 'avalanche'
+            ? 'Pay highest APR first. Saves the most interest.'
+            : 'Pay smallest balance first. Wins psychological momentum.'}
+        </div>
+      </div>
+
+      {/* APR inputs per debt */}
+      <div style={{ marginBottom:16 }}>
+        <div style={{ fontSize:11, color:'#64748b', marginBottom:8, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>Interest rates & minimums</div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:8 }}>
+          {debts.map(d => (
+            <div key={d.id} style={{ background:'#161d2b', borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'#e2e8f0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.name}</div>
+                <div style={{ fontSize:11, color:'#c2735a' }}>{fmt(d.balance)}</div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                  <span style={{ fontSize:10, color:'#64748b', width:30 }}>APR%</span>
+                  <input type="number" min="0" max="100" step="0.1" value={aprs[d.id] ?? 20}
+                    onChange={e => setAprs(a => ({ ...a, [d.id]: parseFloat(e.target.value) || 0 }))}
+                    style={{ width:56, padding:'2px 6px', background:'#0d1117', border:'1px solid #2d3748', borderRadius:4, color:'#e2e8f0', fontSize:11 }} />
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                  <span style={{ fontSize:10, color:'#64748b', width:30 }}>Min $</span>
+                  <input type="number" min="0" step="5" value={mins[d.id] ?? 25}
+                    onChange={e => setMins(m => ({ ...m, [d.id]: parseFloat(e.target.value) || 0 }))}
+                    style={{ width:56, padding:'2px 6px', background:'#0d1117', border:'1px solid #2d3748', borderRadius:4, color:'#e2e8f0', fontSize:11 }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary stats */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
+        <div style={{ background:'#161d2b', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Monthly budget</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'#e2e8f0' }}>{fmt(budget)}</div>
+          <div style={{ fontSize:10, color:'#475569' }}>Minimums {fmt(totalMin)} + extra {fmt(parseFloat(extra)||0)}</div>
+        </div>
+        <div style={{ background:'#161d2b', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Payoff time</div>
+          <div style={{ fontSize:16, fontWeight:700, color: simulation.payoffMonths > 60 ? '#f59e0b' : '#4ade80' }}>{payoffStr}</div>
+          <div style={{ fontSize:10, color:'#475569' }}>{simulation.payoffMonths} monthly payments</div>
+        </div>
+        <div style={{ background:'#161d2b', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Est. total interest</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'#c2735a' }}>{fmt(simulation.totalInterest)}</div>
+          <div style={{ fontSize:10, color:'#475569' }}>On {fmt(totalDebt)} of debt</div>
+        </div>
+      </div>
+
+      {/* Payoff chart */}
+      {simulation.months.length > 0 && (
+        <div>
+          <div style={{ fontSize:12, color:'#64748b', marginBottom:8 }}>Debt balance over time</div>
+          <div style={{ height:200 }}><canvas ref={canvasPayoff} /></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AccountForm({ initial, onSave, onClose }) {
   const [form, setForm] = useState(initial ?? { name:'', type:'checking', balance:'' });
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
@@ -182,6 +406,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
   const [stmtDate,        setStmtDate]        = useState('');
   const [importAcct,      setImportAcct]      = useState(null); // account being imported into
   const [expandedHoldings,setExpandedHoldings]= useState(new Set()); // investment account ids with holdings open
+  const [showPayoff,      setShowPayoff]      = useState(false);
 
   const openReconcile = (acctId) => {
     const existing = new Set(transactions.filter(t => t.account === acctId && t.cleared).map(t => t.id));
@@ -278,6 +503,11 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       <div className="section-header">
         <div><div className="section-title">Accounts & Net Worth</div><div className="section-sub">Track assets and liabilities</div></div>
         <div style={{ display:'flex', gap:8 }}>
+          {debts.length > 0 && (
+            <button className="btn btn-secondary" onClick={()=>setShowPayoff(p=>!p)}>
+              {showPayoff ? '✕ Hide Planner' : '💳 Payoff Planner'}
+            </button>
+          )}
           <button className="btn btn-secondary" onClick={()=>setReconcileAllMode(m=>!m)}>
             {reconcileAllMode ? '✕ Exit Reconcile All' : '🔍 Reconcile All'}
           </button>
@@ -382,7 +612,9 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
 
       {!reconcileAllMode && accounts.length === 0
         ? <div className="card"><div className="empty-state"><div className="empty-icon">🏦</div><p>No accounts yet</p><button className="btn btn-primary" style={{ marginTop:12 }} onClick={()=>setShowAdd(true)}>+ Add Account</button></div></div>
-        : <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:20 }}>
+        : <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+
+            {/* ── Assets ── */}
             <div>
               <div style={{ fontSize:12,fontWeight:700,color:'#4ade80',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12 }}>Assets ({assets.length})</div>
               {assets.length === 0
@@ -484,15 +716,117 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                       </div>
                     );
                   })
-              }
-            </div>
+                }
+              </div>
+
+            {/* \u2500\u2500 Debts \u2500\u2500 */}
+            {debts.length > 0 && (
+              <div>
+                <div style={{ fontSize:12,fontWeight:700,color:'#c2735a',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12 }}>Debts ({debts.length})</div>
+                {debts.map(a => {
+                  const acctTxs = transactions.filter(t => t.account === a.id).sort((x,y) => y.date.localeCompare(x.date));
+                  const oldUncleared = acctTxs.filter(t => !t.cleared && (new Date() - new Date(t.date + 'T00:00:00')) > 30*24*60*60*1000);
+                  const isReconciling = reconcileAcct === a.id;
+                  const stmtVal = parseFloat(stmtBalance) || 0;
+                  const clearedSum = acctTxs.filter(t => clearedIds.has(t.id)).reduce((s,t) => s + t.amount, 0);
+                  const discrepancy = stmtVal - clearedSum;
+                  return (
+                    <div key={a.id} style={{ marginBottom:8 }}>
+                      <div className="card-sm" style={{ display:'flex',alignItems:'center',gap:12, borderColor:'#7f1d1d44' }}>
+                        <div style={{ width:40,height:40,borderRadius:10,background:acctColor(a.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0 }}>
+                          {acctEmoji(a.type)}
+                        </div>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:600,fontSize:14 }}>{a.name}</div>
+                          <div style={{ fontSize:12,color:acctColor(a.type),marginTop:2 }}>{acctLabel(a.type)}</div>
+                          {a.lastStatementDate && (() => {
+                            const daysAgo = Math.floor((new Date() - new Date(a.lastStatementDate+'T00:00:00')) / (24*60*60*1000));
+                            return (
+                              <div style={{ fontSize:11,color:daysAgo>45?'#f59e0b':'#64748b',marginTop:3 }}>
+                                Last reconciled: {a.lastStatementDate}{daysAgo>45?' \u26a0':''}
+                              </div>
+                            );
+                          })()}
+                          {oldUncleared.length > 0 && (
+                            <div style={{ fontSize:11,color:'#f59e0b',marginTop:3 }}>
+                              \u26a0 {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign:'right', marginRight:8 }}>
+                          <div style={{ fontSize:17,fontWeight:700,color:'#c2735a' }}>{fmt(a.balance)}</div>
+                          {(() => {
+                            const computed = computeBalance(a.id, transactions, a.type);
+                            if (computed === null) return null;
+                            const diff = Math.abs(computed - a.balance);
+                            if (diff < 0.01) return null;
+                            return (
+                              <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'#f59e0b', marginTop:3, cursor:'help' }}>
+                                \u26a0 tx total: {fmt(computed)}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}>\ud83d\udce5</button>
+                        <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>\u2696\ufe0f</button>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>\u270f\ufe0f</button>
+                        <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
+                          onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>\ud83d\uddd1</button>
+                      </div>
+                      {isReconciling && (
+                        <div style={{ background:'#161d2b',border:'1px solid #2d3748',borderRadius:10,padding:14,marginTop:4 }}>
+                          <div style={{ fontWeight:600,fontSize:13,marginBottom:10,color:'#e2e8f0' }}>Reconcile: {a.name}</div>
+                          <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:8,flexWrap:'wrap' }}>
+                            <label style={{ fontSize:12,color:'#94a3b8' }}>Statement Balance ($)</label>
+                            <input type="number" step="0.01" value={stmtBalance} onChange={e=>setStmtBalance(e.target.value)}
+                              style={{ width:120,padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
+                            <label style={{ fontSize:12,color:'#94a3b8',marginLeft:8 }}>Statement End Date</label>
+                            <input type="date" value={stmtDate} onChange={e=>setStmtDate(e.target.value)}
+                              style={{ padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
+                          </div>
+                          <div style={{ maxHeight:220,overflowY:'auto',marginBottom:10 }}>
+                            {acctTxs.length === 0
+                              ? <div style={{ fontSize:12,color:'#475569',padding:'8px 0' }}>No transactions for this account.</div>
+                              : acctTxs.map(t => (
+                                  <div key={t.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #1e273640' }}>
+                                    <input type="checkbox" checked={clearedIds.has(t.id)} onChange={()=>toggleClearedLocal(t.id)} />
+                                    <span style={{ fontSize:12,color:'#94a3b8',width:80,flexShrink:0 }}>{t.date}</span>
+                                    <span style={{ fontSize:12,color:'#cbd5e1',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
+                                    <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'#4ade80':'#c2735a',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
+                                  </div>
+                                ))
+                            }
+                          </div>
+                          <div style={{ fontSize:12,color:'#94a3b8',marginBottom:8,display:'flex',gap:20 }}>
+                            <span>Cleared sum: <strong style={{ color:'#e2e8f0' }}>{fmt(clearedSum)}</strong></span>
+                            {stmtBalance !== '' && (
+                              <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'#4ade80':'#f59e0b' }}>{fmt(discrepancy)}</strong></span>
+                            )}
+                          </div>
+                          <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
+                            <button className="btn btn-secondary btn-sm" onClick={closeReconcile}>Cancel</button>
+                            <button className="btn btn-primary btn-sm" onClick={finishReconcile}>Finish Reconcile</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* \u2500\u2500 Debt Payoff Planner \u2500\u2500 */}
+            {showPayoff && debts.length > 0 && (
+              <DebtPayoffPanel debts={debts} />
+            )}
+
           </div>
       }
 
       {showAdd && <Modal title="Add Account" onClose={()=>setShowAdd(false)}><AccountForm onSave={a=>{onAdd(a);setShowAdd(false);}} onClose={()=>setShowAdd(false)} /></Modal>}
       {editA   && <Modal title="Edit Account" onClose={()=>setEditA(null)}><AccountForm initial={editA} onSave={a=>{onEdit(a);setEditA(null);}} onClose={()=>setEditA(null)} /></Modal>}
       {importAcct && (
-        <Modal title={`Import Statement — ${importAcct.name}`} onClose={()=>setImportAcct(null)}>
+        <Modal title={`Import Statement \u2014 ${importAcct.name}`} onClose={()=>setImportAcct(null)}>
           <StatementImport
             account={importAcct}
             existingTransactions={transactions}

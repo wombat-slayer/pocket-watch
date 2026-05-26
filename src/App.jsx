@@ -81,7 +81,7 @@ export default function App() {
   const [budgetTemplates, setBudgetTemplates] = useState([]);
   const [onboardingDone,  setOnboardingDone]  = useState(true);
   const [showMonthClose,  setShowMonthClose]  = useState(false);
-  const [budgetToasts,    setBudgetToasts]    = useState([]);
+  const [toasts,          setToasts]          = useState([]);
 
   // ── Data loading status ────────────────────────────────────────────────────
   const [dataPath,        setDataPathState]   = useState(null);
@@ -339,6 +339,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [handleUndo, handleRedo]);
 
+  // ── Toast helper ───────────────────────────────────────────────────────────
+  // type: 'success' | 'warning' | 'error' | 'info'
+  const showToast = useCallback((msg, type = 'success') => {
+    const id = uid();
+    setToasts(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  }, []);
+
   // ── Transfer handler ───────────────────────────────────────────────────────
   const handleTransfer = (tx1, tx2) => {
     pushUndo();
@@ -348,11 +356,12 @@ export default function App() {
       if (a.id === tx2.account) return { ...a, balance: +(a.balance + tx2.amount).toFixed(2) };
       return a;
     }));
+    showToast('Transfer recorded');
   };
 
   // ── Transaction handlers ───────────────────────────────────────────────────
-  const addTx      = (tx)  => { pushUndo(); setTransactions(ts=>[tx,...ts].sort((a,b)=>b.date.localeCompare(a.date))); };
-  const editTx     = (tx)  => { pushUndo(); setTransactions(ts=>ts.map(t=>t.id===tx.id?tx:t)); };
+  const addTx      = (tx)  => { pushUndo(); setTransactions(ts=>[tx,...ts].sort((a,b)=>b.date.localeCompare(a.date))); showToast('Transaction added'); };
+  const editTx     = (tx)  => { pushUndo(); setTransactions(ts=>ts.map(t=>t.id===tx.id?tx:t)); showToast('Transaction updated'); };
   const deleteTx   = (id)  => {
     pushUndo();
     const target = transactions.find(t => t.id === id);
@@ -366,25 +375,26 @@ export default function App() {
     } else {
       setTransactions(ts => ts.filter(t => t.id !== id));
     }
+    showToast('Transaction deleted', 'info');
   };
-  const bulkDelete = (ids) => { pushUndo(); const s=new Set(ids); setTransactions(ts=>ts.filter(t=>!s.has(t.id))); };
-  const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); };
+  const bulkDelete = (ids) => { pushUndo(); const s=new Set(ids); setTransactions(ts=>ts.filter(t=>!s.has(t.id))); showToast(`${ids.length} transactions deleted`, 'info'); };
+  const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); showToast(`${rows.length} transaction${rows.length!==1?'s':''} imported`); };
 
   // ── Account handlers ────────────────────────────────────────────────────────
-  const addAcct    = (a)   => { pushUndo(); setAccounts(as=>[...as,a]); };
-  const editAcct   = (a)   => { pushUndo(); setAccounts(as=>as.map(x=>x.id===a.id?a:x)); };
-  const deleteAcct = (id)  => { pushUndo(); setAccounts(as=>as.filter(a=>a.id!==id)); };
+  const addAcct    = (a)   => { pushUndo(); setAccounts(as=>[...as,a]); showToast(`Account "${a.name}" added`); };
+  const editAcct   = (a)   => { pushUndo(); setAccounts(as=>as.map(x=>x.id===a.id?a:x)); showToast('Account updated'); };
+  const deleteAcct = (id)  => { pushUndo(); setAccounts(as=>as.filter(a=>a.id!==id)); showToast('Account removed', 'info'); };
 
   // ── Budget handlers ─────────────────────────────────────────────────────────
-  const addBudget    = (b) => { pushUndo(); setBudgets(bs=>[...bs,b]); };
-  const editBudget   = (b) => { pushUndo(); setBudgets(bs=>bs.map(x=>x.id===b.id?b:x)); };
-  const deleteBudget = (id)=> { pushUndo(); setBudgets(bs=>bs.filter(b=>b.id!==id)); };
+  const addBudget    = (b) => { pushUndo(); setBudgets(bs=>[...bs,b]); showToast('Budget added'); };
+  const editBudget   = (b) => { pushUndo(); setBudgets(bs=>bs.map(x=>x.id===b.id?b:x)); showToast('Budget updated'); };
+  const deleteBudget = (id)=> { pushUndo(); setBudgets(bs=>bs.filter(b=>b.id!==id)); showToast('Budget removed', 'info'); };
 
   // ── Goal handlers ────────────────────────────────────────────────────────────
-  const addGoal     = (g)       => { pushUndo(); setGoals(gs=>[...gs,g]); };
-  const editGoal    = (g)       => { pushUndo(); setGoals(gs=>gs.map(x=>x.id===g.id?g:x)); };
-  const deleteGoal  = (id)      => { pushUndo(); setGoals(gs=>gs.filter(g=>g.id!==id)); };
-  const depositGoal = (id, amt) => { pushUndo(); setGoals(gs=>gs.map(g=>g.id===id?{...g,current:Math.max(0,g.current+amt)}:g)); };
+  const addGoal     = (g)       => { pushUndo(); setGoals(gs=>[...gs,g]); showToast(`Goal "${g.name}" created`); };
+  const editGoal    = (g)       => { pushUndo(); setGoals(gs=>gs.map(x=>x.id===g.id?g:x)); showToast('Goal updated'); };
+  const deleteGoal  = (id)      => { pushUndo(); setGoals(gs=>gs.filter(g=>g.id!==id)); showToast('Goal removed', 'info'); };
+  const depositGoal = (id, amt) => { pushUndo(); setGoals(gs=>gs.map(g=>g.id===id?{...g,current:Math.max(0,g.current+amt)}:g)); showToast('Deposit recorded'); };
 
   // ── Balance Adjustment handler ────────────────────────────────────────────────
   const handleAdjustment = (acctId, newBalance, date, notes) => {
@@ -399,6 +409,7 @@ export default function App() {
     };
     setTransactions(ts => [tx, ...ts].sort((a,b) => b.date.localeCompare(a.date)));
     setAccounts(as => as.map(a => a.id === acctId ? { ...a, balance: newBalance } : a));
+    showToast('Balance updated');
   };
 
   // ── Reconciliation handlers ───────────────────────────────────────────────────
@@ -425,18 +436,21 @@ export default function App() {
   , []);
 
   // ── Budget template handlers ──────────────────────────────────────────────────
-  const handleSaveTemplate = (name, buds) =>
+  const handleSaveTemplate = (name, buds) => {
     setBudgetTemplates(prev => [...prev.filter(t => t.name !== name), { name, budgets: buds }]);
+    showToast(`Template "${name}" saved`);
+  };
   const handleLoadTemplate = (tpl) => {
     const tm = today().slice(0, 7);
     setBudgets(prev => {
       const newBuds = tpl.budgets.map(b => ({ ...b, id: uid(), month: tm }));
       return [...prev.filter(b => b.month !== tm), ...newBuds];
     });
+    showToast(`Template "${tpl.name}" applied`);
   };
   const handleBudgetAlert = (category, pct) => {
     const msg = `${category} has reached ${pct}% of its limit.`;
-    setBudgetToasts(prev => [...prev, { id: uid(), msg }]);
+    showToast(msg, 'warning');
   };
 
   const handleToggleTemplateAutoApply = (name) =>
@@ -600,7 +614,7 @@ export default function App() {
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='goals'        && <Goals        goals={goals} accounts={accounts} onAdd={addGoal} onEdit={editGoal} onDelete={deleteGoal} onDeposit={depositGoal} />}
         {page==='recurring'    && <Recurring    recurrences={recurrences} accounts={accounts} transactions={transactions} onAdd={addRecurrence} onEdit={editRecurrence} onDelete={deleteRecurrence} onToggle={toggleRecurrence} userCategories={userCategories} />}
-        {page==='reports'      && <Reports      transactions={transactions} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
+        {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
         {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} />}
       </div>
 
@@ -658,30 +672,42 @@ export default function App() {
           netWorthHistory={netWorthHistory}
           userCategories={userCategories}
           onEditTx={editTx}
-          onAdjustBalance={(acctId, newBal) => handleAdjustment(acctId, newBal, today(), 'Month close balance update')}
-          onClose={() => setShowMonthClose(false)}
+          onAdjustBalance={(acctId, newBal) => handleAdjustment(acctId, newBal, today(), '')}
+          onClose={()=>setShowMonthClose(false)}
         />
       )}
       {!onboardingDone && (
-        <OnboardingWizard
-          onComplete={(accts, buds) => {
-            if (accts.length) setAccounts(as => [...as, ...accts]);
-            if (buds.length) setBudgets(bs => [...bs, ...buds]);
-            setOnboardingDone(true);
-          }}
-        />
+        <OnboardingWizard onComplete={(accts, buds) => {
+          if (accts?.length)  setAccounts(accts);
+          if (buds?.length)   setBudgets(buds);
+          setOnboardingDone(true);
+        }} />
       )}
-      {/* Budget alert toasts */}
-      {budgetToasts.length > 0 && (
-        <div style={{ position:'fixed', bottom:24, right:24, zIndex:3000, display:'flex', flexDirection:'column', gap:8 }}>
-          {budgetToasts.map(t => (
-            <div key={t.id} style={{ background:'#1e2736', border:'1px solid #f59e0b', borderRadius:8, padding:'10px 16px', color:'#fde68a', fontSize:13, display:'flex', alignItems:'center', gap:12, boxShadow:'0 4px 12px #0006' }}>
-              <span>⚠️ {t.msg}</span>
-              <button onClick={() => setBudgetToasts(prev => prev.filter(x => x.id !== t.id))} style={{ background:'none', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:16, lineHeight:1 }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
+
+      {/* Toast notifications */}
+      <div style={{ position:'fixed', bottom:24, right:24, display:'flex', flexDirection:'column', gap:8, zIndex:9999, pointerEvents:'none' }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{
+            background:'#1e2736',
+            border:`1px solid ${
+              t.type==='success' ? '#22c55e'
+              : t.type==='warning' ? '#f59e0b'
+              : t.type==='error'   ? '#ef4444'
+              : '#60a5fa'
+            }`,
+            borderRadius:8,
+            padding:'10px 16px',
+            fontSize:13,
+            color:'#e2e8f0',
+            boxShadow:'0 4px 12px #00000066',
+            pointerEvents:'none',
+            animation:'fadeIn 0.2s ease',
+            maxWidth:320,
+          }}>
+            {t.type==='success' ? '✓ ' : t.type==='warning' ? '⚠ ' : t.type==='error' ? '✕ ' : 'ℹ '}{t.msg}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
