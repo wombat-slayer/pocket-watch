@@ -29,8 +29,10 @@ function parseStatementCSV(text) {
   const dateCol   = headers.findIndex(h => /^date$|posted|trans.*date|settlement/.test(h));
   const descCol   = headers.findIndex(h => /desc|name|memo|payee|narration|detail|merchant|reference/.test(h));
   const amtCol    = headers.findIndex(h => /^amount$|^amt$|^transaction amount$|^net amount$/.test(h));
-  const debitCol  = headers.findIndex(h => /debit|withdrawal|charge/.test(h));
-  const creditCol = headers.findIndex(h => /credit|deposit/.test(h));
+  const debitCol  = headers.findIndex(h => /debit|withdrawal|charge|outflow/.test(h));
+  const creditCol = headers.findIndex(h => /credit|deposit|inflow/.test(h));
+  // Mint export: "Transaction Type" column contains "debit" or "credit" alongside an always-positive Amount
+  const txTypeCol = headers.findIndex(h => /^transaction type$|^type$/.test(h));
 
   if (dateCol === -1) return [];
 
@@ -62,6 +64,12 @@ function parseStatementCSV(text) {
     let amount;
     if (amtCol >= 0) {
       amount = parseAmount(cols[amtCol] ?? '');
+      // Mint: Transaction Type column flips sign on always-positive Amount
+      if (txTypeCol >= 0) {
+        const txType = (cols[txTypeCol] ?? '').toLowerCase().trim();
+        if (txType === 'debit') amount = -Math.abs(amount);
+        else if (txType === 'credit') amount = Math.abs(amount);
+      }
     } else if (debitCol >= 0 || creditCol >= 0) {
       const debit  = debitCol  >= 0 ? parseAmount(cols[debitCol]  ?? '') : NaN;
       const credit = creditCol >= 0 ? parseAmount(cols[creditCol] ?? '') : NaN;

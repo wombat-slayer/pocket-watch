@@ -394,7 +394,15 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         <div style={{ fontSize:15,fontWeight:700,color:over?'#c2735a':'#e2e8f0' }}>{fmt(spent)}</div>
                         <div style={{ fontSize:12,color:'#64748b' }}>of {fmt(effLimit)}</div>
                         {avg3 !== null && b.amount > 0 && avg3 > b.amount * 1.1 && (
-                          <div style={{ fontSize:10,color:'#f59e0b',marginTop:2 }} title="Your 3-month average spend exceeds this budget">⚠ avg &gt; budget</div>
+                          <div style={{ marginTop:4 }}>
+                            <div style={{ fontSize:10,color:'#f59e0b',marginBottom:3 }} title="Your 3-month average spend exceeds this budget">⚠ avg &gt; budget</div>
+                            <button className="btn btn-ghost btn-sm"
+                              style={{ fontSize:10,color:'#7fa88b',padding:'2px 6px',border:'1px solid #7fa88b44' }}
+                              title={`Set budget to match 3-month average of ${fmt(avg3)}`}
+                              onClick={() => onEdit({ ...b, amount: Math.round(avg3) })}>
+                              Suggest ${Math.round(avg3)}
+                            </button>
+                          </div>
                         )}
                       </div>
                       <button className="btn btn-ghost btn-sm" onClick={()=>setEditB(b)}>Edit</button>

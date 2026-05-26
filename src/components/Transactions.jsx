@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { getAllCategories, catIcon, fmt, fmtDate, parseAmount, download } from '../constants.js';
+import * as XLSX from 'xlsx';
 import Modal from './Modal.jsx';
 import TransactionForm from './TransactionForm.jsx';
 import CSVImport from './CSVImport.jsx';
@@ -28,7 +29,14 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
   const [editCell,    setEditCell]    = useState(null);
   const [cellVal,     setCellVal]     = useState('');
   const [expandedSplit, setExpandedSplit] = useState(new Set());
-  const PER = 30;
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const PER = 50;
+
+  // Debounce search input by 200ms to avoid filtering on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 200);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const months = useMemo(() => {
     const s = new Set(transactions.map(t => t.date.slice(0,7)));
@@ -43,7 +51,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
 
   const filtered = useMemo(() => transactions.filter(t => {
     if (t.type === 'adjustment' && typeFilter !== 'adjustment') return false;
-    if (search      && !t.description.toLowerCase().includes(search.toLowerCase())) return false;
+    if (debouncedSearch && !t.description.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
     if (catFilter  !== 'All' && t.category !== catFilter)         return false;
     if (typeFilter !== 'All' && t.type     !== typeFilter)        return false;
     if (monthFilter!== 'All' && !t.date.startsWith(monthFilter)) return false;
@@ -52,7 +60,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
     if (dateTo      && t.date > dateTo)                           return false;
     if (tagFilter !== 'All' && !(t.tags || []).includes(tagFilter)) return false;
     return true;
-  }), [transactions, search, catFilter, typeFilter, monthFilter, acctFilter, dateFrom, dateTo, tagFilter]);
+  }), [transactions, debouncedSearch, catFilter, typeFilter, monthFilter, acctFilter, dateFrom, dateTo, tagFilter]);
 
   const pages    = Math.max(1, Math.ceil(filtered.length / PER));
   const safePage = Math.min(page, pages - 1);
@@ -134,6 +142,70 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
     download('transactions-export.csv', [header.join(','), ...rows].join('\n'), 'text/csv');
   };
 
+  const exportXLSX = () => {
+    const wb = XLSX.utils.book_new();
+
+    // ── Sheet 1: All filtered transactions ─────────────────────────────────
+    const txRows = filtered.map(t => ({
+      Date:           t.date,
+      Description:    t.description,
+      Category:       t.category,
+      Amount:         t.amount,
+      Type:           t.type,
+      Account:        acctName(t.account),
+      Notes:          t.notes ?? '',
+      Tags:           (t.tags ?? []).join(', '),
+      'Tax Deductible': t.taxDeductible ? 'Yes' : 'No',
+    }));
+    const wsTx = XLSX.utils.json_to_sheet(txRows);
+    wsTx['!cols'] = [{ wch:12 },{ wch:36 },{ wch:20 },{ wch:12 },{ wch:10 },{ wch:20 },{ wch:28 },{ wch:20 },{ wch:14 }];
+    XLSX.utils.book_append_sheet(wb, wsTx, 'Transactions');
+
+    // ── Sheet 2: Monthly summary ────────────────────────────────────────────
+    const monthMap = {};
+    filtered.forEach(t => {
+      const mo = t.date.slice(0, 7);
+      if (!monthMap[mo]) monthMap[mo] = { income: 0, expenses: 0 };
+      if (t.type === 'income')   monthMap[mo].income   += t.amount;
+      if (t.type === 'expense')  monthMap[mo].expenses += Math.abs(t.amount);
+    });
+    const moRows = Object.entries(monthMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([mo, { income, expenses }]) => ({
+        Month:    mo,
+        Income:   parseFloat(income.toFixed(2)),
+        Expenses: parseFloat(expenses.toFixed(2)),
+        Net:      parseFloat((income - expenses).toFixed(2)),
+      }));
+    const wsMo = XLSX.utils.json_to_sheet(moRows);
+    wsMo['!cols'] = [{ wch:10 },{ wch:14 },{ wch:14 },{ wch:14 }];
+    XLSX.utils.book_append_sheet(wb, wsMo, 'Monthly Summary');
+
+    // ── Sheet 3: By category ────────────────────────────────────────────────
+    const catMap = {};
+    filtered.filter(t => t.type === 'expense').forEach(t => {
+      const c = t.category || 'Other';
+      if (!catMap[c]) catMap[c] = { total: 0, count: 0 };
+      catMap[c].total += Math.abs(t.amount);
+      catMap[c].count += 1;
+    });
+    const catRows = Object.entries(catMap)
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([cat, { total, count }]) => ({
+        Category: cat,
+        Transactions: count,
+        Total: parseFloat(total.toFixed(2)),
+        Average: parseFloat((total / count).toFixed(2)),
+      }));
+    const wsCat = XLSX.utils.json_to_sheet(catRows);
+    wsCat['!cols'] = [{ wch:22 },{ wch:14 },{ wch:14 },{ wch:14 }];
+    XLSX.utils.book_append_sheet(wb, wsCat, 'By Category');
+
+    // ── Download ────────────────────────────────────────────────────────────
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    download('pocket-watch-export.xlsx', buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  };
+
   return (
     <div className="fade-in" style={{ padding:'24px 28px' }}>
       <div className="section-header">
@@ -142,7 +214,8 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           <div className="section-sub">Showing {filtered.length} of {transactions.length} transactions</div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button className="btn btn-secondary" onClick={exportCSV}>⬇ Export CSV</button>
+          <button className="btn btn-secondary" onClick={exportCSV}>⬇ CSV</button>
+          <button className="btn btn-secondary" onClick={exportXLSX}>📊 Excel</button>
           <button className="btn btn-secondary" onClick={() => setShowCSV(true)}>📂 Import CSV</button>
           <button className="btn btn-primary"   onClick={() => setShowAdd(true)}>+ Add</button>
         </div>
@@ -259,6 +332,12 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                       {isTransfer && (
                                         <span style={{ fontSize:10, background:'#64748b22', color:'#94a3b8', padding:'1px 6px', borderRadius:10 }}>
                                           {t.transferDirection === 'out' ? '→' : '←'}
+                                        </span>
+                                      )}
+                                      {t.taxDeductible && (
+                                        <span title="Tax deductible"
+                                          style={{ fontSize:10, background:'#7fa88b22', color:'#7fa88b', padding:'1px 6px', borderRadius:10 }}>
+                                          🧾
                                         </span>
                                       )}
                                     </div>

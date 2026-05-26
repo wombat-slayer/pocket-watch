@@ -10,6 +10,7 @@ export function useCategoryMemory(transactions) {
   const memoryMap = useMemo(() => {
     const freq = {}; // key: normalizedDesc, value: {category: count}
     transactions
+      .slice(-2000) // cap to most recent 2000 for performance on large datasets
       .filter(t => t.type === 'expense' && t.category && t.category !== 'Other' && t.category !== 'Transfer' && t.category !== 'Adjustment')
       .forEach(t => {
         const key = normalizeDesc(t.description);

@@ -143,6 +143,30 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
 
   const recent = transactions.slice(0, 8);
 
+  // ── FIRE / Financial Independence calculation ─────────────────────────────────
+  const fireData = useMemo(() => {
+    // Use 3-month rolling average for stable estimates
+    const last3months = Array.from({length:3}, (_,i) => {
+      const d = new Date(); d.setMonth(d.getMonth() - (i + 1));
+      return d.toISOString().slice(0, 7);
+    });
+    const totalSpend  = last3months.reduce((s, m) =>
+      s + transactions.filter(t => t.type === 'expense' && t.date.startsWith(m)).reduce((ss, t) => ss + Math.abs(t.amount), 0), 0);
+    const totalIncome = last3months.reduce((s, m) =>
+      s + transactions.filter(t => t.type === 'income' && t.date.startsWith(m)).reduce((ss, t) => ss + t.amount, 0), 0);
+    const avgMonthlySpend  = totalSpend  / 3;
+    const avgMonthlyIncome = totalIncome / 3;
+    const monthlySavings   = avgMonthlyIncome - avgMonthlySpend;
+    const annualExpenses   = avgMonthlySpend * 12;
+    const fireNumber       = annualExpenses * 25; // 4% safe withdrawal rule
+    const gap              = fireNumber - netWorth;
+    const yearsToFire      = monthlySavings > 0 && gap > 0
+      ? gap / (monthlySavings * 12)
+      : null;
+    const fireProgress     = fireNumber > 0 ? Math.min(100, (netWorth / fireNumber) * 100) : 0;
+    return { fireNumber, gap, yearsToFire, fireProgress, annualExpenses, monthlySavings, avgMonthlySpend, avgMonthlyIncome };
+  }, [transactions, netWorth]);
+
   // ── Insights panel: Spending Forecast ────────────────────────────────────────
   const forecastData = useMemo(() => {
     const months = Array.from({length:6}, (_,i) => {
@@ -441,6 +465,53 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
               <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Net Worth Trajectory</div>
               <div className="chart-container" style={{ height:200 }}><canvas ref={canvasNWTrajectory} /></div>
             </div>
+
+            {/* FIRE Calculator */}
+            {fireData.avgMonthlySpend > 0 && (
+              <div style={{ marginTop:24, borderTop:'1px solid #1e2736', paddingTop:20 }}>
+                <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>🔥 FIRE Progress</div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
+                  <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
+                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>FIRE Number</div>
+                    <div style={{ fontSize:18, fontWeight:700, color:'#94a3b8' }}>{fmt(fireData.fireNumber)}</div>
+                    <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>25× annual expenses</div>
+                  </div>
+                  <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
+                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Monthly Savings</div>
+                    <div style={{ fontSize:18, fontWeight:700, color: fireData.monthlySavings > 0 ? '#4ade80' : '#c2735a' }}>
+                      {fireData.monthlySavings >= 0 ? '+' : ''}{fmt(fireData.monthlySavings)}
+                    </div>
+                    <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>3-month avg</div>
+                  </div>
+                  <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
+                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Years to FIRE</div>
+                    <div style={{ fontSize:18, fontWeight:700, color: fireData.yearsToFire !== null && fireData.yearsToFire <= 15 ? '#7fa88b' : '#f59e0b' }}>
+                      {fireData.yearsToFire === null
+                        ? netWorth >= fireData.fireNumber ? '🎉 Now!' : '—'
+                        : fireData.yearsToFire < 1 ? '<1 yr'
+                        : `${fireData.yearsToFire.toFixed(1)} yrs`}
+                    </div>
+                    <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>at current savings rate</div>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div style={{ fontSize:11, color:'#64748b', marginBottom:4, display:'flex', justifyContent:'space-between' }}>
+                  <span>Progress to FIRE</span>
+                  <span style={{ color:'#7fa88b', fontWeight:600 }}>{fireData.fireProgress.toFixed(1)}%</span>
+                </div>
+                <div style={{ background:'#1e2736', borderRadius:6, height:10, overflow:'hidden' }}>
+                  <div style={{
+                    height:'100%', borderRadius:6,
+                    width:`${fireData.fireProgress}%`,
+                    background: fireData.fireProgress >= 100 ? '#4ade80' : 'linear-gradient(90deg, #7fa88b, #4ade80)',
+                    transition:'width 0.5s ease',
+                  }} />
+                </div>
+                <div style={{ fontSize:11, color:'#475569', marginTop:6 }}>
+                  {fmt(netWorth)} saved of {fmt(fireData.fireNumber)} target · {fmt(Math.max(0, fireData.gap))} remaining
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

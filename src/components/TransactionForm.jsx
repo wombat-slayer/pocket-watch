@@ -4,7 +4,7 @@ import { CATEGORIES, getAllCategories, today, uid, parseAmount } from '../consta
 export default function TransactionForm({ initial, accounts, onSave, onClose, userCategories, existingTransactions }) {
   const [form, setForm] = useState(() => initial ?? {
     date: today(), description: '', amount: '', category: 'Food & Dining',
-    account: accounts[0]?.id ?? '', type: 'expense', notes: '', tags: [],
+    account: accounts[0]?.id ?? '', type: 'expense', notes: '', tags: [], taxDeductible: false,
   });
   const [splitMode, setSplitMode] = useState(() => !!(initial?.splits?.length));
   const [splits, setSplits] = useState(() => initial?.splits ?? [
@@ -212,6 +212,16 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
           value={tagInput} onChange={e => setTagInput(e.target.value)}
           onKeyDown={handleTagKeyDown}
           onBlur={() => { if (tagInput.trim()) { addTag(tagInput); setTagInput(''); } }} />
+      </div>
+
+      {/* Tax deductible toggle */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2 }}>
+        <input type="checkbox" id="taxDeductible" checked={!!form.taxDeductible}
+          onChange={e => set('taxDeductible', e.target.checked)}
+          style={{ width:15, height:15, accentColor:'#7fa88b', cursor:'pointer' }} />
+        <label htmlFor="taxDeductible" style={{ fontSize:13, color:'#94a3b8', cursor:'pointer', userSelect:'none' }}>
+          🧾 Tax deductible
+        </label>
       </div>
 
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
