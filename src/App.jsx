@@ -554,7 +554,7 @@ export default function App() {
         {!sidebarCollapsed && (
           <div style={{ padding:'12px 16px', borderTop:'1px solid #1e2736' }} className="sidebar-footer">
             {/* Smart quick-add bar */}
-            <QuickAddBar accounts={accounts} onAdd={tx=>{ addTx(tx); }} onOpenFull={()=>setShowAdd(true)} />
+            <QuickAddBar accounts={accounts} transactions={transactions} onAdd={tx=>{ addTx(tx); }} onOpenFull={()=>setShowAdd(true)} />
 
             {/* Secondary actions row */}
             <div style={{ display:'flex', gap:6, marginTop:8 }}>

@@ -26,12 +26,12 @@ function parseQuickInput(raw) {
   return { desc: sanitizeText(desc, 100), amount };
 }
 
-export default function QuickAddBar({ accounts, onAdd, onOpenFull }) {
+export default function QuickAddBar({ accounts, transactions = [], onAdd, onOpenFull }) {
   const [value,   setValue]   = useState('');
   const [acctId,  setAcctId]  = useState('');
   const [flash,   setFlash]   = useState(false);
   const inputRef = useRef(null);
-  const { suggest } = useCategoryMemory();
+  const { suggest } = useCategoryMemory(transactions);
 
   // Prefer non-investment accounts as default
   const spendableAccts = accounts.filter(a => a.type !== 'investment');
