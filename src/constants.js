@@ -1,0 +1,157 @@
+// ─── Categories ───────────────────────────────────────────────────────────────
+export const CATEGORIES = [
+  { name: 'Housing',       icon: '🏠', color: '#6366f1' },
+  { name: 'Food & Dining', icon: '🍔', color: '#f59e0b' },
+  { name: 'Transportation',icon: '🚗', color: '#3b82f6' },
+  { name: 'Entertainment', icon: '🎬', color: '#ec4899' },
+  { name: 'Healthcare',    icon: '💊', color: '#10b981' },
+  { name: 'Shopping',      icon: '🛍️', color: '#8b5cf6' },
+  { name: 'Utilities',     icon: '⚡', color: '#f97316' },
+  { name: 'Subscriptions', icon: '📱', color: '#06b6d4' },
+  { name: 'Travel',        icon: '✈️', color: '#84cc16' },
+  { name: 'Education',     icon: '📚', color: '#a78bfa' },
+  { name: 'Personal Care', icon: '💆', color: '#fb7185' },
+  { name: 'Savings',       icon: '🏦', color: '#34d399' },
+  { name: 'Income',        icon: '💰', color: '#4ade80' },
+  { name: 'Other',         icon: '📦', color: '#94a3b8' },
+  { name: 'Split',         icon: '🔀', color: '#94a3b8' },
+  { name: 'Transfer',      icon: '↔️', color: '#64748b' },
+  { name: 'Adjustment',   icon: '📊', color: '#64748b' },
+];
+
+// ─── Account Types ────────────────────────────────────────────────────────────
+export const ACCOUNT_TYPES = [
+  { value: 'checking',   label: 'Checking',        color: '#3b82f6', isDebt: false },
+  { value: 'savings',    label: 'Savings',          color: '#10b981', isDebt: false },
+  { value: 'credit',     label: 'Credit Card',      color: '#f59e0b', isDebt: true  },
+  { value: 'investment', label: 'Investment',       color: '#8b5cf6', isDebt: false },
+  { value: 'asset',      label: 'Asset / Property', color: '#06b6d4', isDebt: false },
+  { value: 'loan',       label: 'Loan / Debt',      color: '#f87171', isDebt: true  },
+  { value: 'other',      label: 'Other',            color: '#94a3b8', isDebt: false },
+];
+
+// ─── Category / Account helpers ───────────────────────────────────────────────
+export const catColor  = (n) => CATEGORIES.find(c => c.name === n)?.color   ?? '#94a3b8';
+export const catIcon   = (n) => CATEGORIES.find(c => c.name === n)?.icon    ?? '📦';
+export const acctColor = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.color ?? '#94a3b8';
+export const acctLabel = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.label ?? t;
+export const isDebtType= (t) => ACCOUNT_TYPES.find(a => a.value === t)?.isDebt ?? false;
+export const acctEmoji = (t) => ({ checking:'🏦', savings:'💰', credit:'💳', investment:'📈', asset:'🏠', loan:'📋', other:'💼' }[t] ?? '💼');
+
+// ─── Formatting helpers ───────────────────────────────────────────────────────
+export const fmt     = (n, opts = {}) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', ...opts }).format(n ?? 0);
+export const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+export const today   = () => new Date().toISOString().split('T')[0];
+export const thisMonth  = () => new Date().toISOString().slice(0, 7);
+export const nextMonth  = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 7); };
+export const prevMonth  = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); };
+export const uid     = () => Math.random().toString(36).slice(2, 10);
+
+// ─── File download helper ─────────────────────────────────────────────────────
+export const download = (filename, content, type = 'text/plain') => {
+  const blob = new Blob([content], { type });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+// ─── Security helpers ─────────────────────────────────────────────────────────
+export const sanitizeText = (s, maxLen = 500) => String(s ?? '').replace(/<[^>]*>/g, '').slice(0, maxLen);
+export const safeNum      = (v, fallback = 0) => { const n = parseFloat(v); return isFinite(n) ? n : fallback; };
+export const safeDate     = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : today();
+
+// ─── CSV helpers ──────────────────────────────────────────────────────────────
+export function parseCSVLine(line) {
+  const result = [];
+  let field = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i + 1] === '"') { field += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      result.push(field.trim()); field = '';
+    } else {
+      field += ch;
+    }
+  }
+  result.push(field.trim());
+  return result;
+}
+
+// Handles: 1234.56, -1234.56, (1234.56), $1,234.56, ($1,234.56)
+export function parseAmount(str) {
+  if (!str) return NaN;
+  const s = String(str).trim();
+  const neg = s.startsWith('-') || s.startsWith('(');
+  const clean = s.replace(/[$\s,()\-]/g, '');
+  const val = parseFloat(clean);
+  if (isNaN(val)) return NaN;
+  return neg ? -Math.abs(val) : val;
+}
+
+// ─── Recurring transaction helpers ───────────────────────────────────────────
+export const FREQUENCIES = [
+  { value: 'weekly',    label: 'Weekly',        days: 7   },
+  { value: 'biweekly',  label: 'Every 2 weeks', days: 14  },
+  { value: 'monthly',   label: 'Monthly',       days: null },
+  { value: 'quarterly', label: 'Quarterly',     days: null },
+  { value: 'yearly',    label: 'Yearly',        days: null },
+];
+
+export function getNextRecurDate(dateStr, frequency) {
+  const d = new Date(dateStr + 'T00:00:00');
+  switch (frequency) {
+    case 'weekly':    d.setDate(d.getDate() + 7);          break;
+    case 'biweekly':  d.setDate(d.getDate() + 14);         break;
+    case 'monthly':   d.setMonth(d.getMonth() + 1);        break;
+    case 'quarterly': d.setMonth(d.getMonth() + 3);        break;
+    case 'yearly':    d.setFullYear(d.getFullYear() + 1);  break;
+    default: break;
+  }
+  return d.toISOString().split('T')[0];
+}
+
+export const freqLabel = (v) => FREQUENCIES.find(f => f.value === v)?.label ?? v;
+
+// Auto-categorize by merchant keyword matching
+export function autoCategory(desc, amount) {
+  const d = desc.toLowerCase();
+  if (amount > 0) return 'Income';
+  if (/rent|mortgage|hoa|apartment|condo|lease/i.test(d))                              return 'Housing';
+  if (/grocery|safeway|whole foods|trader joe|kroger|publix|aldi|wegmans|instacart/i.test(d)) return 'Food & Dining';
+  if (/restaurant|cafe|pizza|burger|sushi|taco|chipotle|mcdonald|starbucks|dunkin|doordash|grubhub|uber eats|chick-fil|panera|subway|domino/i.test(d)) return 'Food & Dining';
+  if (/shell|chevron|bp |exxon|mobil|sunoco|circle k|speedway|gas station/i.test(d))  return 'Transportation';
+  if (/uber|lyft|parking|metro|transit|mta |bart |fare|toll|zipcar|enterprise rent/i.test(d)) return 'Transportation';
+  if (/auto |car insurance|geico|state farm|allstate|progressive|jiffy lube|oil change/i.test(d)) return 'Transportation';
+  if (/netflix|hulu|disney|spotify|youtube premium|amazon prime|hbo|apple tv|peacock|paramount|crunchyroll/i.test(d)) return 'Subscriptions';
+  if (/amazon|target|walmart|costco|best buy|ebay|etsy|wayfair|home depot|lowe|ikea|marshalls|tj maxx/i.test(d)) return 'Shopping';
+  if (/electric|water bill|internet|comcast|xfinity|at&t|verizon|t-mobile|utility|pg&e|con ed|spectrum/i.test(d)) return 'Utilities';
+  if (/pharmacy|cvs|walgreens|rite aid|doctor|hospital|urgent care|health|dental|vision|optometrist|therapy/i.test(d)) return 'Healthcare';
+  if (/gym|planet fitness|la fitness|24 hour|crossfit|peloton|movie|amc |regal |concert|ticketmaster|bar |club |bowling/i.test(d)) return 'Entertainment';
+  if (/hotel|airbnb|vrbo|flight|airline|united|delta|american air|southwest|spirit|expedia|booking.com|kayak/i.test(d)) return 'Travel';
+  if (/payroll|direct deposit|salary|paycheck|employer|freelance|consulting|client payment/i.test(d)) return 'Income';
+  if (/venmo|zelle|cashapp|paypal/i.test(d)) return amount > 0 ? 'Income' : 'Other';
+  if (/tuition|university|college|student loan|coursera|udemy|skillshare/i.test(d)) return 'Education';
+  if (/salon|haircut|spa|massage|barber|nail|beauty/i.test(d)) return 'Personal Care';
+  return 'Other';
+}
+
+// ─── Balance helpers ──────────────────────────────────────────────────────────
+/**
+ * Compute account balance from transaction history.
+ * Returns null for investment/asset accounts (manual balance expected).
+ */
+export function computeBalance(accountId, transactions, accountType) {
+  if (accountType === 'investment' || accountType === 'asset') return null;
+  return transactions
+    .filter(t => t.account === accountId && t.type !== 'adjustment')
+    .reduce((s, t) => s + t.amount, 0);
+}
+
+// ─── Dynamic category helpers ────────────────────────────────────────────────
+/** Returns built-in + user-defined categories merged */
+export function getAllCategories(userCategories = []) {
+  return [...CATEGORIES, ...userCategories];
+}

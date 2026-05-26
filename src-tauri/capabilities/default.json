@@ -1,0 +1,22 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main Pocket Watch window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "fs:default",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    "fs:allow-appdata-read",
+    "fs:allow-appdata-write",
+    "dialog:default",
+    "dialog:allow-save",
+    "dialog:allow-open",
+    "store:default",
+    "opener:default",
+    "process:default"
+  ]
+}

@@ -1,0 +1,2 @@
+Reports now takes `accounts` and `goals` props
+Update the Reports render in App.jsx to pass: `accounts={accounts} goals={goals}`

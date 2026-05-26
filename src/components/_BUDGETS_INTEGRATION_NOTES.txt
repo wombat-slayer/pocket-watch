@@ -1,0 +1,45 @@
+App.jsx Integration Notes for Budgets Sprint 4
+===============================================
+
+1. Add budgetTemplates state:
+   const [budgetTemplates, setBudgetTemplates] = useState([]);
+
+2. Persist in save — add budgetTemplates to the data object saved to store:
+   budgetTemplates,
+
+3. Load in restore:
+   budgetTemplates: data.budgetTemplates ?? [],
+
+4. onSaveTemplate handler:
+   const handleSaveTemplate = (name, buds) =>
+     setBudgetTemplates(prev => [...prev.filter(t => t.name !== name), { name, budgets: buds }]);
+
+5. onLoadTemplate handler:
+   const handleLoadTemplate = (tpl) => setBudgets(tpl.budgets);
+
+6. onBudgetAlert handler (console.warn for now; swap for toast/native notification later):
+   const handleBudgetAlert = (category, pct) =>
+     console.warn(`[Budget Alert] ${category} has reached ${pct}% of its limit.`);
+
+7. Pass all props to <Budgets>:
+   <Budgets
+     ...existingProps...
+     budgetTemplates={budgetTemplates}
+     onSaveTemplate={handleSaveTemplate}
+     onLoadTemplate={handleLoadTemplate}
+     onBudgetAlert={handleBudgetAlert}
+   />
+
+Notes:
+- handleLoadTemplate replaces budgets for the *currently selected month* inside Budgets.jsx
+  (template.budgets entries each have their own month field — you may want to remap them
+  to the currently selected month before setting, e.g.:
+    const handleLoadTemplate = (tpl) =>
+      setBudgets(prev => {
+        const targetMonth = /* current month state */ thisMonth();
+        const newBuds = tpl.budgets.map(b => ({ ...b, id: uid(), month: targetMonth }));
+        return [...prev.filter(b => b.month !== targetMonth), ...newBuds];
+      });
+  )
+- For a richer onBudgetAlert, use window.__TAURI__.notification.sendNotification or
+  a toast library already wired into App.jsx.

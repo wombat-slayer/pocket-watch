@@ -1,0 +1,371 @@
+import { useState, useMemo, useEffect, Fragment } from 'react';
+import { CATEGORIES, getAllCategories, catIcon, fmt, fmtDate, parseAmount, download } from '../constants.js';
+import Modal from './Modal.jsx';
+import TransactionForm from './TransactionForm.jsx';
+import CSVImport from './CSVImport.jsx';
+
+export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories }) {
+  const [search,      setSearch]      = useState('');
+  const [catFilter,   setCatFilter]   = useState(() => initialCatFilter ?? 'All');
+
+  // Sync catFilter when the initialCatFilter prop changes (e.g. drill-down from Reports)
+  useEffect(() => {
+    if (initialCatFilter && initialCatFilter !== 'All') {
+      setCatFilter(initialCatFilter);
+    }
+  }, [initialCatFilter]);
+  const [typeFilter,  setTypeFilter]  = useState('All');
+  const [monthFilter, setMonthFilter] = useState('All');
+  const [acctFilter,  setAcctFilter]  = useState('All');
+  const [dateFrom,    setDateFrom]    = useState('');
+  const [dateTo,      setDateTo]      = useState('');
+  const [tagFilter,   setTagFilter]   = useState('All');
+  const [showCSV,     setShowCSV]     = useState(false);
+  const [showAdd,     setShowAdd]     = useState(false);
+  const [editTx,      setEditTx]      = useState(null);
+  const [page,        setPage]        = useState(0);
+  const [selected,    setSelected]    = useState(new Set());
+  const [editCell,    setEditCell]    = useState(null);
+  const [cellVal,     setCellVal]     = useState('');
+  const [expandedSplit, setExpandedSplit] = useState(new Set());
+  const PER = 30;
+
+  const months = useMemo(() => {
+    const s = new Set(transactions.map(t => t.date.slice(0,7)));
+    return ['All', ...Array.from(s).sort().reverse()];
+  }, [transactions]);
+
+  const allTags = useMemo(() => {
+    const set = new Set();
+    transactions.forEach(t => (t.tags || []).forEach(tag => set.add(tag)));
+    return ['All', ...Array.from(set).sort()];
+  }, [transactions]);
+
+  const filtered = useMemo(() => transactions.filter(t => {
+    if (t.type === 'adjustment' && typeFilter !== 'adjustment') return false;
+    if (search      && !t.description.toLowerCase().includes(search.toLowerCase())) return false;
+    if (catFilter  !== 'All' && t.category !== catFilter)         return false;
+    if (typeFilter !== 'All' && t.type     !== typeFilter)        return false;
+    if (monthFilter!== 'All' && !t.date.startsWith(monthFilter)) return false;
+    if (acctFilter !== 'All' && t.account  !== acctFilter)       return false;
+    if (dateFrom    && t.date < dateFrom)                         return false;
+    if (dateTo      && t.date > dateTo)                           return false;
+    if (tagFilter !== 'All' && !(t.tags || []).includes(tagFilter)) return false;
+    return true;
+  }), [transactions, search, catFilter, typeFilter, monthFilter, acctFilter, dateFrom, dateTo, tagFilter]);
+
+  const pages    = Math.max(1, Math.ceil(filtered.length / PER));
+  const safePage = Math.min(page, pages - 1);
+  const paged    = filtered.slice(safePage*PER, (safePage+1)*PER);
+  const acctName = (id) => accounts.find(a=>a.id===id)?.name ?? '—';
+
+  const clearFilters = () => {
+    setSearch(''); setCatFilter('All'); setTypeFilter('All');
+    setMonthFilter('All'); setAcctFilter('All');
+    setDateFrom(''); setDateTo(''); setTagFilter('All');
+    setPage(0);
+    if (onClearCatFilter) onClearCatFilter();
+  };
+  const hasFilters = search || catFilter!=='All' || typeFilter!=='All' || monthFilter!=='All'
+    || acctFilter!=='All' || dateFrom || dateTo || tagFilter!=='All';
+
+  const runningBalances = useMemo(() => {
+    if (acctFilter === 'All') return null;
+    const acct = accounts.find(a => a.id === acctFilter);
+    if (!acct) return null;
+    const acctTxs = transactions
+      .filter(t => t.account === acctFilter)
+      .sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    let bal = acct.balance;
+    const map = {};
+    for (const tx of acctTxs) { map[tx.id] = bal; bal -= tx.amount; }
+    return map;
+  }, [transactions, acctFilter, accounts]);
+
+  const allPageIds   = paged.map(t => t.id);
+  const allSelected  = allPageIds.length > 0 && allPageIds.every(id => selected.has(id));
+  const someSelected = allPageIds.some(id => selected.has(id));
+  const selectedCount= selected.size;
+
+  const toggleAll = () => setSelected(s => {
+    const n = new Set(s);
+    if (allSelected) allPageIds.forEach(id => n.delete(id));
+    else             allPageIds.forEach(id => n.add(id));
+    return n;
+  });
+  const toggleOne = (id) => setSelected(s => { const n = new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
+  const clearSel  = ()   => setSelected(new Set());
+
+  const handleBulkDelete = () => {
+    if (!confirm(`Delete ${selectedCount} transaction${selectedCount>1?'s':''}? This cannot be undone.`)) return;
+    onBulkDelete([...selected]);
+    clearSel();
+  };
+
+  const startEdit  = (tx, field) => { setEditCell({ id:tx.id, field }); setCellVal(field==='amount'?Math.abs(tx.amount).toString():String(tx[field])); };
+  const commitCell = (tx) => {
+    if (!editCell || editCell.id !== tx.id) return;
+    const { field } = editCell;
+    let value = cellVal.trim();
+    if (!value) { setEditCell(null); return; }
+    if (field === 'amount') {
+      const v = parseAmount(value);
+      if (isNaN(v)) { setEditCell(null); return; }
+      value = tx.type === 'expense' ? -Math.abs(v) : Math.abs(v);
+    }
+    onEdit({ ...tx, [field]: value });
+    setEditCell(null);
+  };
+  const cancelCell = () => setEditCell(null);
+  const isEditing  = (tx, field) => editCell?.id === tx.id && editCell?.field === field;
+
+  const toggleSplitExpand = (id) => setExpandedSplit(s => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+
+  const exportCSV = () => {
+    const header = ['Date','Description','Category','Amount','Type','Account','Notes','Tags'];
+    const rows = filtered.map(t => [
+      t.date, t.description, t.category, t.amount, t.type, acctName(t.account),
+      t.notes ?? '', (t.tags ?? []).join(';'),
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    download('transactions-export.csv', [header.join(','), ...rows].join('\n'), 'text/csv');
+  };
+
+  return (
+    <div className="fade-in" style={{ padding:'24px 28px' }}>
+      <div className="section-header">
+        <div>
+          <div className="section-title">Transactions</div>
+          <div className="section-sub">Showing {filtered.length} of {transactions.length} transactions</div>
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button className="btn btn-secondary" onClick={exportCSV}>⬇ Export CSV</button>
+          <button className="btn btn-secondary" onClick={() => setShowCSV(true)}>📂 Import CSV</button>
+          <button className="btn btn-primary"   onClick={() => setShowAdd(true)}>+ Add</button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card" style={{ marginBottom:16, padding:14 }}>
+        <div className="filter-bar" style={{ flexWrap:'wrap', gap:8 }}>
+          <input type="text" placeholder="🔍 Search description…" value={search}
+            onChange={e=>{ setSearch(e.target.value); setPage(0); }} style={{ width:200 }} />
+          <input type="date" title="Date from" value={dateFrom}
+            onChange={e=>{ setDateFrom(e.target.value); setPage(0); }} style={{ width:145 }} />
+          <input type="date" title="Date to" value={dateTo}
+            onChange={e=>{ setDateTo(e.target.value); setPage(0); }} style={{ width:145 }} />
+          <select value={monthFilter} onChange={e=>{ setMonthFilter(e.target.value); setPage(0); }} style={{ width:150 }}>
+            {months.map(m => <option key={m} value={m}>{m==='All'?'All Months':new Date(m+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</option>)}
+          </select>
+          <select value={acctFilter} onChange={e=>{ setAcctFilter(e.target.value); setPage(0); }} style={{ width:150 }}>
+            <option value="All">All Accounts</option>
+            {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <select value={catFilter} onChange={e=>{ setCatFilter(e.target.value); setPage(0); }} style={{ width:160 }}>
+            <option value="All">All Categories</option>
+            {getAllCategories(userCategories).map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+          </select>
+          <select value={typeFilter} onChange={e=>{ setTypeFilter(e.target.value); setPage(0); }} style={{ width:150 }}>
+            <option value="All">All Types</option>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="adjustment">Adjustment</option>
+          </select>
+          {allTags.length > 1 && (
+            <select value={tagFilter} onChange={e=>{ setTagFilter(e.target.value); setPage(0); }} style={{ fontSize:13 }}>
+              {allTags.map(tag => <option key={tag} value={tag}>{tag === 'All' ? '🏷 All Tags' : `#${tag}`}</option>)}
+            </select>
+          )}
+          {hasFilters && <button className="btn btn-ghost btn-sm" onClick={clearFilters}>✕ Clear filters</button>}
+        </div>
+        {acctFilter !== 'All' && runningBalances && (
+          <div style={{ marginTop:10, fontSize:12, color:'#64748b' }}>
+            💡 Running Balance column shows the account balance at each transaction.
+          </div>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="card" style={{ padding:0, overflow:'hidden', position:'relative' }}>
+        {filtered.length === 0
+          ? <div className="empty-state"><div className="empty-icon">🔍</div><p>No transactions match your filters</p></div>
+          : <>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width:36, padding:'10px 8px 10px 16px' }}>
+                        <input type="checkbox" checked={allSelected}
+                          ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                          onChange={toggleAll} />
+                      </th>
+                      <th>Date</th><th>Description</th><th>Category</th><th>Account</th>
+                      <th style={{ textAlign:'right' }}>Amount</th>
+                      {runningBalances && <th style={{ textAlign:'right' }}>Balance</th>}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paged.map(t => {
+                      const isSplit    = t.splits?.length > 0;
+                      const isTransfer = t.category === 'Transfer';
+                      const isExpanded = expandedSplit.has(t.id);
+                      return (
+                        <Fragment key={t.id}>
+                          <tr className={selected.has(t.id)?'row-selected':''}>
+                            <td style={{ width:36, padding:'10px 8px 10px 16px' }} onClick={e=>e.stopPropagation()}>
+                              <input type="checkbox" checked={selected.has(t.id)} onChange={()=>toggleOne(t.id)} />
+                            </td>
+                            <td className="cell-editable" onClick={()=>startEdit(t,'date')}>
+                              {isEditing(t,'date')
+                                ? <input className="inline-input" type="date" autoFocus value={cellVal}
+                                    onChange={e=>setCellVal(e.target.value)} onBlur={()=>commitCell(t)}
+                                    onKeyDown={e=>{if(e.key==='Enter')commitCell(t);if(e.key==='Escape')cancelCell();}}
+                                    onClick={e=>e.stopPropagation()} style={{ width:130 }} />
+                                : <span style={{ color:'#64748b',fontSize:13,whiteSpace:'nowrap' }}>{fmtDate(t.date)}</span>}
+                            </td>
+                            <td className="cell-editable" onClick={()=>startEdit(t,'description')}>
+                              {isEditing(t,'description')
+                                ? <input className="inline-input" autoFocus value={cellVal}
+                                    onChange={e=>setCellVal(e.target.value)} onBlur={()=>commitCell(t)}
+                                    onKeyDown={e=>{if(e.key==='Enter')commitCell(t);if(e.key==='Escape')cancelCell();}}
+                                    onClick={e=>e.stopPropagation()} />
+                                : <div style={{ fontWeight:500 }}>
+                                    <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' }}>
+                                      <span>{t.description}</span>
+                                      {t.recurringId && (
+                                        <span title="Auto-generated by recurring rule"
+                                          style={{ fontSize:10, background:'#1e2736', color:'#64748b', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>
+                                          🔁
+                                        </span>
+                                      )}
+                                      {isTransfer && (
+                                        <span style={{ fontSize:10, background:'#64748b22', color:'#94a3b8', padding:'1px 6px', borderRadius:10 }}>
+                                          {t.transferDirection === 'out' ? '→' : '←'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {t.notes && <div style={{ fontSize:12,color:'#475569' }}>{t.notes}</div>}
+                                    {(t.tags ?? []).length > 0 && (
+                                      <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginTop:3 }}>
+                                        {t.tags.map(tag => (
+                                          <span key={tag} style={{ fontSize:10, background:'#1e2736', color:'#7fa88b', padding:'1px 6px', borderRadius:10 }}>{tag}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>}
+                            </td>
+                            <td className="cell-editable" onClick={()=>{ if(!isEditing(t,'category')) startEdit(t,'category'); }}>
+                              {isEditing(t,'category')
+                                ? <select className="inline-input" autoFocus value={cellVal}
+                                    onChange={e=>{setCellVal(e.target.value);onEdit({...t,category:e.target.value});setEditCell(null);}}
+                                    onBlur={cancelCell} onClick={e=>e.stopPropagation()} style={{ width:160 }}>
+                                    {getAllCategories(userCategories).map(c=><option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+                                  </select>
+                                : isSplit
+                                  ? <span className="tag" style={{ cursor:'pointer' }} onClick={e=>{ e.stopPropagation(); toggleSplitExpand(t.id); }}>
+                                      🔀 Split {isExpanded ? '▲' : '▼'}
+                                    </span>
+                                  : isTransfer
+                                    ? <span className="tag">↔️ Transfer</span>
+                                    : <span className="tag">{catIcon(t.category)} {t.category}</span>
+                              }
+                            </td>
+                            <td style={{ color:'#64748b',fontSize:13 }}>{acctName(t.account)}</td>
+                            <td className="cell-editable" style={{ textAlign:'right' }} onClick={()=>startEdit(t,'amount')}>
+                              {isEditing(t,'amount')
+                                ? <input className="inline-input" type="number" autoFocus min="0" step="0.01" value={cellVal}
+                                    onChange={e=>setCellVal(e.target.value)} onBlur={()=>commitCell(t)}
+                                    onKeyDown={e=>{if(e.key==='Enter')commitCell(t);if(e.key==='Escape')cancelCell();}}
+                                    onClick={e=>e.stopPropagation()} style={{ width:100,textAlign:'right' }} />
+                                : <span style={{ fontWeight:700,color:t.amount>=0?'#4ade80':'#c2735a',whiteSpace:'nowrap' }}>
+                                    {t.amount>=0?'+':''}{fmt(t.amount)}
+                                  </span>}
+                            </td>
+                            {runningBalances && (
+                              <td style={{ textAlign:'right',color:'#94a3b8',fontSize:13,whiteSpace:'nowrap' }}>
+                                {runningBalances[t.id] !== undefined ? fmt(runningBalances[t.id]) : '—'}
+                              </td>
+                            )}
+                            <td style={{ whiteSpace:'nowrap' }} onClick={e=>e.stopPropagation()}>
+                              <button className="btn btn-ghost btn-sm" title="Edit"
+                                onClick={()=>{
+                                  if(t.transferId) {
+                                    if(!confirm('This is one side of a transfer. Editing it individually may cause the two sides to become inconsistent. Continue?')) return;
+                                  }
+                                  setEditTx(t);
+                                }}>✏️</button>
+                              <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }} title="Delete"
+                                onClick={()=>{
+                                  const msg = t.transferId
+                                    ? 'Delete this transfer? Both sides (debit and credit) will be removed.'
+                                    : 'Delete this transaction?';
+                                  if(confirm(msg)) onDelete(t.id);
+                                }}>🗑</button>
+                            </td>
+                          </tr>
+                          {isSplit && isExpanded && t.splits.map((sp, si) => (
+                            <tr key={si} style={{ background:'#0d111788' }}>
+                              <td />
+                              <td />
+                              <td style={{ paddingLeft:28, fontSize:13, color:'#94a3b8' }}>
+                                └ {sp.notes || sp.category}
+                              </td>
+                              <td>
+                                <span className="tag" style={{ fontSize:11 }}>{catIcon(sp.category)} {sp.category}</span>
+                              </td>
+                              <td />
+                              <td style={{ textAlign:'right', fontSize:13, color:'#c2735a', fontWeight:600 }}>
+                                -{fmt(sp.amount)}
+                              </td>
+                              {runningBalances && <td />}
+                              <td />
+                            </tr>
+                          ))}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {pages > 1 && (
+                <div style={{ display:'flex',gap:6,justifyContent:'center',padding:14,borderTop:'1px solid #1e2736' }}>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={safePage===0}>← Prev</button>
+                  <span style={{ fontSize:13,color:'#64748b',padding:'5px 10px' }}>Page {safePage+1} of {pages}</span>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setPage(p=>Math.min(pages-1,p+1))} disabled={safePage>=pages-1}>Next →</button>
+                </div>
+              )}
+              {selectedCount > 0 && (
+                <div className="bulk-bar">
+                  <span className="bulk-bar-count">{selectedCount} transaction{selectedCount>1?'s':''} selected</span>
+                  <button className="btn btn-ghost btn-sm" style={{ color:'#0d1117' }} onClick={clearSel}>Clear selection</button>
+                  <button className="btn btn-sm" style={{ background:'#7f1d1d',color:'#fca5a5',border:'none' }} onClick={handleBulkDelete}>
+                    🗑 Delete {selectedCount} selected
+                  </button>
+                </div>
+              )}
+            </>
+        }
+      </div>
+
+      {showAdd && (
+        <Modal title="Add Transaction" onClose={()=>setShowAdd(false)}>
+          <TransactionForm accounts={accounts} onSave={tx=>{ onAdd(tx); setShowAdd(false); }} onClose={()=>setShowAdd(false)} userCategories={userCategories} />
+        </Modal>
+      )}
+      {editTx && (
+        <Modal title="Edit Transaction" onClose={()=>setEditTx(null)}>
+          <TransactionForm initial={editTx} accounts={accounts} onSave={tx=>{ onEdit(tx); setEditTx(null); }} onClose={()=>setEditTx(null)} userCategories={userCategories} />
+        </Modal>
+      )}
+      {showCSV && (
+        <Modal title="Import CSV" onClose={()=>setShowCSV(false)}>
+          <CSVImport accounts={accounts} existingTxs={existingTxs} onImport={rows=>{ onCSVImport(rows); setShowCSV(false); }} onClose={()=>setShowCSV(false)} />
+        </Modal>
+      )}
+    </div>
+  );
+}
