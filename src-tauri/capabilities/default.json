@@ -17,6 +17,7 @@
     "dialog:allow-open",
     "store:default",
     "opener:default",
-    "process:default"
+    "process:default",
+    "updater:default"
   ]
 }

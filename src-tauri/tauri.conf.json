@@ -11,14 +11,16 @@
   },
   "app": {
     "windows": [
-      {
-        "title": "Pocket Watch",
-        "width": 1100,
-        "height": 720
-      }
+      { "title": "Pocket Watch", "width": 1100, "height": 720 }
     ],
-    "security": {
-      "csp": null
+    "security": { "csp": null },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/wombat-slayer/pocket-watch/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQzNjdDMTVEQ0E0RUU0MTQKUldRVTVFN0tYY0ZuUS95RncrWnBTYk00OXpCUzYxSUp0eHB1bjB0Ulk3dWg5T3RKY01RNDRIUDcK"
     }
   },
   "bundle": {

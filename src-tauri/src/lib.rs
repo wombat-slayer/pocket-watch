@@ -53,6 +53,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             // System tray setup
             let show = MenuItem::with_id(app, "show", "Show Pocket Watch", true, None::<&str>)?;

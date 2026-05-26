@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { download, CATEGORIES, getAllCategories } from '../constants.js';
 import { promptNewDataFile } from '../dataLayer.js';
 
-
 export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDemo,  setConfirmDemo]  = useState(false);
@@ -12,6 +11,10 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   const [newCatName,  setNewCatName]  = useState('');
   const [newCatIcon,  setNewCatIcon]  = useState('📦');
   const [newCatColor, setNewCatColor] = useState('#94a3b8');
+
+  // Update states
+  const [updateStatus, setUpdateStatus] = useState('idle'); // idle | checking | available | uptodate | error
+  const [updateInfo,   setUpdateInfo]   = useState(null);
 
 
   const demoTxCount  = transactions.filter(t=>t._seeded).length;
@@ -56,9 +59,33 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
     setChangingFile(false);
   };
 
-  const handleCheckUpdate = () => {
-    // Auto-updater not configured — open GitHub Releases page
-    window.open('https://github.com/nhm6499/pocket-watch/releases', '_blank');
+  const handleCheckUpdate = async () => {
+    setUpdateStatus('checking');
+    try {
+      const { check } = await import('@tauri-apps/plugin-updater');
+      const update = await check();
+      if (update?.available) {
+        setUpdateStatus('available');
+        setUpdateInfo(update);
+      } else {
+        setUpdateStatus('uptodate');
+      }
+    } catch (e) {
+      console.error('Update check failed:', e);
+      setUpdateStatus('error');
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!updateInfo) return;
+    try {
+      await updateInfo.downloadAndInstall();
+      const { relaunch } = await import('@tauri-apps/plugin-process');
+      await relaunch();
+    } catch (e) {
+      console.error('Install failed:', e);
+      setUpdateStatus('error');
+    }
   };
 
 
@@ -172,7 +199,19 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           </span>
         </p>
         <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
-          <button className="btn btn-secondary" onClick={handleCheckUpdate}>🔍 View Releases on GitHub</button>
+          <button className="btn btn-secondary" onClick={handleCheckUpdate} disabled={updateStatus==='checking'}>
+            {updateStatus==='checking' ? '⏳ Checking…' : '🔍 Check for Updates'}
+          </button>
+          {updateStatus === 'uptodate' && <span style={{ color:'#4ade80',fontSize:13 }}>✅ You're up to date!</span>}
+          {updateStatus === 'available' && updateInfo && (
+            <>
+              <span style={{ color:'#f59e0b',fontSize:13 }}>🆕 Update available: v{updateInfo.version}</span>
+              <button className="btn btn-primary" onClick={handleInstallUpdate}>⬇ Install Update</button>
+            </>
+          )}
+          {updateStatus === 'error' && (
+            <span style={{ color:'#c2735a',fontSize:13 }}>❌ Update check failed. Check your internet connection.</span>
+          )}
         </div>
       </div>
 
