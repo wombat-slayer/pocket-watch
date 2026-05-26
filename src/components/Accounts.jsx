@@ -1,7 +1,8 @@
 import { useRef, useState, useMemo } from 'react';
-import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent } from '../constants.js';
+import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent, sanitizeText, safeNum } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import Modal from './Modal.jsx';
+import StatementImport from './StatementImport.jsx';
 
 function AccountForm({ initial, onSave, onClose }) {
   const [form, setForm] = useState(initial ?? { name:'', type:'checking', balance:'' });
@@ -37,16 +38,150 @@ function AccountForm({ initial, onSave, onClose }) {
 }
 
 
-export default function Accounts({ accounts, transactions, netWorthHistory, recurrences, onAdd, onEdit, onDelete, onToggleCleared, onReconcile, onUpdateStatementDate }) {
+// ─── Holdings form (investment accounts) ─────────────────────────────────────
+function HoldingsPanel({ account, onEdit }) {
+  const holdings = account.holdings ?? [];
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ ticker:'', shares:'', costBasis:'', currentPrice:'' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const totalValue    = holdings.reduce((s, h) => s + safeNum(h.shares) * safeNum(h.currentPrice), 0);
+  const totalCost     = holdings.reduce((s, h) => s + safeNum(h.shares) * safeNum(h.costBasis),   0);
+  const totalGainLoss = totalValue - totalCost;
+
+  const saveHolding = () => {
+    if (!form.ticker.trim() || !form.shares) return;
+    const holding = {
+      id:           uid(),
+      ticker:       sanitizeText(form.ticker.toUpperCase(), 10),
+      shares:       safeNum(form.shares),
+      costBasis:    safeNum(form.costBasis),
+      currentPrice: safeNum(form.currentPrice),
+    };
+    onEdit({ ...account, holdings: [...holdings, holding] });
+    setForm({ ticker:'', shares:'', costBasis:'', currentPrice:'' });
+    setShowForm(false);
+  };
+
+  const removeHolding = (id) => onEdit({ ...account, holdings: holdings.filter(h => h.id !== id) });
+  const updatePrice   = (id, price) =>
+    onEdit({ ...account, holdings: holdings.map(h => h.id === id ? { ...h, currentPrice: safeNum(price) } : h) });
+
+  return (
+    <div style={{ background:'#0d1117', border:'1px solid #1e2736', borderRadius:10, padding:14, marginTop:6 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+        <div>
+          <span style={{ fontWeight:600, fontSize:13, color:'#e2e8f0' }}>📈 Holdings</span>
+          {holdings.length > 0 && (
+            <span style={{ marginLeft:10, fontSize:12, color: totalGainLoss >= 0 ? '#4ade80' : '#c2735a', fontWeight:600 }}>
+              {totalGainLoss >= 0 ? '+' : ''}{fmt(totalGainLoss)} ({totalCost > 0 ? ((totalGainLoss/totalCost)*100).toFixed(1) : '0'}%)
+            </span>
+          )}
+        </div>
+        <button className="btn btn-ghost btn-sm" style={{ fontSize:11 }} onClick={() => setShowForm(f => !f)}>
+          {showForm ? '✕ Cancel' : '+ Add Holding'}
+        </button>
+      </div>
+
+      {holdings.length === 0 && !showForm && (
+        <div style={{ fontSize:12, color:'#475569', textAlign:'center', padding:'12px 0' }}>
+          No holdings yet. Add your first position above.
+        </div>
+      )}
+
+      {holdings.length > 0 && (
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12, marginBottom:showForm ? 12 : 0 }}>
+          <thead>
+            <tr>
+              {['Ticker','Shares','Cost/sh','Price/sh','Value','Gain/Loss',''].map(h => (
+                <th key={h} style={{ textAlign: h===''?'center':'left', color:'#64748b', fontWeight:600, paddingBottom:6, borderBottom:'1px solid #1e2736' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {holdings.map(h => {
+              const val = safeNum(h.shares) * safeNum(h.currentPrice);
+              const gl  = val - safeNum(h.shares) * safeNum(h.costBasis);
+              return (
+                <tr key={h.id}>
+                  <td style={{ padding:'6px 0', color:'#e2e8f0', fontWeight:700 }}>{h.ticker}</td>
+                  <td style={{ padding:'6px 0', color:'#94a3b8' }}>{h.shares}</td>
+                  <td style={{ padding:'6px 0', color:'#94a3b8' }}>{fmt(h.costBasis)}</td>
+                  <td style={{ padding:'6px 0' }}>
+                    <input
+                      type="number" step="0.01" value={h.currentPrice}
+                      onChange={e => updatePrice(h.id, e.target.value)}
+                      style={{ width:72, padding:'2px 6px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:5, color:'#e2e8f0', fontSize:12 }}
+                    />
+                  </td>
+                  <td style={{ padding:'6px 0', color:'#e2e8f0', fontWeight:600 }}>{fmt(val)}</td>
+                  <td style={{ padding:'6px 0', fontWeight:600, color: gl >= 0 ? '#4ade80' : '#c2735a' }}>
+                    {gl >= 0 ? '+' : ''}{fmt(gl)}
+                  </td>
+                  <td style={{ padding:'6px 0', textAlign:'center' }}>
+                    <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a', fontSize:11 }} onClick={() => removeHolding(h.id)}>🗑</button>
+                  </td>
+                </tr>
+              );
+            })}
+            {holdings.length > 1 && (
+              <tr style={{ borderTop:'1px solid #1e2736' }}>
+                <td colSpan={4} style={{ padding:'6px 0', color:'#64748b', fontSize:11 }}>Total</td>
+                <td style={{ padding:'6px 0', fontWeight:700, color:'#e2e8f0' }}>{fmt(totalValue)}</td>
+                <td style={{ padding:'6px 0', fontWeight:700, color: totalGainLoss >= 0 ? '#4ade80' : '#c2735a' }}>
+                  {totalGainLoss >= 0 ? '+' : ''}{fmt(totalGainLoss)}
+                </td>
+                <td />
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {showForm && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8, marginTop:8 }}>
+          <div>
+            <label style={{ fontSize:11, color:'#64748b' }}>Ticker</label>
+            <input placeholder="AAPL" value={form.ticker} onChange={e => set('ticker', e.target.value)}
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+          </div>
+          <div>
+            <label style={{ fontSize:11, color:'#64748b' }}>Shares</label>
+            <input type="number" step="0.001" placeholder="10" value={form.shares} onChange={e => set('shares', e.target.value)}
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+          </div>
+          <div>
+            <label style={{ fontSize:11, color:'#64748b' }}>Cost / share ($)</label>
+            <input type="number" step="0.01" placeholder="150.00" value={form.costBasis} onChange={e => set('costBasis', e.target.value)}
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+          </div>
+          <div>
+            <label style={{ fontSize:11, color:'#64748b' }}>Current price ($)</label>
+            <input type="number" step="0.01" placeholder="175.00" value={form.currentPrice} onChange={e => set('currentPrice', e.target.value)}
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+          </div>
+          <div style={{ gridColumn:'1/-1', display:'flex', justifyContent:'flex-end', gap:8, marginTop:4 }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
+            <button className="btn btn-primary btn-sm" onClick={saveHolding}>Add Holding</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Accounts({ accounts, transactions, netWorthHistory, recurrences, onAdd, onEdit, onDelete, onToggleCleared, onReconcile, onUpdateStatementDate, onImportStatement }) {
   const canvasNW       = useRef(null);
   const canvasForecast = useRef(null);
-  const [showAdd,       setShowAdd]       = useState(false);
-  const [editA,         setEditA]         = useState(null);
-  const [reconcileAcct, setReconcileAcct] = useState(null);   // account id being reconciled
-  const [stmtBalance,   setStmtBalance]   = useState('');
-  const [clearedIds,    setClearedIds]    = useState(new Set());
-  const [reconcileAllMode, setReconcileAllMode] = useState(false);
-  const [stmtDate,      setStmtDate]      = useState('');
+  const [showAdd,         setShowAdd]         = useState(false);
+  const [editA,           setEditA]           = useState(null);
+  const [reconcileAcct,   setReconcileAcct]   = useState(null);
+  const [stmtBalance,     setStmtBalance]     = useState('');
+  const [clearedIds,      setClearedIds]      = useState(new Set());
+  const [reconcileAllMode,setReconcileAllMode]= useState(false);
+  const [stmtDate,        setStmtDate]        = useState('');
+  const [importAcct,      setImportAcct]      = useState(null); // account being imported into
+  const [expandedHoldings,setExpandedHoldings]= useState(new Set()); // investment account ids with holdings open
 
   const openReconcile = (acctId) => {
     const existing = new Set(transactions.filter(t => t.account === acctId && t.cleared).map(t => t.id));
@@ -296,105 +431,20 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                               );
                             })()}
                           </div>
+                          <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}>📥</button>
                           <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>⚖️</button>
+                          {a.type === 'investment' && (
+                            <button className="btn btn-ghost btn-sm" title="Holdings" onClick={()=>setExpandedHoldings(s=>{const n=new Set(s);n.has(a.id)?n.delete(a.id):n.add(a.id);return n;})}>
+                              {expandedHoldings.has(a.id) ? '▲' : '📊'}
+                            </button>
+                          )}
                           <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>✏️</button>
                           <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
                             onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>🗑</button>
                         </div>
-                        {isReconciling && (
-                          <div style={{ background:'#161d2b',border:'1px solid #2d3748',borderRadius:10,padding:14,marginTop:4 }}>
-                            <div style={{ fontWeight:600,fontSize:13,marginBottom:10,color:'#e2e8f0' }}>Reconcile: {a.name}</div>
-                            <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:8,flexWrap:'wrap' }}>
-                              <label style={{ fontSize:12,color:'#94a3b8' }}>Statement Balance ($)</label>
-                              <input type="number" step="0.01" value={stmtBalance} onChange={e=>setStmtBalance(e.target.value)}
-                                style={{ width:120,padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
-                              <label style={{ fontSize:12,color:'#94a3b8',marginLeft:8 }}>Statement End Date</label>
-                              <input type="date" value={stmtDate} onChange={e=>setStmtDate(e.target.value)}
-                                style={{ padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
-                            </div>
-                            <div style={{ maxHeight:220,overflowY:'auto',marginBottom:10 }}>
-                              {acctTxs.length === 0
-                                ? <div style={{ fontSize:12,color:'#475569',padding:'8px 0' }}>No transactions for this account.</div>
-                                : acctTxs.map(t => (
-                                    <div key={t.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #1e273640' }}>
-                                      <input type="checkbox" checked={clearedIds.has(t.id)} onChange={()=>toggleClearedLocal(t.id)} />
-                                      <span style={{ fontSize:12,color:'#94a3b8',width:80,flexShrink:0 }}>{t.date}</span>
-                                      <span style={{ fontSize:12,color:'#cbd5e1',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
-                                      <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'#4ade80':'#c2735a',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
-                                    </div>
-                                  ))
-                              }
-                            </div>
-                            <div style={{ fontSize:12,color:'#94a3b8',marginBottom:8,display:'flex',gap:20 }}>
-                              <span>Cleared sum: <strong style={{ color:'#e2e8f0' }}>{fmt(clearedSum)}</strong></span>
-                              {stmtBalance !== '' && (
-                                <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'#4ade80':'#f59e0b' }}>{fmt(discrepancy)}</strong></span>
-                              )}
-                            </div>
-                            <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
-                              <button className="btn btn-secondary btn-sm" onClick={closeReconcile}>Cancel</button>
-                              <button className="btn btn-primary btn-sm" onClick={finishReconcile}>Finish Reconcile</button>
-                            </div>
-                          </div>
+                        {a.type === 'investment' && expandedHoldings.has(a.id) && (
+                          <HoldingsPanel account={a} onEdit={onEdit} />
                         )}
-                      </div>
-                    );
-                  })
-              }
-            </div>
-            <div>
-              <div style={{ fontSize:12,fontWeight:700,color:'#c2735a',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12 }}>Debts ({debts.length})</div>
-              {debts.length === 0
-                ? <div className="card-sm" style={{ color:'#475569',fontSize:14,textAlign:'center' }}>No debt accounts 🎉</div>
-                : debts.map(a => {
-                    const acctTxs = transactions.filter(t => t.account === a.id).sort((x,y) => y.date.localeCompare(x.date));
-                    const oldUncleared = acctTxs.filter(t => !t.cleared && (new Date() - new Date(t.date + 'T00:00:00')) > 30*24*60*60*1000);
-                    const isReconciling = reconcileAcct === a.id;
-                    const stmtVal = parseFloat(stmtBalance) || 0;
-                    const clearedSum = acctTxs.filter(t => clearedIds.has(t.id)).reduce((s,t) => s + t.amount, 0);
-                    const discrepancy = stmtVal - clearedSum;
-                    return (
-                      <div key={a.id} style={{ marginBottom:8 }}>
-                        <div className="card-sm" style={{ display:'flex',alignItems:'center',gap:12 }}>
-                          <div style={{ width:40,height:40,borderRadius:10,background:acctColor(a.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0 }}>
-                            {acctEmoji(a.type)}
-                          </div>
-                          <div style={{ flex:1 }}>
-                            <div style={{ fontWeight:600,fontSize:14 }}>{a.name}</div>
-                            <div style={{ fontSize:12,color:acctColor(a.type),marginTop:2 }}>{acctLabel(a.type)}</div>
-                            {a.lastStatementDate && (() => {
-                              const daysAgo = Math.floor((new Date() - new Date(a.lastStatementDate+'T00:00:00')) / (24*60*60*1000));
-                              return (
-                                <div style={{ fontSize:11,color:daysAgo>45?'#f59e0b':'#64748b',marginTop:3 }}>
-                                  Last reconciled: {a.lastStatementDate}{daysAgo>45?' ⚠':''}
-                                </div>
-                              );
-                            })()}
-                            {oldUncleared.length > 0 && (
-                              <div style={{ fontSize:11,color:'#f59e0b',marginTop:3 }}>
-                                ⚠ {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ textAlign:'right', marginRight:8 }}>
-                            <div style={{ fontSize:17,fontWeight:700,color:'#c2735a' }}>-{fmt(a.balance)}</div>
-                            {(() => {
-                              const computed = computeBalance(a.id, transactions, a.type);
-                              if (computed === null) return null;
-                              const diff = Math.abs(computed - a.balance);
-                              if (diff < 0.01) return null;
-                              return (
-                                <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'#f59e0b', marginTop:3, cursor:'help' }}>
-                                  ⚠ tx total: {fmt(computed)}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>⚖️</button>
-                          <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>✏️</button>
-                          <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
-                            onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>🗑</button>
-                        </div>
                         {isReconciling && (
                           <div style={{ background:'#161d2b',border:'1px solid #2d3748',borderRadius:10,padding:14,marginTop:4 }}>
                             <div style={{ fontWeight:600,fontSize:13,marginBottom:10,color:'#e2e8f0' }}>Reconcile: {a.name}</div>
@@ -441,6 +491,16 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
 
       {showAdd && <Modal title="Add Account" onClose={()=>setShowAdd(false)}><AccountForm onSave={a=>{onAdd(a);setShowAdd(false);}} onClose={()=>setShowAdd(false)} /></Modal>}
       {editA   && <Modal title="Edit Account" onClose={()=>setEditA(null)}><AccountForm initial={editA} onSave={a=>{onEdit(a);setEditA(null);}} onClose={()=>setEditA(null)} /></Modal>}
+      {importAcct && (
+        <Modal title={`Import Statement — ${importAcct.name}`} onClose={()=>setImportAcct(null)}>
+          <StatementImport
+            account={importAcct}
+            existingTransactions={transactions}
+            onImport={rows=>{ onImportStatement(rows); setImportAcct(null); }}
+            onClose={()=>setImportAcct(null)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

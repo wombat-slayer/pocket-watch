@@ -18,15 +18,14 @@ import Goals          from './components/Goals.jsx';
 import Reports        from './components/Reports.jsx';
 import Settings       from './components/Settings.jsx';
 import Recurring      from './components/Recurring.jsx';
-import Equity         from './components/Equity.jsx';
 import Modal          from './components/Modal.jsx';
 import TransactionForm  from './components/TransactionForm.jsx';
 import TransferForm     from './components/TransferForm.jsx';
 import AdjustmentForm   from './components/AdjustmentForm.jsx';
 import CommandPalette   from './components/CommandPalette.jsx';
-import Calendar          from './components/Calendar.jsx';
 import OnboardingWizard  from './components/OnboardingWizard.jsx';
 import MonthClose        from './components/MonthClose.jsx';
+import QuickAddBar       from './components/QuickAddBar.jsx';
 
 // ─── First-run setup screen ───────────────────────────────────────────────────
 function FirstRunScreen({ onChoose, onDefault, error }) {
@@ -144,6 +143,10 @@ export default function App() {
 
   const migrateData = (data) => {
     // Backfill transaction fields added in v2/v3
+    const accounts = (data.accounts ?? []).map(a => ({
+      holdings: [],
+      ...a,
+    }));
     const transactions = (data.transactions ?? []).map(t => ({
       tags: [],
       splits: undefined,
@@ -164,7 +167,7 @@ export default function App() {
       linkedAccountId: null,
       ...g,
     }));
-    return { ...data, transactions, budgets, goals, version: 3 };
+    return { ...data, accounts, transactions, budgets, goals, version: 4 };
   };
 
   const initFromPath = async (path) => {
@@ -324,7 +327,7 @@ export default function App() {
       if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { e.preventDefault(); handleUndo(); return; }
       if ((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.key==='z' && e.shiftKey))) { e.preventDefault(); handleRedo(); return; }
       if (inInput) return;
-      const navKeys = {'1':'dashboard','2':'transactions','3':'budgets','4':'accounts','5':'goals','6':'equity','7':'recurring','8':'reports','9':'settings'};
+      const navKeys = {'1':'dashboard','2':'transactions','3':'accounts','4':'budgets','5':'goals','6':'recurring','7':'reports','8':'settings'};
       if (navKeys[e.key]) { setPage(navKeys[e.key]); return; }
       if (e.key === 'n' || e.key === 'N') { setShowAdd(true); return; }
       if (e.key === 't' || e.key === 'T') { setShowTransfer(true); return; }
@@ -491,11 +494,9 @@ export default function App() {
   const nav = [
     { id:'dashboard',    icon:'🏠', label:'Dashboard'   },
     { id:'transactions', icon:'💸', label:'Transactions' },
-    { id:'budgets',      icon:'🎯', label:'Budgets'      },
     { id:'accounts',     icon:'🏦', label:'Accounts'     },
+    { id:'budgets',      icon:'🎯', label:'Budgets'      },
     { id:'goals',        icon:'⭐', label:'Goals'        },
-    { id:'equity',       icon:'📈', label:'Equity'       },
-    { id:'calendar',     icon:'📅', label:'Calendar'     },
     { id:'recurring',    icon:'🔁', label:'Recurring'    },
     { id:'reports',      icon:'📊', label:'Reports'      },
     { id:'settings',     icon:'⚙️', label:'Settings'     },
@@ -552,28 +553,36 @@ export default function App() {
         </nav>
         {!sidebarCollapsed && (
           <div style={{ padding:'12px 16px', borderTop:'1px solid #1e2736' }} className="sidebar-footer">
-            <div style={{ fontSize:12,color:'#475569',marginBottom:6,display:'flex',gap:6,alignItems:'center' }}>
-              <span>Quick Add</span>
-              {undoLen > 0 && <button className="btn btn-ghost btn-sm" style={{ padding:'2px 6px',fontSize:11 }} onClick={handleUndo} title="Undo (Ctrl+Z)">↩ Undo</button>}
+            {/* Smart quick-add bar */}
+            <QuickAddBar accounts={accounts} onAdd={tx=>{ addTx(tx); }} onOpenFull={()=>setShowAdd(true)} />
+
+            {/* Secondary actions row */}
+            <div style={{ display:'flex', gap:6, marginTop:8 }}>
+              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', fontSize:11, padding:'5px 0' }} onClick={()=>setShowTransfer(true)} title="Transfer between accounts">
+                ↔ Transfer
+              </button>
+              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', fontSize:11, padding:'5px 0' }} onClick={()=>setShowAdjustment(true)} title="Update account balance">
+                📊 Balance
+              </button>
+              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', fontSize:11, padding:'5px 0' }} onClick={()=>setShowMonthClose(true)} title="Month close wizard">
+                📅 Close
+              </button>
             </div>
-            <button className="btn btn-primary" style={{ width:'100%',justifyContent:'center' }} onClick={()=>setShowAdd(true)}>
-              + Transaction
-            </button>
-            <button className="btn btn-secondary" style={{ width:'100%',justifyContent:'center',marginTop:6,fontSize:12 }} onClick={()=>setShowTransfer(true)}>
-              ↔️ Transfer
-            </button>
-            <button className="btn btn-secondary" style={{ width:'100%',justifyContent:'center',marginTop:6,fontSize:12 }} onClick={()=>setShowAdjustment(true)}>
-              📊 Balance Update
-            </button>
-            <button className="btn btn-secondary" style={{ width:'100%',justifyContent:'center',marginTop:6,fontSize:12 }} onClick={()=>setShowPalette(true)}>
-              🔍 Search  <span style={{ marginLeft:'auto',fontSize:10,color:'#475569' }}>⌘K</span>
-            </button>
-            <button className="btn btn-ghost btn-sm" style={{ width:'100%',justifyContent:'center',marginTop:4,fontSize:11,color:'#334155' }} onClick={()=>setShowHelp(true)}>
-              ⌨️ Shortcuts  <span style={{ marginLeft:'auto',fontSize:10 }}>?</span>
-            </button>
-            <button className="btn btn-secondary" style={{ width:'100%',justifyContent:'center',marginTop:6,fontSize:12 }} onClick={()=>setShowMonthClose(true)}>
-              📅 Month Close
-            </button>
+
+            {/* Utility row */}
+            <div style={{ display:'flex', gap:6, marginTop:6 }}>
+              <button className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:'center', fontSize:11 }} onClick={()=>setShowPalette(true)} title="Search (⌘K)">
+                🔍 <span style={{ marginLeft:4 }}>⌘K</span>
+              </button>
+              <button className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:'center', fontSize:11 }} onClick={()=>setShowHelp(h=>!h)} title="Keyboard shortcuts (?)">
+                ⌨️ ?
+              </button>
+              {undoLen > 0 && (
+                <button className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:'center', fontSize:11 }} onClick={handleUndo} title="Undo (Ctrl+Z)">
+                  ↩ Undo
+                </button>
+              )}
+            </div>
           </div>
         )}
         {!sidebarCollapsed && (
@@ -588,11 +597,9 @@ export default function App() {
         {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} />}
         {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} />}
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} />}
-        {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} />}
+        {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='goals'        && <Goals        goals={goals} accounts={accounts} onAdd={addGoal} onEdit={editGoal} onDelete={deleteGoal} onDeposit={depositGoal} />}
-        {page==='equity'       && <Equity       grants={grants} onAdd={addGrant} onEdit={editGrant} onDelete={deleteGrant} onAddTx={addTx} investmentAccounts={accounts.filter(a=>a.type==='investment')} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} />}
         {page==='recurring'    && <Recurring    recurrences={recurrences} accounts={accounts} transactions={transactions} onAdd={addRecurrence} onEdit={editRecurrence} onDelete={deleteRecurrence} onToggle={toggleRecurrence} userCategories={userCategories} />}
-        {page==='calendar'     && <Calendar     transactions={transactions} />}
         {page==='reports'      && <Reports      transactions={transactions} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
         {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} />}
       </div>
@@ -621,10 +628,11 @@ export default function App() {
           <div style={{ background:'#161d2b',border:'1px solid #1e2736',borderRadius:12,padding:'24px 28px',minWidth:340,maxWidth:440 }} onClick={e=>e.stopPropagation()}>
             <div style={{ fontWeight:700,fontSize:16,color:'#e2e8f0',marginBottom:16 }}>⌨️ Keyboard Shortcuts</div>
             {[
-              ['1–9',         'Navigate to page'],
+              ['1–8',         'Navigate to page'],
               ['N',           'New transaction'],
               ['T',           'New transfer'],
               ['B',           'Update balance'],
+              ['Enter',       'Quick Add (in sidebar input)'],
               ['Ctrl+K',      'Command palette'],
               ['Ctrl+Z',      'Undo'],
               ['Ctrl+Y',      'Redo'],

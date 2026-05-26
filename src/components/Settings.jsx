@@ -283,11 +283,12 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           ? <button className="btn btn-danger" onClick={()=>setConfirmReset(true)}>Full Reset — Delete Everything</button>
           : <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
               <span style={{ fontSize:13,color:'#c2735a' }}>⚠️ This is permanent and cannot be undone.</span>
-              <button className="btn btn-danger btn-sm" onClick={()=>{ onReset(); setConfirmReset(false); }}>Yes, Delete Everything</button>
-              <button className="btn btn-secondary btn-sm" onClick={()=>setConfirmReset(false)}>Cancel</button>
+              <button className="btn btn-danger" onClick={()=>{onReset();setConfirmReset(false);}}>Yes, delete everything</button>
+              <button className="btn btn-secondary" onClick={()=>setConfirmReset(false)}>Cancel</button>
             </div>
         }
       </div>
+
     </div>
   );
 }
