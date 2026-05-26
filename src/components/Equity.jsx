@@ -1,6 +1,8 @@
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo, useRef, Fragment } from 'react';
 import { fmt, fmtDate, today, uid } from '../constants.js';
 import Modal from './Modal.jsx';
+import { useMarketData, isCryptoTicker } from '../hooks/useMarketData.js';
+import { useChart } from '../hooks/useChart.js';
 
 // --- Holdings Ledger ---------------------------------------------------------
 function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPriceChange, onPriceCommit }) {
@@ -379,8 +381,44 @@ function GrantCard({ grant, onEdit, onDelete }) {
   );
 }
 
+// --- Portfolio Allocation Chart ----------------------------------------------
+function PortfolioChart({ grants, quotes }) {
+  const canvasRef = useRef(null);
+  const COLORS = ['#7fa88b','#8b5cf6','#60a5fa','#f59e0b','#c2735a','#4ade80','#a78bfa','#fb923c'];
+
+  useChart(canvasRef, () => {
+    const items = grants.map(g => {
+      const ticker = g.ticker?.toUpperCase();
+      const price = (ticker && quotes[ticker]?.price) ?? g.currentPrice ?? g.grantPrice ?? 0;
+      const vested = computeGrantVestedShares(g);
+      return { label: g.ticker || g.name, value: vested * price };
+    }).filter(i => i.value > 0);
+
+    if (!items.length) {
+      return { type: 'doughnut', data: { labels: [], datasets: [{ data: [] }] }, options: { responsive: true, maintainAspectRatio: false } };
+    }
+
+    return {
+      type: 'doughnut',
+      data: {
+        labels: items.map(i => i.label),
+        datasets: [{ data: items.map(i => i.value), backgroundColor: COLORS.slice(0, items.length), borderWidth: 0, hoverOffset: 6 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } },
+        },
+      },
+    };
+  }, [JSON.stringify(grants.map(g => g.id + (g.currentPrice ?? 0))), JSON.stringify(quotes)]); // eslint-disable-line
+
+  return <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />;
+}
+
 // --- Main Equity Component ---------------------------------------------------
-export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVestToAccount, onUpdateGrantPrice, investmentAccounts }) {
+export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVestToAccount, onUpdateGrantPrice, investmentAccounts, finnhubKey }) {
   const [expandedGrant, setExpandedGrant] = useState(null);
   const [editingPrice,  setEditingPrice]  = useState(null);
   const [priceInput,    setPriceInput]    = useState('');
@@ -390,19 +428,30 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
 
   const acctList = investmentAccounts ?? [];
 
-  // Summary totals
+  // ── Live market data ─────────────────────────────────────────────────────
+  const tickers = useMemo(() => grants.map(g => g.ticker).filter(Boolean), [grants]);
+  const { quotes, loading: quotesLoading, error: quotesError, refresh: refreshQuotes, lastUpdated } = useMarketData(tickers, finnhubKey);
+
+  // Use live price if available, fall back to stored price
+  // Defined before useMemo that depends on it to avoid temporal dead zone
+  const effectivePrice = (grant) => {
+    const ticker = grant.ticker?.toUpperCase();
+    return (ticker && quotes[ticker]?.price) ?? grant.currentPrice ?? grant.grantPrice ?? 0;
+  };
+
+  // Summary totals using live prices where available
   const { totalVestedValue, totalUnvestedValue } = useMemo(() => {
     let tv = 0, tu = 0;
     grants.forEach(g => {
-      const events  = computeVestEvents(g);
-      const price   = g.currentPrice || g.grantPrice || 0;
-      const vested  = events.filter(e => e.vested).reduce((s, e) => s + e.shares, 0);
+      const events   = computeVestEvents(g);
+      const price    = effectivePrice(g);
+      const vested   = events.filter(e => e.vested).reduce((s, e) => s + e.shares, 0);
       const unvested = (g.totalShares || 0) - vested;
-      tv += vested * price;
+      tv += vested   * price;
       tu += unvested * price;
     });
     return { totalVestedValue: tv, totalUnvestedValue: tu };
-  }, [grants]);
+  }, [grants, quotes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePriceClick = (grantId, currentPrice) => {
     setEditingPrice(grantId);
@@ -453,16 +502,44 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
     padding: '9px 10px', textAlign: align, verticalAlign: 'middle', ...extra,
   });
 
+  const fmtChg = (pct) => {
+    if (pct == null) return null;
+    const sign = pct >= 0 ? '+' : '';
+    return <span style={{ fontSize:10, color: pct >= 0 ? '#4ade80' : '#c2735a', fontWeight:600, marginLeft:4 }}>
+      {sign}{pct.toFixed(2)}%
+    </span>;
+  };
+
   return (
     <div className="fade-in" style={{ padding: '24px 28px' }}>
       {/* Header */}
       <div className="section-header">
         <div>
-          <div className="section-title">Equity</div>
+          <div className="section-title">Investments</div>
           <div className="section-sub">Track RSUs, stock options, and equity vesting</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAddForm(true)}>+ Add Grant</button>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {tickers.length > 0 && (
+            <button className="btn btn-secondary" onClick={refreshQuotes} disabled={quotesLoading}
+              title="Refresh live prices from Finnhub / CoinGecko">
+              {quotesLoading ? '⟳ Fetching…' : '⟳ Refresh Prices'}
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={() => setShowAddForm(true)}>+ Add Grant</button>
+        </div>
       </div>
+
+      {/* API status / errors */}
+      {quotesError && (
+        <div style={{ background:'#c2735a18', border:'1px solid #c2735a44', borderRadius:8, padding:'8px 14px', marginBottom:12, fontSize:12, color:'#c2735a' }}>
+          ⚠ {quotesError}
+        </div>
+      )}
+      {lastUpdated && !quotesError && (
+        <div style={{ fontSize:11, color:'#475569', marginBottom:8 }}>
+          Prices last updated {new Date(lastUpdated).toLocaleTimeString()}
+        </div>
+      )}
 
       {/* Summary stat cards */}
       {grants.length > 0 && (
@@ -480,6 +557,34 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
             <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Unvested Value</div>
             <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: '#8b5cf6' }}>{fmt(totalUnvestedValue)}</div>
             <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>at current price</div>
+          </div>
+        </div>
+      )}
+
+      {/* Portfolio allocation chart */}
+      {grants.length > 1 && (
+        <div className="card" style={{ marginBottom:16, padding:16 }}>
+          <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Portfolio Allocation</div>
+          <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:16, alignItems:'center' }}>
+            <div style={{ width:220, height:220, position:'relative' }}>
+              {grants.map(g => null) /* force re-mount on change */}
+              <PortfolioChart grants={grants} quotes={quotes} />
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {grants.map((g, i) => {
+                const COLORS = ['#7fa88b','#8b5cf6','#60a5fa','#f59e0b','#c2735a','#4ade80','#a78bfa','#fb923c'];
+                const price = effectivePrice(g);
+                const vested = computeGrantVestedShares(g);
+                const value = vested * price;
+                return (
+                  <div key={g.id} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12 }}>
+                    <div style={{ width:10, height:10, borderRadius:3, background: COLORS[i % COLORS.length], flexShrink:0 }} />
+                    <span style={{ color:'#94a3b8', flex:1 }}>{g.ticker || g.name}</span>
+                    <span style={{ color:'#e2e8f0', fontWeight:600 }}>{fmt(value)}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -514,8 +619,10 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                 const vestEvents = computeVestEvents(g);
                 const vested     = vestEvents.filter(e => e.vested).reduce((s, e) => s + e.shares, 0);
                 const unvested   = (g.totalShares || 0) - vested;
-                const price      = g.currentPrice || g.grantPrice || 0;
+                const price      = effectivePrice(g);
                 const totalValue = vested * price;
+                const ticker     = g.ticker?.toUpperCase();
+                const liveQuote  = ticker ? quotes[ticker] : null;
                 const nextVest   = vestEvents.find(e => !e.vested);
                 const isExpanded = expandedGrant === g.id;
                 const isEditingP = editingPrice === g.id;
@@ -576,9 +683,10 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                               onClick={() => { setEditingPrice(null); setPriceInput(''); }}>&#10005;</button>
                           </span>
                         ) : (
-                          <span title="Click to edit price"
-                            style={{ cursor: 'pointer', color: '#e2e8f0', borderBottom: '1px dashed #475569', paddingBottom: 1 }}>
+                          <span title={liveQuote ? 'Live price — click to override' : 'Click to edit price'}
+                            style={{ cursor: 'pointer', color: liveQuote ? '#4ade80' : '#e2e8f0', borderBottom: '1px dashed #475569', paddingBottom: 1 }}>
                             {fmt(price)}
+                            {liveQuote && fmtChg(liveQuote.changePct)}
                           </span>
                         )}
                       </td>
@@ -633,7 +741,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                               </thead>
                               <tbody>
                                 {vestEvents.map((e, i) => {
-                                  const evtValue = e.shares * price;
+                                  const evtValue = e.shares * effectivePrice(g);
                                   return (
                                     <tr key={i} style={{ opacity: e.vested ? 0.65 : 1, borderBottom: '1px solid #0d1520' }}>
                                       <td style={{ padding: '5px 8px', color: '#94a3b8' }}>{fmtDate(e.date)}</td>

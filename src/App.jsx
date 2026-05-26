@@ -11,6 +11,8 @@ import {
 import { invoke } from '@tauri-apps/api/core';
 
 import Dashboard      from './components/Dashboard.jsx';
+import Equity         from './components/Equity.jsx';
+import Calendar       from './components/Calendar.jsx';
 import Transactions   from './components/Transactions.jsx';
 import Budgets        from './components/Budgets.jsx';
 import Accounts       from './components/Accounts.jsx';
@@ -78,7 +80,9 @@ export default function App() {
   const [showHelp,        setShowHelp]        = useState(false);
   const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
   const [txCatFilter,     setTxCatFilter]     = useState('All');
-  const [budgetTemplates, setBudgetTemplates] = useState([]);
+  const [budgetTemplates,       setBudgetTemplates]       = useState([]);
+  const [archivedTransactions, setArchivedTransactions] = useState([]);
+  const [apiKeys,         setApiKeys]         = useState({ finnhub: '' });
   const [onboardingDone,  setOnboardingDone]  = useState(true);
   const [showMonthClose,  setShowMonthClose]  = useState(false);
   const [toasts,          setToasts]          = useState([]);
@@ -193,6 +197,8 @@ export default function App() {
         setGrants(data.grants              ?? []);
         setUserCategories(data.userCategories ?? []);
         setBudgetTemplates(data.budgetTemplates ?? []);
+        setArchivedTransactions(data.archivedTransactions ?? []);
+        setApiKeys(data.apiKeys             ?? { finnhub: '' });
         setOnboardingDone(data.onboardingComplete !== false);
       } else {
         // New file location — seed demo data
@@ -253,15 +259,15 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, onboardingComplete: onboardingDone, version: 3 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 3 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
-  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, onboardingDone, dataPath, appStatus]);
+  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingDone, dataPath, appStatus]);
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, onboardingComplete: onboardingDone, version: 3 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 3 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -327,7 +333,7 @@ export default function App() {
       if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { e.preventDefault(); handleUndo(); return; }
       if ((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.key==='z' && e.shiftKey))) { e.preventDefault(); handleRedo(); return; }
       if (inInput) return;
-      const navKeys = {'1':'dashboard','2':'transactions','3':'accounts','4':'budgets','5':'goals','6':'recurring','7':'reports','8':'settings'};
+      const navKeys = {'1':'dashboard','2':'transactions','3':'accounts','4':'budgets','5':'goals','6':'recurring','7':'investments','8':'cashflow','9':'reports','0':'settings'};
       if (navKeys[e.key]) { setPage(navKeys[e.key]); return; }
       if (e.key === 'n' || e.key === 'N') { setShowAdd(true); return; }
       if (e.key === 't' || e.key === 'T') { setShowTransfer(true); return; }
@@ -459,6 +465,23 @@ export default function App() {
   const handleUpdateStatementDate = (acctId, date) =>
     setAccounts(as => as.map(a => a.id === acctId ? { ...a, lastStatementDate: date } : a));
 
+  // ── Archive handlers ──────────────────────────────────────────────────────────
+  const handleArchive = useCallback((beforeDate) => {
+    const toArchive = transactions.filter(t => t.date < beforeDate);
+    if (!toArchive.length) return 0;
+    setArchivedTransactions(prev => [...prev, ...toArchive]);
+    setTransactions(prev => prev.filter(t => t.date >= beforeDate));
+    return toArchive.length;
+  }, [transactions]);
+
+  const handleRestoreArchive = useCallback(() => {
+    setTransactions(prev => [...prev, ...archivedTransactions].sort((a,b) => b.date.localeCompare(a.date)));
+    setArchivedTransactions([]);
+  }, [archivedTransactions]);
+
+  // ── API key handler ───────────────────────────────────────────────────────────
+  const handleSaveApiKeys = (keys) => setApiKeys(prev => ({ ...prev, ...keys }));
+
   // ── User category handlers ──────────────────────────────────────────────────
   const addUserCategory    = (c)    => setUserCategories(cs => [...cs, c]);
   const deleteUserCategory = (name) => setUserCategories(cs => cs.filter(c => c.name !== name));
@@ -470,6 +493,15 @@ export default function App() {
   const toggleRecurrence = (id) => setRecurrences(rs => rs.map(r => r.id === id ? { ...r, active: !r.active } : r));
 
   // ── Settings handlers ────────────────────────────────────────────────────────
+  // ── Net worth history import ──────────────────────────────────────────────────
+  const handleImportNetWorthHistory = (rows) => {
+    setNetWorthHistory(prev => {
+      const existing = new Set(prev.map(h => h.date));
+      const newRows  = rows.filter(r => !existing.has(r.date));
+      return [...prev, ...newRows].sort((a, b) => a.date.localeCompare(b.date));
+    });
+  };
+
   const handleReset = () => {
     pushUndo();
     setTransactions([]); setAccounts([]); setBudgets([]); setGoals([]); setRecurrences([]); setGrants([]); setNetWorthHistory([]);
@@ -512,6 +544,8 @@ export default function App() {
     { id:'budgets',      icon:'🎯', label:'Budgets'      },
     { id:'goals',        icon:'⭐', label:'Goals'        },
     { id:'recurring',    icon:'🔁', label:'Recurring'    },
+    { id:'investments',  icon:'📈', label:'Investments'  },
+    { id:'cashflow',     icon:'📅', label:'Cashflow'     },
     { id:'reports',      icon:'📊', label:'Reports'      },
     { id:'settings',     icon:'⚙️', label:'Settings'     },
   ];
@@ -609,13 +643,15 @@ export default function App() {
       {/* Main content */}
       <div className="main">
         {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} />}
-        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} />}
+        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} />}
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='goals'        && <Goals        goals={goals} accounts={accounts} onAdd={addGoal} onEdit={editGoal} onDelete={deleteGoal} onDeposit={depositGoal} />}
         {page==='recurring'    && <Recurring    recurrences={recurrences} accounts={accounts} transactions={transactions} onAdd={addRecurrence} onEdit={editRecurrence} onDelete={deleteRecurrence} onToggle={toggleRecurrence} userCategories={userCategories} />}
+        {page==='investments'  && <Equity       grants={grants} onAdd={addGrant} onEdit={editGrant} onDelete={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} investmentAccounts={accounts.filter(a => a.type === 'investment' || a.type === 'brokerage')} finnhubKey={apiKeys.finnhub} />}
+        {page==='cashflow'     && <Calendar     transactions={transactions} recurrences={recurrences} accounts={accounts} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} />}
       </div>
 
       {showAdd && (
@@ -642,7 +678,7 @@ export default function App() {
           <div style={{ background:'#161d2b',border:'1px solid #1e2736',borderRadius:12,padding:'24px 28px',minWidth:340,maxWidth:440 }} onClick={e=>e.stopPropagation()}>
             <div style={{ fontWeight:700,fontSize:16,color:'#e2e8f0',marginBottom:16 }}>⌨️ Keyboard Shortcuts</div>
             {[
-              ['1–8',         'Navigate to page'],
+              ['1–9',         'Navigate to page'],
               ['N',           'New transaction'],
               ['T',           'New transfer'],
               ['B',           'Update balance'],

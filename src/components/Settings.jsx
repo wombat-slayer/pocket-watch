@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { download, getAllCategories, thisMonth } from '../constants.js';
 import { promptNewDataFile } from '../dataLayer.js';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDemo,  setConfirmDemo]  = useState(false);
   const [importError,  setImportError]  = useState('');
@@ -10,6 +10,15 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   const [newCatName,  setNewCatName]  = useState('');
   const [newCatIcon,  setNewCatIcon]  = useState('📦');
   const [newCatColor, setNewCatColor] = useState('#94a3b8');
+  const [finnhubInput, setFinnhubInput] = useState(apiKeys.finnhub ?? '');
+  const [apiKeySaved,  setApiKeySaved]  = useState(false);
+  const [nwImportError,  setNwImportError]  = useState('');
+  const [nwImportResult, setNwImportResult] = useState('');
+  const [archiveBefore, setArchiveBefore] = useState(() => {
+    const d = new Date(); d.setFullYear(d.getFullYear() - 2);
+    return d.toISOString().slice(0, 10);
+  });
+  const [archiveResult, setArchiveResult] = useState('');
 
   // Update states
   const [updateStatus, setUpdateStatus] = useState('idle'); // idle | checking | available | uptodate | installing | restart | error
@@ -110,6 +119,44 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <div><div className="section-title">Settings</div><div className="section-sub">Data management and preferences</div></div>
       </div>
 
+      {/* API Keys */}
+      <div className="settings-section">
+        <div className="settings-section-title">🔑 API Keys</div>
+        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+          Add a <strong style={{ color:'#e2e8f0' }}>Finnhub</strong> API key to enable live stock price fetching on the Investments page.
+          {' '}<a href="https://finnhub.io/register" target="_blank" rel="noreferrer"
+            style={{ color:'#7fa88b', textDecoration:'none', borderBottom:'1px dashed #7fa88b44' }}>
+            Get a free key at finnhub.io
+          </a>{' '}(free tier: 60 req/min). Crypto prices via CoinGecko require no key.
+        </p>
+        <div style={{ display:'flex', gap:8, alignItems:'center', maxWidth:500 }}>
+          <input
+            type="password"
+            placeholder="Finnhub API key (sk_…)"
+            value={finnhubInput}
+            onChange={e => { setFinnhubInput(e.target.value); setApiKeySaved(false); }}
+            style={{ flex:1, fontFamily:'monospace', fontSize:13 }}
+            autoComplete="off"
+          />
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              if (onSaveApiKeys) onSaveApiKeys({ finnhub: finnhubInput.trim() });
+              setApiKeySaved(true);
+            }}>
+            Save
+          </button>
+          {finnhubInput.trim() && (
+            <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
+              onClick={() => { setFinnhubInput(''); if (onSaveApiKeys) onSaveApiKeys({ finnhub: '' }); setApiKeySaved(false); }}>
+              Clear
+            </button>
+          )}
+        </div>
+        {apiKeySaved && <p style={{ color:'#4ade80', fontSize:12, marginTop:6 }}>✅ API key saved.</p>}
+        <p style={{ fontSize:11, color:'#475569', marginTop:8 }}>Keys are stored locally in your data file — never uploaded or shared.</p>
+      </div>
+
       {/* Data Health */}
       <div className="settings-section">
         <div className="settings-section-title">🩺 Data Health</div>
@@ -166,6 +213,97 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Net Worth History Import */}
+      <div className="settings-section">
+        <div className="settings-section-title">📈 Import Historical Net Worth</div>
+        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+          Upload a CSV file with past net worth snapshots to populate the historical chart.
+          Accepted columns (case-insensitive): <code style={{ fontSize:11, color:'#7fa88b' }}>date, net_worth</code> or
+          {' '}<code style={{ fontSize:11, color:'#7fa88b' }}>date, assets, debts</code>.
+          Date format: YYYY-MM-DD. Duplicate dates are skipped.
+        </p>
+        <label className="file-label" htmlFor="nw-csv-import">📂 Choose Net Worth CSV</label>
+        <input id="nw-csv-import" type="file" accept=".csv" onChange={(e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          setNwImportError(''); setNwImportResult('');
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            try {
+              const lines = ev.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+              if (!lines.length) throw new Error('Empty file');
+              const header = lines[0].toLowerCase().split(',').map(h => h.replace(/[^a-z_]/g, ''));
+              const dateIdx  = header.findIndex(h => h === 'date');
+              const nwIdx    = header.findIndex(h => h === 'net_worth' || h === 'networth' || h === 'net');
+              const assIdx   = header.findIndex(h => h === 'assets');
+              const debIdx   = header.findIndex(h => h === 'debts' || h === 'liabilities');
+              if (dateIdx < 0) throw new Error('Missing "date" column');
+              if (nwIdx < 0 && (assIdx < 0 || debIdx < 0)) throw new Error('Need either a "net_worth" column or both "assets" and "debts" columns');
+              const rows = [];
+              for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g,''));
+                const date = cols[dateIdx]?.slice(0,10);
+                if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+                let netWorth, assets = 0, debts = 0;
+                if (nwIdx >= 0) {
+                  netWorth = parseFloat(cols[nwIdx]); assets = netWorth; debts = 0;
+                } else {
+                  assets  = parseFloat(cols[assIdx]) || 0;
+                  debts   = parseFloat(cols[debIdx]) || 0;
+                  netWorth = assets - debts;
+                }
+                if (isNaN(netWorth)) continue;
+                rows.push({ id: `nw-import-${Date.now()}-${i}`, date, netWorth, assets, debts });
+              }
+              if (!rows.length) throw new Error('No valid rows found. Check date format (YYYY-MM-DD) and column names.');
+              onImportNetWorthHistory?.(rows);
+              setNwImportResult(`✅ Imported ${rows.length} snapshot${rows.length!==1?'s':''} (duplicates skipped).`);
+            } catch (err) { setNwImportError(err.message); }
+          };
+          reader.readAsText(file);
+          e.target.value = '';
+        }} />
+        {nwImportError  && <p style={{ color:'#c2735a',fontSize:13,marginTop:8 }}>❌ {nwImportError}</p>}
+        {nwImportResult && <p style={{ color:'#4ade80',fontSize:13,marginTop:8 }}>{nwImportResult}</p>}
+        <p style={{ fontSize:11,color:'#475569',marginTop:8 }}>
+          Currently {netWorthHistory.length} snapshots stored.
+          {netWorthHistory.length > 0 && ` Oldest: ${netWorthHistory[0]?.date}. Latest: ${netWorthHistory[netWorthHistory.length-1]?.date}.`}
+        </p>
+      </div>
+
+      {/* Archive */}
+      <div className="settings-section">
+        <div className="settings-section-title">🗃️ Transaction Archive</div>
+        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+          Move old transactions to an archive to keep your active dataset small and fast. Archived transactions are still saved in your data file and can be restored at any time.
+        </p>
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:10 }}>
+          <label style={{ fontSize:13, color:'#94a3b8' }}>Archive transactions before:</label>
+          <input type="date" value={archiveBefore} onChange={e => setArchiveBefore(e.target.value)}
+            style={{ fontSize:13, padding:'4px 8px', width:'auto' }} />
+          <button className="btn btn-secondary"
+            onClick={() => {
+              const count = onArchive?.(archiveBefore) ?? 0;
+              setArchiveResult(count > 0 ? `✅ Archived ${count} transaction${count!==1?'s':''}.` : '⚠ No transactions matched that date range.');
+            }}>
+            Archive Old Transactions
+          </button>
+        </div>
+        {archiveResult && <p style={{ fontSize:12, color:'#94a3b8', marginBottom:8 }}>{archiveResult}</p>}
+        {archivedTransactions.length > 0 && (
+          <div style={{ display:'flex', alignItems:'center', gap:10, background:'#0d1117', borderRadius:8, padding:'8px 12px', fontSize:13 }}>
+            <span style={{ color:'#94a3b8' }}>{archivedTransactions.length.toLocaleString()} transaction{archivedTransactions.length!==1?'s':''} archived</span>
+            <button className="btn btn-ghost btn-sm" style={{ color:'#f59e0b', fontSize:11 }}
+              onClick={() => { if (window.confirm(`Restore ${archivedTransactions.length} archived transactions to active view?`)) { onRestoreArchive?.(); setArchiveResult(''); } }}>
+              ↩ Restore All
+            </button>
+          </div>
+        )}
+        {archivedTransactions.length === 0 && (
+          <div style={{ fontSize:12, color:'#475569' }}>No archived transactions.</div>
+        )}
       </div>
 
       {/* Export */}

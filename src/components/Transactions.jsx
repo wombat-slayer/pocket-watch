@@ -5,7 +5,7 @@ import Modal from './Modal.jsx';
 import TransactionForm from './TransactionForm.jsx';
 import CSVImport from './CSVImport.jsx';
 
-export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories }) {
+export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive }) {
   const [search,      setSearch]      = useState('');
   const [catFilter,   setCatFilter]   = useState(() => initialCatFilter ?? 'All');
 
@@ -220,6 +220,17 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           <button className="btn btn-primary"   onClick={() => setShowAdd(true)}>+ Add</button>
         </div>
       </div>
+
+      {/* Archive banner */}
+      {archivedTransactions.length > 0 && (
+        <div style={{ background:'#8b5cf611', border:'1px solid #8b5cf633', borderRadius:8, padding:'8px 14px', marginBottom:12, display:'flex', alignItems:'center', gap:12, fontSize:13 }}>
+          <span style={{ color:'#a78bfa' }}>🗃 {archivedTransactions.length.toLocaleString()} transaction{archivedTransactions.length!==1?'s':''} are archived and hidden from this view.</span>
+          <button className="btn btn-ghost btn-sm" style={{ fontSize:11, color:'#a78bfa', border:'1px solid #8b5cf644', marginLeft:'auto' }}
+            onClick={() => { if (window.confirm(`Restore ${archivedTransactions.length} archived transactions?`)) onRestoreArchive?.(); }}>
+            ↩ Restore
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card" style={{ marginBottom:16, padding:14 }}>
