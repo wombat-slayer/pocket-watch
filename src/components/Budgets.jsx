@@ -521,18 +521,4 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
             )
           }
         </div>
-      )}
-
-      {showAdd && (
-        <Modal title="Add Budget" onClose={()=>setShowAdd(false)}>
-          <BudgetForm defaultMonth={month} onSave={b=>{onAdd(b);setShowAdd(false);}} onClose={()=>setShowAdd(false)} userCategories={userCategories} />
-        </Modal>
-      )}
-      {editB && (
-        <Modal title="Edit Budget" onClose={()=>setEditB(null)}>
-          <BudgetForm initial={editB} defaultMonth={month} onSave={b=>{onEdit(b);setEditB(null);}} onClose={()=>setEditB(null)} userCategories={userCategories} />
-        </Modal>
-      )}
-    </div>
-  );
-}
+      )

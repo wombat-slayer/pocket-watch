@@ -171,5 +171,4 @@ export function useMarketData(tickersInput, finnhubKey) {
 
   const refresh = useCallback(() => fetchAll(true), [fetchAll]);
 
-  return { quotes, loading, error, refresh, lastUpdated };
-}
+  return { quotes, loa

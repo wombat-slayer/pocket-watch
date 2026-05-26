@@ -153,8 +153,10 @@ export interface Grant {
 // ─── Net Worth Snapshot ───────────────────────────────────────────────────────
 
 export interface NetWorthSnapshot {
+  id: UID;
   date: DateString;
-  total: Dollars;
+  /** Computed as assets minus debts */
+  netWorth: Dollars;
   assets?: Dollars;
   debts?: Dollars;
 }
