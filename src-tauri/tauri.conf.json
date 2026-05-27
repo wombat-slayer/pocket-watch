@@ -23,4 +23,18 @@
         "https://github.com/wombat-slayer/pocket-watch/releases/latest/download/latest.json"
       ],
       "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZ
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQzNjdDMTVEQ0E0RUU0MTQKUldRVTVFN0tYY0ZuUS95RncrWnBTYk00OXpCUzYxSUp0eHB1bjB0Ulk3dWg5T3RKY01RNDRIUDcK"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
