@@ -5,6 +5,7 @@ use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
+use serde_json::{json, Value};
 
 fn validate_data_path(path: &str) -> Result<(), String> {
     // Reject null bytes
@@ -56,6 +57,117 @@ fn get_default_data_path(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
+// ── Plaid helpers ────────────────────────────────────────────────────────────
+
+fn plaid_base_url(env: &str) -> String {
+    match env {
+        "production"  => "https://production.plaid.com".to_string(),
+        "development" => "https://development.plaid.com".to_string(),
+        _             => "https://sandbox.plaid.com".to_string(),
+    }
+}
+
+#[tauri::command]
+async fn plaid_create_link_token(
+    client_id: String,
+    secret: String,
+    env: String,
+    user_id: String,
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let base = plaid_base_url(&env);
+    let resp = client
+        .post(format!("{}/link/token/create", base))
+        .json(&json!({
+            "client_id": client_id,
+            "secret":    secret,
+            "client_name": "Pocket Watch",
+            "user": { "client_user_id": user_id },
+            "products":      ["transactions"],
+            "country_codes": ["US"],
+            "language":      "en"
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let body: Value = resp.json().await.map_err(|e| e.to_string())?;
+    body["link_token"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| {
+            body["error_message"]
+                .as_str()
+                .unwrap_or("Failed to create link token")
+                .to_string()
+        })
+}
+
+#[tauri::command]
+async fn plaid_exchange_token(
+    client_id: String,
+    secret: String,
+    env: String,
+    public_token: String,
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let base = plaid_base_url(&env);
+    let resp = client
+        .post(format!("{}/item/public_token/exchange", base))
+        .json(&json!({
+            "client_id":    client_id,
+            "secret":       secret,
+            "public_token": public_token
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let body: Value = resp.json().await.map_err(|e| e.to_string())?;
+    body["access_token"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| {
+            body["error_message"]
+                .as_str()
+                .unwrap_or("Failed to exchange token")
+                .to_string()
+        })
+}
+
+#[tauri::command]
+async fn plaid_fetch_transactions(
+    client_id:    String,
+    secret:       String,
+    env:          String,
+    access_token: String,
+    start_date:   String,
+    end_date:     String,
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let base = plaid_base_url(&env);
+    let resp = client
+        .post(format!("{}/transactions/get", base))
+        .json(&json!({
+            "client_id":    client_id,
+            "secret":       secret,
+            "access_token": access_token,
+            "start_date":   start_date,
+            "end_date":     end_date,
+            "options": { "count": 500, "offset": 0 }
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let body: Value = resp.json().await.map_err(|e| e.to_string())?;
+    if body["error_code"].is_null() {
+        Ok(body.to_string())
+    } else {
+        Err(body["error_message"]
+            .as_str()
+            .unwrap_or("Failed to fetch transactions")
+            .to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -104,4 +216,21 @@ pub fn run() {
                 .build(app)?;
             Ok(())
         })
-        .on_win
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
+        .invoke_handler(tauri::generate_handler![
+            load_data,
+            save_data,
+            data_file_exists,
+            get_default_data_path,
+            plaid_create_link_token,
+            plaid_exchange_token,
+            plaid_fetch_transactions,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

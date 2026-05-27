@@ -14,7 +14,7 @@
       { "title": "Pocket Watch", "width": 1100, "height": 720 }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src https://finnhub.io https://api.coingecko.com; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: blob:; font-src 'self' data:"
+      "csp": "default-src 'self'; connect-src https://finnhub.io https://api.coingecko.com https://sandbox.plaid.com https://development.plaid.com https://production.plaid.com; style-src 'self' 'unsafe-inline'; script-src 'self' https://cdn.plaid.com; img-src 'self' data: blob:; font-src 'self' data:; frame-src https://cdn.plaid.com"
     }
   },
   "plugins": {
@@ -23,8 +23,4 @@
         "https://github.com/wombat-slayer/pocket-watch/releases/latest/download/latest.json"
       ],
       "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQzNjdDMTVEQ0E0RUU0MTQKUldRVTVFN0tYY0ZuUS95RncrWnBTYk00OXpCUzYxSUp0eHB1bjB0Ulk3dWg5T3RKY01RNDRIUDcK"
-    }
-  },
-  "bundle": {
-    "activ
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZ

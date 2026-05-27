@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { download, getAllCategories, thisMonth } from '../constants.js';
 import { promptNewDataFile } from '../dataLayer.js';
+import PlaidSync from './PlaidSync.jsx';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDemo,  setConfirmDemo]  = useState(false);
   const [importError,  setImportError]  = useState('');
@@ -159,6 +160,24 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <p style={{ fontSize:11, color:'#475569', marginTop:8 }}>Keys are stored locally in your data file — never uploaded or shared.</p>
       </div>
 
+      {/* Bank Sync */}
+      <div className="settings-section">
+        <div className="settings-section-title">🏦 Bank Sync (Plaid)</div>
+        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:16 }}>
+          Connect your bank accounts to automatically import transactions via Plaid.
+          You'll need a free <a href="https://dashboard.plaid.com/signup" target="_blank" rel="noreferrer"
+            style={{ color:'#7fa88b', textDecoration:'none', borderBottom:'1px dashed #7fa88b44' }}>
+            Plaid developer account
+          </a> (Trial plan: free, up to 10 linked items, no credit card).
+          Enter your sandbox credentials to test, or switch to production when ready.
+        </p>
+        <PlaidSync
+          accounts={accounts}
+          existingTxs={transactions}
+          onImport={rows => onPlaidImport?.(rows)}
+        />
+      </div>
+
       {/* Data Health */}
       <div className="settings-section">
         <div className="settings-section-title">🩺 Data Health</div>
@@ -281,18 +300,4 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
           Move old transactions to an archive to keep your active dataset small and fast. Archived transactions are still saved in your data file and can be restored at any time.
         </p>
-        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:10 }}>
-          <label style={{ fontSize:13, color:'#94a3b8' }}>Archive transactions before:</label>
-          <input type="date" value={archiveBefore} onChange={e => setArchiveBefore(e.target.value)}
-            style={{ fontSize:13, padding:'4px 8px', width:'auto' }} />
-          <button className="btn btn-secondary"
-            onClick={() => {
-              const count = onArchive?.(archiveBefore) ?? 0;
-              setArchiveResult(count > 0 ? `✅ Archived ${count} transaction${count!==1?'s':''}.` : '⚠ No transactions matched that date range.');
-            }}>
-            Archive Old Transactions
-          </button>
-        </div>
-        {archiveResult && <p style={{ fontSize:12, color:'#94a3b8', marginBottom:8 }}>{archiveResult}</p>}
-        {archivedTransactions.length > 0 && (
-          <div style={{ display:'flex', alignItems:'center', gap:10
+        <div style={{ display:'flex
