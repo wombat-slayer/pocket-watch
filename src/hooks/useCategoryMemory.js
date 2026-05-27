@@ -47,4 +47,8 @@ function normalizeDesc(desc) {
   return desc
     .toLowerCase()
     .replace(/[#*_\-–—]/g, ' ')
-    .replace(/\d{4,}/g, '')   // strip long numbers (card 
+    .replace(/\d{4,}/g, '')   // strip long numbers (card numbers, ref numbers)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40);
+}

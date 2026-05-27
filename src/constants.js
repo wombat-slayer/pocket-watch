@@ -169,4 +169,3 @@ export function computeBalance(accountId, transactions, accountType) {
 export function getAllCategories(userCategories = []) {
   return [...CATEGORIES, ...userCategories];
 }
-               
