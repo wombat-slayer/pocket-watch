@@ -98,10 +98,7 @@ export default function App() {
   const redoStack = useRef([]);
   const recurGenerated = useRef(false);
   const [undoLen, setUndoLen] = useState(0);
-  const snapshot = useCallback(() => ({
-    transactions, accounts, budgets, goals,
-    recurrences, grants, userCategories,
-  }), [transactions, accounts, budgets, goals, recurrences, grants, userCategories]);
+  const snapshot = useCallback(() => ({ transactions, accounts, budgets, goals }), [transactions, accounts, budgets, goals]);
 
   const pushUndo = useCallback(() => {
     undoStack.current.push(snapshot());
@@ -118,9 +115,6 @@ export default function App() {
     setAccounts(prev.accounts);
     setBudgets(prev.budgets);
     setGoals(prev.goals);
-    setRecurrences(prev.recurrences);
-    setGrants(prev.grants);
-    setUserCategories(prev.userCategories);
     setUndoLen(undoStack.current.length);
   }, [snapshot]);
 
@@ -132,9 +126,6 @@ export default function App() {
     setAccounts(next.accounts);
     setBudgets(next.budgets);
     setGoals(next.goals);
-    setRecurrences(next.recurrences);
-    setGrants(next.grants);
-    setUserCategories(next.userCategories);
     setUndoLen(undoStack.current.length);
   }, [snapshot]);
 
@@ -442,9 +433,9 @@ export default function App() {
   };
 
   // ── Grant (equity) handlers ───────────────────────────────────────────────────
-  const addGrant    = (g)  => { pushUndo(); setGrants(gs => [...gs, g]); };
-  const editGrant   = (g)  => { pushUndo(); setGrants(gs => gs.map(x => x.id === g.id ? g : x)); };
-  const deleteGrant = (id) => { pushUndo(); setGrants(gs => gs.filter(g => g.id !== id)); };
+  const addGrant    = (g)  => setGrants(gs => [...gs, g]);
+  const editGrant   = (g)  => setGrants(gs => gs.map(x => x.id === g.id ? g : x));
+  const deleteGrant = (id) => setGrants(gs => gs.filter(g => g.id !== id));
 
   // ── Equity vest + price handlers ─────────────────────────────────────────────
   const vestToAccount = useCallback((accountId, amount) =>
@@ -496,14 +487,14 @@ export default function App() {
   const handleSaveApiKeys = (keys) => setApiKeys(prev => ({ ...prev, ...keys }));
 
   // ── User category handlers ──────────────────────────────────────────────────
-  const addUserCategory    = (c)    => { pushUndo(); setUserCategories(cs => [...cs, c]); };
-  const deleteUserCategory = (name) => { pushUndo(); setUserCategories(cs => cs.filter(c => c.name !== name)); };
+  const addUserCategory    = (c)    => setUserCategories(cs => [...cs, c]);
+  const deleteUserCategory = (name) => setUserCategories(cs => cs.filter(c => c.name !== name));
 
   // ── Recurrence handlers ───────────────────────────────────────────────────────
-  const addRecurrence    = (r)  => { pushUndo(); setRecurrences(rs => [...rs, r]); };
-  const editRecurrence   = (r)  => { pushUndo(); setRecurrences(rs => rs.map(x => x.id === r.id ? r : x)); };
-  const deleteRecurrence = (id) => { pushUndo(); setRecurrences(rs => rs.filter(r => r.id !== id)); };
-  const toggleRecurrence = (id) => { pushUndo(); setRecurrences(rs => rs.map(r => r.id === id ? { ...r, active: !r.active } : r)); };
+  const addRecurrence    = (r)  => setRecurrences(rs => [...rs, r]);
+  const editRecurrence   = (r)  => setRecurrences(rs => rs.map(x => x.id === r.id ? r : x));
+  const deleteRecurrence = (id) => setRecurrences(rs => rs.filter(r => r.id !== id));
+  const toggleRecurrence = (id) => setRecurrences(rs => rs.map(r => r.id === id ? { ...r, active: !r.active } : r));
 
   // ── Settings handlers ────────────────────────────────────────────────────────
   // ── Net worth history import ──────────────────────────────────────────────────
@@ -675,4 +666,80 @@ export default function App() {
         </Modal>
       )}
       {showPalette && (
-        <CommandPalette tra
+        <CommandPalette transactions={transactions} accounts={accounts} goals={goals}
+          onClose={()=>setShowPalette(false)} onNavigate={(p)=>{ setPage(p); setShowPalette(false); }} />
+      )}
+      {showHelp && (
+        <div style={{ position:'fixed',inset:0,background:'#00000088',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center' }} onClick={()=>setShowHelp(false)}>
+          <div style={{ background:'#161d2b',border:'1px solid #1e2736',borderRadius:12,padding:'24px 28px',minWidth:340,maxWidth:440 }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontWeight:700,fontSize:16,color:'#e2e8f0',marginBottom:16 }}>⌨️ Keyboard Shortcuts</div>
+            {[
+              ['1–9, 0',       'Navigate to page (0 = Settings)'],
+              ['N',           'New transaction'],
+              ['T',           'New transfer'],
+              ['B',           'Update balance'],
+              ['Enter',       'Quick Add (in sidebar input)'],
+              ['Ctrl+K',      'Command palette'],
+              ['Ctrl+Z',      'Undo'],
+              ['Ctrl+Y',      'Redo'],
+              ['?',           'Toggle this help'],
+              ['Escape',      'Close modals / palette'],
+            ].map(([key, label]) => (
+              <div key={key} style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid #1e273640' }}>
+                <kbd style={{ background:'#1e2736',border:'1px solid #334155',borderRadius:5,padding:'2px 8px',fontSize:12,color:'#94a3b8',fontFamily:'monospace' }}>{key}</kbd>
+                <span style={{ fontSize:13,color:'#64748b' }}>{label}</span>
+              </div>
+            ))}
+            <div style={{ marginTop:14,textAlign:'center' }}>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setShowHelp(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showMonthClose && (
+        <MonthClose
+          transactions={transactions}
+          accounts={accounts}
+          budgets={budgets}
+          netWorthHistory={netWorthHistory}
+          userCategories={userCategories}
+          onEditTx={editTx}
+          onAdjustBalance={(acctId, newBal) => handleAdjustment(acctId, newBal, today(), '')}
+          onClose={()=>setShowMonthClose(false)}
+        />
+      )}
+      {!onboardingDone && (
+        <OnboardingWizard onComplete={(accts, buds) => {
+          if (accts?.length)  setAccounts(accts);
+          if (buds?.length)   setBudgets(buds);
+          setOnboardingDone(true);
+        }} />
+      )}
+
+      {/* Toast notifications */}
+      <div style={{ position:'fixed', bottom:24, right:24, display:'flex', flexDirection:'column', gap:8, zIndex:9999, pointerEvents:'none' }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{
+            background:'#1e2736',
+            border:`1px solid ${
+              t.type==='success' ? '#22c55e'
+              : t.type==='warning' ? '#f59e0b'
+              : t.type==='error'   ? '#ef4444'
+              : '#60a5fa'
+            }`,
+            borderRadius:8,
+            padding:'10px 16px',
+            fontSize:13,
+            color:'#e2e8f0',
+            boxShadow:'0 4px 12px #00000066',
+            pointerEvents:'none',
+            animation:'fadeIn 0.2s ease',
+            maxWidth:320,
+          }}>
+            {t.type==='success' ? '✓ ' : t.type==='warning' ? '⚠ ' : t.type==='error' ? '✕ ' : 'ℹ '}{t.msg}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

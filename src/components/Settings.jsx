@@ -160,6 +160,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <p style={{ fontSize:11, color:'#475569', marginTop:8 }}>Keys are stored locally in your data file — never uploaded or shared.</p>
       </div>
 
+
       {/* Bank Sync */}
       <div className="settings-section">
         <div className="settings-section-title">🏦 Bank Sync (Plaid)</div>
@@ -300,4 +301,154 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
           Move old transactions to an archive to keep your active dataset small and fast. Archived transactions are still saved in your data file and can be restored at any time.
         </p>
-        <div style={{ display:'flex
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:10 }}>
+          <label style={{ fontSize:13, color:'#94a3b8' }}>Archive transactions before:</label>
+          <input type="date" value={archiveBefore} onChange={e => setArchiveBefore(e.target.value)}
+            style={{ fontSize:13, padding:'4px 8px', width:'auto' }} />
+          <button className="btn btn-secondary"
+            onClick={() => {
+              const count = onArchive?.(archiveBefore) ?? 0;
+              setArchiveResult(count > 0 ? `✅ Archived ${count} transaction${count!==1?'s':''}.` : '⚠ No transactions matched that date range.');
+            }}>
+            Archive Old Transactions
+          </button>
+        </div>
+        {archiveResult && <p style={{ fontSize:12, color:'#94a3b8', marginBottom:8 }}>{archiveResult}</p>}
+        {archivedTransactions.length > 0 && (
+          <div style={{ display:'flex', alignItems:'center', gap:10, background:'#0d1117', borderRadius:8, padding:'8px 12px', fontSize:13 }}>
+            <span style={{ color:'#94a3b8' }}>{archivedTransactions.length.toLocaleString()} transaction{archivedTransactions.length!==1?'s':''} archived</span>
+            <button className="btn btn-ghost btn-sm" style={{ color:'#f59e0b', fontSize:11 }}
+              onClick={() => { if (window.confirm(`Restore ${archivedTransactions.length} archived transactions to active view?`)) { onRestoreArchive?.(); setArchiveResult(''); } }}>
+              ↩ Restore All
+            </button>
+          </div>
+        )}
+        {archivedTransactions.length === 0 && (
+          <div style={{ fontSize:12, color:'#475569' }}>No archived transactions.</div>
+        )}
+      </div>
+
+      {/* Export */}
+      <div className="settings-section">
+        <div className="settings-section-title">📤 Export Data</div>
+        <div style={{ display:'flex',gap:10,flexWrap:'wrap' }}>
+          <button className="btn btn-secondary" onClick={exportTransactionsCSV}>⬇ Transactions CSV</button>
+          <button className="btn btn-secondary" onClick={exportJSON}>⬇ Full Backup (JSON)</button>
+        </div>
+        <p style={{ fontSize:12,color:'#475569',marginTop:10 }}>The CSV export works with Excel and Google Sheets. The JSON backup includes everything and can be restored below.</p>
+      </div>
+
+      {/* Import */}
+      <div className="settings-section">
+        <div className="settings-section-title">📥 Restore from Backup</div>
+        <label className="file-label" htmlFor="json-restore">📂 Choose JSON Backup File</label>
+        <input id="json-restore" type="file" accept=".json" onChange={handleImport} />
+        {importError && <p style={{ color:'#c2735a',fontSize:13,marginTop:8 }}>❌ {importError}</p>}
+        {importOk    && <p style={{ color:'#4ade80',fontSize:13,marginTop:8 }}>✅ Backup restored successfully.</p>}
+        <p style={{ fontSize:12,color:'#475569',marginTop:10 }}>⚠️ Restoring replaces all current data with the backup contents.</p>
+      </div>
+
+      {/* Updates */}
+      <div className="settings-section">
+        <div className="settings-section-title">🔄 Updates</div>
+        <p style={{ fontSize:13,color:'#94a3b8',marginBottom:12 }}>
+          Check for the latest version of Pocket Watch.
+          {' '}<span style={{ color:'#334155', fontSize:11 }}>
+            Endpoint: <code style={{ fontSize:10, color:'#475569' }}>https://releases.pocketwatch.app/...</code>
+            {' '}— deploy a GitHub Release with a signed <code style={{ fontSize:10, color:'#475569' }}>latest.json</code> manifest to activate.
+          </span>
+        </p>
+        <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
+          <button className="btn btn-secondary" onClick={handleCheckUpdate} disabled={updateStatus==='checking'}>
+            {updateStatus==='checking' ? '⏳ Checking…' : '🔍 Check for Updates'}
+          </button>
+          {updateStatus === 'uptodate' && <span style={{ color:'#4ade80',fontSize:13 }}>✅ You're up to date!</span>}
+          {updateStatus === 'available' && updateInfo && (
+            <>
+              <span style={{ color:'#f59e0b',fontSize:13 }}>🆕 Update available: v{updateInfo.version}</span>
+              <button className="btn btn-primary" onClick={handleInstallUpdate}>⬇ Install Update</button>
+            </>
+          )}
+          {updateStatus === 'installing' && (
+            <span style={{ color:'#60a5fa',fontSize:13 }}>⏳ Downloading and installing…</span>
+          )}
+          {updateStatus === 'restart' && (
+            <span style={{ color:'#4ade80',fontSize:13 }}>✅ Update installed — please restart Pocket Watch to finish.</span>
+          )}
+          {updateStatus === 'error' && (
+            <span style={{ color:'#c2735a',fontSize:13 }}>❌ Update check failed. Check your internet connection.</span>
+          )}
+        </div>
+      </div>
+
+      {/* Demo data */}
+      {demoTotal > 0 && (
+        <div className="settings-section">
+          <div className="settings-section-title">🧹 Clear Demo Data</div>
+          <p style={{ fontSize:14,color:'#94a3b8',marginBottom:12 }}>
+            You have <strong style={{ color:'#e2e8f0' }}>{demoTxCount}</strong> demo transactions,{' '}
+            <strong style={{ color:'#e2e8f0' }}>{demoAccCount}</strong> demo accounts, and{' '}
+            <strong style={{ color:'#e2e8f0' }}>{demoBgCount}</strong> demo budgets loaded.
+          </p>
+          {!confirmDemo
+            ? <button className="btn btn-secondary" onClick={()=>setConfirmDemo(true)}>Remove Demo Data</button>
+            : <div style={{ display:'flex',gap:8,alignItems:'center' }}>
+                <span style={{ fontSize:13,color:'#c2735a' }}>Remove all demo/sample data?</span>
+                <button className="btn btn-danger btn-sm" onClick={()=>{ onClearDemo(); setConfirmDemo(false); }}>Yes, Remove</button>
+                <button className="btn btn-secondary btn-sm" onClick={()=>setConfirmDemo(false)}>Cancel</button>
+              </div>
+          }
+        </div>
+      )}
+
+      {/* Category Management */}
+      <div className="settings-section">
+        <div className="settings-section-title">🏷️ Custom Categories</div>
+        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+          Add your own categories. Built-in categories cannot be removed.
+        </p>
+        {/* Existing user categories */}
+        {(userCategories ?? []).length > 0 && (
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:12 }}>
+            {userCategories.map(c => (
+              <div key={c.name} style={{ display:'flex', alignItems:'center', gap:6, background:'#1e2736', borderRadius:8, padding:'5px 10px' }}>
+                <span>{c.icon}</span>
+                <span style={{ fontSize:13, color:'#e2e8f0' }}>{c.name}</span>
+                <button onClick={() => onDeleteUserCategory(c.name)} style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', fontSize:13 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Add new category form */}
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+          <input type="text" placeholder="Category name" maxLength={30} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ width:160 }} />
+          <input type="text" placeholder="Icon" maxLength={4} value={newCatIcon} onChange={e => setNewCatIcon(e.target.value)} style={{ width:56, textAlign:'center' }} />
+          <input type="color" value={newCatColor} onChange={e => setNewCatColor(e.target.value)} style={{ width:40, height:34, padding:2, borderRadius:6, border:'1px solid #1e2736', background:'transparent', cursor:'pointer' }} />
+          <button className="btn btn-secondary" onClick={() => {
+            const name = newCatName.trim();
+            if (!name) return;
+            const allNames = getAllCategories(userCategories).map(c => c.name);
+            if (allNames.includes(name)) { alert('A category with that name already exists.'); return; }
+            onAddUserCategory({ name, icon: newCatIcon || '📦', color: newCatColor });
+            setNewCatName(''); setNewCatIcon('📦'); setNewCatColor('#94a3b8');
+          }}>+ Add Category</button>
+        </div>
+      </div>
+
+      {/* Full reset */}
+      <div className="settings-section" style={{ borderColor:'#7f1d1d44' }}>
+        <div className="settings-section-title" style={{ color:'#fca5a5' }}>⚠️ Danger Zone</div>
+        <p style={{ fontSize:14,color:'#94a3b8',marginBottom:12 }}>Full reset deletes all transactions, accounts, budgets, and history. This cannot be undone.</p>
+        {!confirmReset
+          ? <button className="btn btn-danger" onClick={()=>setConfirmReset(true)}>Full Reset — Delete Everything</button>
+          : <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
+              <span style={{ fontSize:13,color:'#c2735a' }}>⚠️ This is permanent and cannot be undone.</span>
+              <button className="btn btn-danger" onClick={()=>{onReset();setConfirmReset(false);}}>Yes, delete everything</button>
+              <button className="btn btn-secondary" onClick={()=>setConfirmReset(false)}>Cancel</button>
+            </div>
+        }
+      </div>
+
+    </div>
+  );
+}

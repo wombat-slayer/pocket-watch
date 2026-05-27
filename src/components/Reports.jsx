@@ -477,4 +477,126 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
 
       {tab === 'tax' && (
         <div className="card">
-          <div style={{ display:'flex', ju
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
+            <div>
+              <div style={{ fontWeight:600, fontSize:14, marginBottom:2 }}>🧾 Tax Year Summary</div>
+              <div style={{ fontSize:12, color:'#64748b' }}>All transactions marked as tax deductible</div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:13, color:'#64748b' }}>Year:</span>
+              <select value={taxYear} onChange={e => setTaxYear(Number(e.target.value))}
+                style={{ fontSize:13, background:'#1e2736', border:'1px solid #334155', borderRadius:6, color:'#94a3b8', padding:'4px 8px' }}>
+                {taxYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {taxData.deductible.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">🧾</div>
+              <p>No tax-deductible transactions in {taxYear}</p>
+              <p style={{ fontSize:12, color:'#475569', marginTop:6 }}>
+                Mark transactions as "Tax deductible" when adding or editing them.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
+                <div className="stat-card">
+                  <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Total Deductible</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'#7fa88b' }}>{fmt(taxData.grandTotal)}</div>
+                </div>
+                <div className="stat-card">
+                  <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Transactions</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'#94a3b8' }}>{taxData.deductible.length}</div>
+                </div>
+                <div className="stat-card">
+                  <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Categories</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'#94a3b8' }}>{taxData.rows.length}</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize:13, fontWeight:600, color:'#64748b', marginBottom:8 }}>By Category</div>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, marginBottom:24 }}>
+                <thead>
+                  <tr style={{ borderBottom:'1px solid #1e2736' }}>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Category</th>
+                    <th style={{ textAlign:'right', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Transactions</th>
+                    <th style={{ textAlign:'right', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taxData.rows.map(([cat, data]) => (
+                    <tr key={cat} style={{ borderBottom:'1px solid #1e2736' }}>
+                      <td style={{ padding:'8px 10px', color:'#94a3b8' }}>{catIcon(cat)} {cat}</td>
+                      <td style={{ padding:'8px 10px', textAlign:'right', color:'#64748b' }}>{data.txs.length}</td>
+                      <td style={{ padding:'8px 10px', textAlign:'right', color:'#7fa88b', fontWeight:600 }}>{fmt(data.total)}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ borderTop:'2px solid #334155' }}>
+                    <td colSpan={2} style={{ padding:'10px 10px', fontWeight:700, color:'#94a3b8' }}>Total</td>
+                    <td style={{ padding:'10px 10px', textAlign:'right', fontWeight:700, color:'#7fa88b', fontSize:16 }}>{fmt(taxData.grandTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div style={{ fontSize:13, fontWeight:600, color:'#64748b', marginBottom:8 }}>All Transactions</div>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <thead>
+                  <tr style={{ borderBottom:'1px solid #1e2736' }}>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Date</th>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Description</th>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Category</th>
+                    <th style={{ textAlign:'right', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taxData.deductible
+                    .slice().sort((a, b) => a.date.localeCompare(b.date))
+                    .map(t => (
+                      <tr key={t.id} style={{ borderBottom:'1px solid #0d1117' }}>
+                        <td style={{ padding:'6px 10px', color:'#64748b', whiteSpace:'nowrap' }}>{t.date}</td>
+                        <td style={{ padding:'6px 10px', color:'#94a3b8' }}>{t.description}</td>
+                        <td style={{ padding:'6px 10px', color:'#64748b' }}>{catIcon(t.category)} {t.category}</td>
+                        <td style={{ padding:'6px 10px', textAlign:'right', color:'#7fa88b' }}>{fmt(Math.abs(t.amount))}</td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === 'nw-hist' && (
+        <div className="card">
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Net Worth History</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+            Solid line = recorded daily snapshots · Dashed = reconstructed from imported transactions
+          </div>
+          {nwHistoryData.length === 0
+            ? (
+              <div className="empty-state">
+                <div className="empty-icon">🏦</div>
+                <p>No history yet</p>
+                <p style={{ fontSize: 12, color: '#475569', marginTop: 6 }}>
+                  Import bank statements to reconstruct historical net worth, or use the app daily to build up snapshots.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="chart-container" style={{ height: 320 }}><canvas ref={canvasNWHist} /></div>
+                <div style={{ fontSize: 11, color: '#475569', marginTop: 10 }}>
+                  {nwHistoryData.filter(d => !d.isActual).length > 0 && (
+                    <span>⚠ Reconstructed months are estimates based on transaction totals and current account balances. Import complete statements for better accuracy.</span>
+                  )}
+                </div>
+              </>
+            )
+          }
+        </div>
+      )}
+    </div>
+  );
+}

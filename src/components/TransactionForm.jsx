@@ -220,4 +220,18 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
           onChange={e => set('taxDeductible', e.target.checked)}
           style={{ width:15, height:15, accentColor:'#7fa88b', cursor:'pointer' }} />
         <label htmlFor="taxDeductible" style={{ fontSize:13, color:'#94a3b8', cursor:'pointer', userSelect:'none' }}>
-          🧾 Ta
+          🧾 Tax deductible
+        </label>
+      </div>
+
+      <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
+        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={handleSave}
+          disabled={splitMode && Math.abs(remaining) > 0.01}
+          title={splitMode && Math.abs(remaining) > 0.01 ? `Splits must sum to total (off by $${Math.abs(remaining).toFixed(2)})` : ''}>
+          Save Transaction
+        </button>
+      </div>
+    </div>
+  );
+}

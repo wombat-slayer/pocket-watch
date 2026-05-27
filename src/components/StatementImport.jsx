@@ -335,4 +335,20 @@ export default function StatementImport({ account, existingTransactions, onImpor
         <span>Selected: <strong style={{ color:'#e2e8f0' }}>{selected.size}</strong></span>
         <span>Net change: <strong style={{ color: importTotal >= 0 ? '#4ade80' : '#c2735a' }}>{importTotal >= 0 ? '+' : ''}{fmt(importTotal)}</strong></span>
         <span>Current balance: <strong style={{ color:'#e2e8f0' }}>{fmt(account.balance)}</strong></span>
-        <span>After import: <strong style={{ color: newBalance >= 0 ? '
+        <span>After import: <strong style={{ color: newBalance >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(newBalance)}</strong></span>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        <button
+          className="btn btn-primary"
+          onClick={handleImport}
+          disabled={selected.size === 0}
+        >
+          Import {selected.size} transaction{selected.size !== 1 ? 's' : ''}
+        </button>
+      </div>
+    </div>
+  );
+}
