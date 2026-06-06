@@ -85,7 +85,7 @@ function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit }) 
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) {
+export default function PlaidSync({ accounts, existingTxs, onImport, onToast, onSyncComplete }) {
   // ── Credentials state ──────────────────────────────────────────────────────
   const [creds, setCreds] = useState({ clientId: '', secret: '', env: 'sandbox' });
   const [credInput, setCredInput] = useState({ clientId: '', secret: '', env: 'sandbox' });
@@ -362,6 +362,9 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) 
       if (newTxs.length > 0) {
         onImport(newTxs);
       }
+      // Post-sync review banner: report how many came in and how many landed
+      // in the fallback 'Other' category (i.e. need a human to categorize).
+      onSyncComplete?.(newTxs.length, newTxs.filter(t => t.category === 'Other').length);
 
       const now = today();
       await updateLinkedItem(item.itemId, { lastSync: now });

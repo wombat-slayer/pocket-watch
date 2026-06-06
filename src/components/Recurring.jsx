@@ -114,7 +114,7 @@ function NextDueBadge({ recurrence }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDelete, onToggle, userCategories, transactions }) {
+export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDelete, onToggle, userCategories, transactions, embedded = false }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editRec, setEditRec] = useState(null);
   const [suggestionPrefill, setSuggestionPrefill] = useState(null);
@@ -192,7 +192,7 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
     .reduce((s, r) => s + Math.abs(monthlyEquivalent(r)), 0);
 
   return (
-    <div className="fade-in" style={{ padding: '24px 28px' }}>
+    <div className={embedded ? '' : 'fade-in'} style={{ padding: embedded ? 0 : '24px 28px' }}>
       {recurSuggestions.length > 0 && (
         <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid #7fa88b' }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: '#7fa88b' }}>

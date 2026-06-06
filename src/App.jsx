@@ -11,15 +11,11 @@ import {
 import { invoke } from '@tauri-apps/api/core';
 
 import Dashboard      from './components/Dashboard.jsx';
-import Equity         from './components/Equity.jsx';
-import Calendar       from './components/Calendar.jsx';
 import Transactions   from './components/Transactions.jsx';
 import Budgets        from './components/Budgets.jsx';
 import Accounts       from './components/Accounts.jsx';
-import Goals          from './components/Goals.jsx';
 import Reports        from './components/Reports.jsx';
 import Settings       from './components/Settings.jsx';
-import Recurring      from './components/Recurring.jsx';
 import Modal          from './components/Modal.jsx';
 import TransactionForm  from './components/TransactionForm.jsx';
 import TransferForm     from './components/TransferForm.jsx';
@@ -27,7 +23,6 @@ import AdjustmentForm   from './components/AdjustmentForm.jsx';
 import CommandPalette   from './components/CommandPalette.jsx';
 import OnboardingWizard  from './components/OnboardingWizard.jsx';
 import MonthClose        from './components/MonthClose.jsx';
-import QuickAddBar       from './components/QuickAddBar.jsx';
 
 // ─── First-run setup screen ───────────────────────────────────────────────────
 function FirstRunScreen({ onChoose, onDefault, error }) {
@@ -86,6 +81,7 @@ export default function App() {
   const [onboardingDone,  setOnboardingDone]  = useState(true);
   const [showMonthClose,  setShowMonthClose]  = useState(false);
   const [toasts,          setToasts]          = useState([]);
+  const [lastSyncResult,  setLastSyncResult]  = useState(null); // { count, uncategorized } after a Plaid sync
 
   // ── Data loading status ────────────────────────────────────────────────────
   const [dataPath,        setDataPathState]   = useState(null);
@@ -333,7 +329,7 @@ export default function App() {
       if ((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey) { e.preventDefault(); handleUndo(); return; }
       if ((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.key==='z' && e.shiftKey))) { e.preventDefault(); handleRedo(); return; }
       if (inInput) return;
-      const navKeys = {'1':'dashboard','2':'transactions','3':'accounts','4':'budgets','5':'goals','6':'recurring','7':'investments','8':'cashflow','9':'reports','0':'settings'};
+      const navKeys = {'1':'dashboard','2':'transactions','3':'accounts','4':'budgets','5':'reports','6':'settings'};
       if (navKeys[e.key]) { setPage(navKeys[e.key]); return; }
       if (e.key === 'n' || e.key === 'N') { setShowAdd(true); return; }
       if (e.key === 't' || e.key === 'T') { setShowTransfer(true); return; }
@@ -492,6 +488,11 @@ export default function App() {
   const deleteRecurrence = (id) => setRecurrences(rs => rs.filter(r => r.id !== id));
   const toggleRecurrence = (id) => setRecurrences(rs => rs.map(r => r.id === id ? { ...r, active: !r.active } : r));
 
+  // ── Plaid sync result (drives the post-sync review banner) ───────────────────
+  const handleSyncComplete = useCallback((count, uncategorized) => {
+    setLastSyncResult(count > 0 ? { count, uncategorized } : null);
+  }, []);
+
   // ── Settings handlers ────────────────────────────────────────────────────────
   // ── Net worth history import ──────────────────────────────────────────────────
   const handleImportNetWorthHistory = (rows) => {
@@ -542,10 +543,6 @@ export default function App() {
     { id:'transactions', icon:'💸', label:'Transactions' },
     { id:'accounts',     icon:'🏦', label:'Accounts'     },
     { id:'budgets',      icon:'🎯', label:'Budgets'      },
-    { id:'goals',        icon:'⭐', label:'Goals'        },
-    { id:'recurring',    icon:'🔁', label:'Recurring'    },
-    { id:'investments',  icon:'📈', label:'Investments'  },
-    { id:'cashflow',     icon:'📅', label:'Cashflow'     },
     { id:'reports',      icon:'📊', label:'Reports'      },
     { id:'settings',     icon:'⚙️', label:'Settings'     },
   ];
@@ -600,40 +597,6 @@ export default function App() {
           ))}
         </nav>
         {!sidebarCollapsed && (
-          <div style={{ padding:'12px 16px', borderTop:'1px solid #1e2736' }} className="sidebar-footer">
-            {/* Smart quick-add bar */}
-            <QuickAddBar accounts={accounts} transactions={transactions} onAdd={tx=>{ addTx(tx); }} onOpenFull={()=>setShowAdd(true)} />
-
-            {/* Secondary actions row */}
-            <div style={{ display:'flex', gap:6, marginTop:8 }}>
-              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', fontSize:11, padding:'5px 0' }} onClick={()=>setShowTransfer(true)} title="Transfer between accounts">
-                ↔ Transfer
-              </button>
-              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', fontSize:11, padding:'5px 0' }} onClick={()=>setShowAdjustment(true)} title="Update account balance">
-                📊 Balance
-              </button>
-              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', fontSize:11, padding:'5px 0' }} onClick={()=>setShowMonthClose(true)} title="Month close wizard">
-                📅 Close
-              </button>
-            </div>
-
-            {/* Utility row */}
-            <div style={{ display:'flex', gap:6, marginTop:6 }}>
-              <button className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:'center', fontSize:11 }} onClick={()=>setShowPalette(true)} title="Search (⌘K)">
-                🔍 <span style={{ marginLeft:4 }}>⌘K</span>
-              </button>
-              <button className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:'center', fontSize:11 }} onClick={()=>setShowHelp(h=>!h)} title="Keyboard shortcuts (?)">
-                ⌨️ ?
-              </button>
-              {undoLen > 0 && (
-                <button className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:'center', fontSize:11 }} onClick={handleUndo} title="Undo (Ctrl+Z)">
-                  ↩ Undo
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {!sidebarCollapsed && (
           <div style={{ padding:'10px 16px 16px',fontSize:11,color:'#334155',textAlign:'center' }} className="sidebar-footer">
             Local · Private · Yours
           </div>
@@ -642,16 +605,12 @@ export default function App() {
 
       {/* Main content */}
       <div className="main">
-        {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} />}
-        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} />}
-        {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} />}
+        {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} onAddGoal={addGoal} onEditGoal={editGoal} onDeleteGoal={deleteGoal} onDeposit={depositGoal} onGoToBudgets={()=>setPage('budgets')} />}
+        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} recurrences={recurrences} lastSyncResult={lastSyncResult} onDismissSyncResult={()=>setLastSyncResult(null)} />}
+        {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} onCloseMonth={()=>setShowMonthClose(true)} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
-        {page==='goals'        && <Goals        goals={goals} accounts={accounts} onAdd={addGoal} onEdit={editGoal} onDelete={deleteGoal} onDeposit={depositGoal} />}
-        {page==='recurring'    && <Recurring    recurrences={recurrences} accounts={accounts} transactions={transactions} onAdd={addRecurrence} onEdit={editRecurrence} onDelete={deleteRecurrence} onToggle={toggleRecurrence} userCategories={userCategories} />}
-        {page==='investments'  && <Equity       grants={grants} onAdd={addGrant} onEdit={editGrant} onDelete={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} investmentAccounts={accounts.filter(a => a.type === 'investment' || a.type === 'brokerage')} finnhubKey={apiKeys.finnhub} />}
-        {page==='cashflow'     && <Calendar     transactions={transactions} recurrences={recurrences} accounts={accounts} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onToast={showToast} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} />}
       </div>
 
       {showAdd && (
@@ -671,7 +630,8 @@ export default function App() {
       )}
       {showPalette && (
         <CommandPalette transactions={transactions} accounts={accounts} goals={goals}
-          onClose={()=>setShowPalette(false)} onNavigate={(p)=>{ setPage(p); setShowPalette(false); }} />
+          onClose={()=>setShowPalette(false)} onNavigate={(p)=>{ setPage(p); setShowPalette(false); }}
+          onCloseMonth={()=>{ setShowMonthClose(true); setShowPalette(false); }} />
       )}
       {showHelp && (
         <div style={{ position:'fixed',inset:0,background:'#00000088',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center' }} onClick={()=>setShowHelp(false)}>

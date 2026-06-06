@@ -17,7 +17,7 @@ function saveFilters(patch) {
   } catch {}
 }
 
-export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive }) {
+export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive, recurrences = [], lastSyncResult, onDismissSyncResult }) {
   const saved = loadFilters();
   const [search,      setSearch]      = useState(saved.search      ?? '');
   const [catFilter,   setCatFilter]   = useState(() => initialCatFilter && initialCatFilter !== 'All' ? initialCatFilter : (saved.catFilter ?? 'All'));
@@ -28,6 +28,8 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
   const [dateTo,      setDateTo]      = useState(saved.dateTo      ?? '');
   const [tagFilter,   setTagFilter]   = useState(saved.tagFilter   ?? 'All');
   const [showAdvanced, setShowAdvanced] = useState(saved.showAdvanced ?? false);
+  const [recurringOnly, setRecurringOnly] = useState(saved.recurringOnly ?? false);
+  const [reviewMode,    setReviewMode]    = useState(false); // post-sync "needs a category" filter
 
   // Persist filter changes to sessionStorage
   useEffect(() => { saveFilters({ search });       }, [search]);
@@ -39,6 +41,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
   useEffect(() => { saveFilters({ dateTo });       }, [dateTo]);
   useEffect(() => { saveFilters({ tagFilter });    }, [tagFilter]);
   useEffect(() => { saveFilters({ showAdvanced }); }, [showAdvanced]);
+  useEffect(() => { saveFilters({ recurringOnly }); }, [recurringOnly]);
 
   // Sync catFilter when drill-down arrives from Reports
   useEffect(() => {
@@ -75,6 +78,16 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
     return ['All', ...Array.from(set).sort()];
   }, [transactions]);
 
+  // Lowercased recurrence rule descriptions, for the Recurring filter toggle
+  const recurDescs = useMemo(() =>
+    new Set(recurrences.map(r => (r.description || '').toLowerCase()).filter(Boolean)),
+  [recurrences]);
+
+  // Plaid imports that landed in the fallback 'Other' category (need review)
+  const uncategorizedCount = useMemo(() =>
+    transactions.filter(t => t._plaid && t.category === 'Other').length,
+  [transactions]);
+
   const filtered = useMemo(() => transactions.filter(t => {
     if (t.type === 'adjustment' && typeFilter !== 'adjustment') return false;
     if (debouncedSearch && !t.description.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
@@ -85,8 +98,10 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
     if (dateFrom    && t.date < dateFrom)                         return false;
     if (dateTo      && t.date > dateTo)                           return false;
     if (tagFilter !== 'All' && !(t.tags || []).includes(tagFilter)) return false;
+    if (recurringOnly && !(t.recurringId || recurDescs.has((t.description || '').toLowerCase()))) return false;
+    if (reviewMode && !(t._plaid && t.category === 'Other')) return false;
     return true;
-  }), [transactions, debouncedSearch, catFilter, typeFilter, monthFilter, acctFilter, dateFrom, dateTo, tagFilter]);
+  }), [transactions, debouncedSearch, catFilter, typeFilter, monthFilter, acctFilter, dateFrom, dateTo, tagFilter, recurringOnly, recurDescs, reviewMode]);
 
   const pages    = Math.max(1, Math.ceil(filtered.length / PER));
   const safePage = Math.min(page, pages - 1);
@@ -97,11 +112,12 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
     setSearch(''); setCatFilter('All'); setTypeFilter('All');
     setMonthFilter('All'); setAcctFilter('All');
     setDateFrom(''); setDateTo(''); setTagFilter('All');
+    setRecurringOnly(false); setReviewMode(false);
     setPage(0);
     if (onClearCatFilter) onClearCatFilter();
   };
   const hasFilters = search || catFilter!=='All' || typeFilter!=='All' || monthFilter!=='All'
-    || acctFilter!=='All' || dateFrom || dateTo || tagFilter!=='All';
+    || acctFilter!=='All' || dateFrom || dateTo || tagFilter!=='All' || recurringOnly || reviewMode;
   const hasAdvancedFilters = dateFrom || dateTo || tagFilter !== 'All';
 
   const runningBalances = useMemo(() => {
@@ -259,6 +275,31 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
         </div>
       )}
 
+      {/* Post-sync review banner */}
+      {lastSyncResult && lastSyncResult.uncategorized > 0 && uncategorizedCount > 0 && (
+        <div style={{ background:'#14532d22', border:'1px solid #14532d66', borderRadius:8, padding:'8px 14px', marginBottom:12, display:'flex', alignItems:'center', gap:12, fontSize:13 }}>
+          <span style={{ color:'#4ade80' }}>
+            ✓ {lastSyncResult.count} transaction{lastSyncResult.count !== 1 ? 's' : ''} synced
+            {' '}· <strong>{uncategorizedCount}</strong> need{uncategorizedCount === 1 ? 's' : ''} a category
+          </span>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ fontSize:11, color:'#4ade80', border:'1px solid #14532d88', marginLeft:'auto' }}
+            onClick={() => { setReviewMode(true); setPage(0); }}
+          >
+            Review
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ fontSize:11, color:'#64748b' }}
+            title="Dismiss"
+            onClick={() => { setReviewMode(false); onDismissSyncResult?.(); }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="card" style={{ marginBottom:16, padding:14 }}>
         {/* Primary filter row */}
@@ -282,6 +323,26 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
             <option value="income">Income</option>
             <option value="adjustment">Adjustment</option>
           </select>
+          {recurrences.length > 0 && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize:12, color: recurringOnly ? '#7fa88b' : '#64748b', border: recurringOnly ? '1px solid #7fa88b55' : undefined }}
+              onClick={() => { setRecurringOnly(v => !v); setPage(0); }}
+              title="Show only transactions matching a recurring rule"
+            >
+              🔁 Recurring{recurringOnly ? ' ●' : ''}
+            </button>
+          )}
+          {reviewMode && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize:12, color:'#4ade80', border:'1px solid #14532d88' }}
+              onClick={() => { setReviewMode(false); setPage(0); }}
+              title="Showing only synced transactions that need a category"
+            >
+              ✓ Needs category ●
+            </button>
+          )}
           <button
             className={`btn btn-ghost btn-sm${hasAdvancedFilters ? '' : ''}`}
             style={{ fontSize:12, color: hasAdvancedFilters ? '#7fa88b' : '#64748b', border: hasAdvancedFilters ? '1px solid #7fa88b55' : undefined }}

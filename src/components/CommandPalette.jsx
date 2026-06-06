@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { acctEmoji, acctLabel, catIcon, fmt, fmtDate } from '../constants.js';
 
-export default function CommandPalette({ transactions, accounts, goals, onClose, onNavigate }) {
+export default function CommandPalette({ transactions, accounts, goals, onClose, onNavigate, onCloseMonth }) {
   const [query,  setQuery]  = useState('');
   const [selIdx, setSelIdx] = useState(0);
   const inputRef = useRef(null);
@@ -11,23 +11,26 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
   const pages = [
     { id:'dashboard',    label:'Dashboard',    icon:'🏠', type:'page' },
     { id:'transactions', label:'Transactions', icon:'💸', type:'page' },
-    { id:'budgets',      label:'Budgets',      icon:'🎯', type:'page' },
     { id:'accounts',     label:'Accounts',     icon:'🏦', type:'page' },
-    { id:'goals',        label:'Goals',        icon:'⭐', type:'page' },
-    { id:'equity',       label:'Equity',       icon:'📈', type:'page' },
-    { id:'recurring',    label:'Recurring',    icon:'🔁', type:'page' },
+    { id:'budgets',      label:'Budgets',      icon:'🎯', type:'page' },
     { id:'reports',      label:'Reports',      icon:'📊', type:'page' },
     { id:'settings',     label:'Settings',     icon:'⚙️', type:'page' },
   ];
 
+  const actions = [
+    { id:'close-month', label:'Close Month…', icon:'📅', type:'action', run: onCloseMonth },
+  ].filter(a => a.run);
+
   const q = query.toLowerCase().trim();
-  const matchPages = pages.filter(p => !q || p.label.toLowerCase().includes(q));
+  const matchPages   = pages.filter(p => !q || p.label.toLowerCase().includes(q));
+  const matchActions = actions.filter(a => !q || a.label.toLowerCase().includes(q));
   const matchAccts = accounts.filter(a => !q || a.name.toLowerCase().includes(q)).slice(0,4).map(a=>({...a,acctType:a.type,type:'account',label:a.name,icon:acctEmoji(a.type)}));
   const matchGoals = goals.filter(g => !q || g.name.toLowerCase().includes(q)).slice(0,4).map(g=>({...g,type:'goal',label:g.name}));
   const matchTxs   = q ? transactions.filter(t=>t.description.toLowerCase().includes(q)||t.category.toLowerCase().includes(q)).slice(0,5).map(t=>({...t,type:'tx',label:t.description,icon:catIcon(t.category)})) : [];
 
   const items = [
     ...matchPages.map(p=>({...p,section:'Pages'})),
+    ...matchActions.map(a=>({...a,section:'Actions'})),
     ...matchAccts.map(a=>({...a,section:'Accounts'})),
     ...matchGoals.map(g=>({...g,section:'Goals'})),
     ...matchTxs.map(t=>({...t,section:'Transactions'})),
@@ -41,9 +44,10 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
   };
 
   const activate = (item) => {
+    if      (item.type === 'action')  { item.run(); return; } // action handles its own close
     if      (item.type === 'page')    onNavigate(item.id);
     else if (item.type === 'account') onNavigate('accounts');
-    else if (item.type === 'goal')    onNavigate('goals');
+    else if (item.type === 'goal')    onNavigate('dashboard'); // goals live on the Dashboard now
     else if (item.type === 'tx')      onNavigate('transactions');
     onClose();
   };

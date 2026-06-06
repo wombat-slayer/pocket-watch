@@ -418,7 +418,7 @@ function PortfolioChart({ grants, quotes }) {
 }
 
 // --- Main Equity Component ---------------------------------------------------
-export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVestToAccount, onUpdateGrantPrice, investmentAccounts, finnhubKey }) {
+export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVestToAccount, onUpdateGrantPrice, investmentAccounts, finnhubKey, embedded = false }) {
   const [expandedGrant, setExpandedGrant] = useState(null);
   const [editingPrice,  setEditingPrice]  = useState(null);
   const [priceInput,    setPriceInput]    = useState('');
@@ -511,7 +511,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
   };
 
   return (
-    <div className="fade-in" style={{ padding: '24px 28px' }}>
+    <div className={embedded ? '' : 'fade-in'} style={{ padding: embedded ? 0 : '24px 28px' }}>
       {/* Header */}
       <div className="section-header">
         <div>

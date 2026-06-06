@@ -44,7 +44,7 @@ function BudgetForm({ initial, defaultMonth, onSave, onClose, userCategories }) 
   );
 }
 
-export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete, userCategories, budgetTemplates = [], onSaveTemplate, onLoadTemplate, onBudgetAlert, onToggleTemplateAutoApply }) {
+export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete, userCategories, budgetTemplates = [], onSaveTemplate, onLoadTemplate, onBudgetAlert, onToggleTemplateAutoApply, onCloseMonth }) {
   const [month,   setMonth]   = useState(thisMonth());
   const [showAdd, setShowAdd] = useState(false);
   const [editB,   setEditB]   = useState(null);
@@ -230,6 +230,11 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
             <div className={`tab${view==='history'?' active':''}`} onClick={()=>setView('history')}>6-Month History</div>
             <div className={`tab${view==='annual'?' active':''}`} onClick={()=>setView('annual')}>Annual</div>
           </div>
+          {onCloseMonth && (
+            <button className="btn btn-secondary" onClick={onCloseMonth} title="Month-end close wizard">
+              📅 Close Month
+            </button>
+          )}
           {view === 'current' && (
             <>
               <select value={month} onChange={e=>{setMonth(e.target.value);setCopied(false);}} style={{ width:170 }}>

@@ -61,7 +61,7 @@ function GoalForm({ goal, accounts, onSave, onClose }) {
   );
 }
 
-export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDeposit }) {
+export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDeposit, embedded = false }) {
   const [showAdd,     setShowAdd]     = useState(false);
   const [editGoal,    setEditGoal]    = useState(null);
   const [depositGoal, setDepositGoal] = useState(null);
@@ -92,11 +92,11 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
   };
 
   return (
-    <div className="fade-in" style={{ padding:'24px 28px' }}>
+    <div className={embedded ? '' : 'fade-in'} style={{ padding: embedded ? 0 : '24px 28px' }}>
       <div className="section-header">
         <div>
-          <div className="section-title">Goals</div>
-          <div className="section-sub">Track savings targets and financial milestones</div>
+          <div className="section-title" style={embedded ? { fontSize:18 } : undefined}>{embedded ? 'Savings Goals' : 'Goals'}</div>
+          {!embedded && <div className="section-sub">Track savings targets and financial milestones</div>}
         </div>
         <button className="btn btn-primary" onClick={()=>setShowAdd(true)}>+ New Goal</button>
       </div>

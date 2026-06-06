@@ -1,6 +1,7 @@
 import { useRef, useState, useMemo, useEffect } from 'react';
 import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
+import Goals from './Goals.jsx';
 
 const DEFAULT_PREFS = {
   showIncome: true,
@@ -18,7 +19,7 @@ function loadPrefs() {
   return DEFAULT_PREFS;
 }
 
-export default function Dashboard({ transactions, accounts, budgets, recurrences, onAddTx, grants, netWorthHistory = [], goals = [] }) {
+export default function Dashboard({ transactions, accounts, budgets, recurrences, onAddTx, grants, netWorthHistory = [], goals = [], onAddGoal, onEditGoal, onDeleteGoal, onDeposit, onGoToBudgets }) {
   const canvasDonut        = useRef(null);
   const canvasBar          = useRef(null);
   const canvasForecast     = useRef(null);
@@ -316,6 +317,68 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
         </div>
       )}
 
+      {/* ── Budget status hero — first answer: "am I on budget this month?" ── */}
+      {(() => {
+        const monthBudgets = budgets
+          .filter(b => b.month === selMonth)
+          .map(b => {
+            const spent = catSpend[b.category] || 0;
+            const pct   = b.amount > 0 ? (spent / b.amount) * 100 : 0;
+            return { ...b, spent, pct };
+          })
+          .sort((a, b) => b.pct - a.pct);
+        const heroSpent = monthBudgets.reduce((s, b) => s + b.spent, 0);
+        const heroTotal = monthBudgets.reduce((s, b) => s + b.amount, 0);
+        const overCount = monthBudgets.filter(b => b.pct >= 100).length;
+        const barColor  = (pct) => pct >= 100 ? '#c2735a' : pct >= 80 ? '#f59e0b' : '#4ade80';
+        return (
+          <div className="card" style={{ marginBottom:20 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14, flexWrap:'wrap', gap:8 }}>
+              <div style={{ fontWeight:600, fontSize:15 }}>🎯 Budget Status</div>
+              {monthBudgets.length > 0 && (
+                <div style={{ fontSize:13, color:'#94a3b8' }}>
+                  <strong style={{ color: heroSpent > heroTotal ? '#c2735a' : '#e2e8f0' }}>{fmt(heroSpent)}</strong>
+                  {' '}of <strong style={{ color:'#e2e8f0' }}>{fmt(heroTotal)}</strong> spent this month
+                  {overCount > 0 && <span style={{ color:'#c2735a', marginLeft:8 }}>⚠ {overCount} over limit</span>}
+                </div>
+              )}
+            </div>
+            {monthBudgets.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'18px 0' }}>
+                <div style={{ fontSize:13, color:'#64748b', marginBottom:12 }}>
+                  No budgets set for this month — set spending limits to see at a glance whether you're on track.
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={onGoToBudgets}>+ Create Budgets</button>
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {monthBudgets.map(b => (
+                  <div
+                    key={b.id}
+                    onClick={onGoToBudgets}
+                    title="Manage budgets"
+                    style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}
+                  >
+                    <span style={{ fontSize:13, color:'#e2e8f0', width:170, flexShrink:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {catIcon(b.category)} {b.category}
+                    </span>
+                    <span style={{ fontSize:12, color:'#94a3b8', width:150, flexShrink:0, textAlign:'right' }}>
+                      {fmt(b.spent)} / {fmt(b.amount)}
+                    </span>
+                    <div style={{ flex:1, background:'#1e2736', borderRadius:5, height:8, overflow:'hidden' }}>
+                      <div style={{ height:'100%', borderRadius:5, width:`${Math.min(100, b.pct)}%`, background:barColor(b.pct), transition:'width 0.4s ease' }} />
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:700, color:barColor(b.pct), width:44, flexShrink:0, textAlign:'right' }}>
+                      {Math.round(b.pct)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:`repeat(${[prefs.showIncome,prefs.showExpenses,prefs.showNet,prefs.showSavingsRate].filter(Boolean).length},1fr)`, gap:14, marginBottom:20 }}>
         {prefs.showNet && (
@@ -361,64 +424,17 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
         )}
       </div>
 
-      {/* Over-budget alert */}
-      {(() => {
-        const overBudget = budgets.filter(b => {
-          if (b.month !== selMonth) return false;
-          const spent = monthExpenses.filter(t => t.category === b.category).reduce((s,t) => s + Math.abs(t.amount), 0);
-          return spent > b.amount;
-        });
-        if (!overBudget.length) return null;
-        return (
-          <div style={{ background:'#c2735a18', border:'1px solid #c2735a44', borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:13, color:'#c2735a', display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:16 }}>⚠️</span>
-            <span><strong>{overBudget.length} budget{overBudget.length > 1 ? 's' : ''} over limit this month:</strong>{' '}{overBudget.map(b => b.category).join(', ')}</span>
-          </div>
-        );
-      })()}
-
-      {/* Insights */}
-      {insights.length > 0 && (
-        <div className="card" style={{ marginBottom:20 }}>
-          <div style={{ fontWeight:600,fontSize:14,marginBottom:12 }}>💡 Spending Insights</div>
-          {insights.map(({cat,spent,avg,pct,dir}) => (
-            <div key={cat} style={{ fontSize:13,color:'#94a3b8',marginBottom:6,display:'flex',alignItems:'center',gap:6 }}>
-              <span>{dir==='up'?'⬆️':'⬇️'}</span>
-              <span>
-                <strong style={{ color:'#e2e8f0' }}>{catIcon(cat)} {cat}</strong>
-                {' '}is{' '}
-                <strong style={{ color: dir==='up'?'#c2735a':'#4ade80' }}>{pct.toFixed(0)}% {dir==='up'?'above':'below'}</strong>
-                {' '}your 3-month average ({fmt(spent)} vs {fmt(avg)} avg)
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Charts */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1.8fr', gap:14, marginBottom:20 }}>
-        <div className="card">
-          <div style={{ fontWeight:600,fontSize:14,marginBottom:16 }}>Spending by Category</div>
-          {topCats.length === 0
-            ? <div className="empty-state"><div className="empty-icon">🍩</div><p>No expenses this month</p></div>
-            : <>
-                <div className="chart-container" style={{ height:160 }}><canvas ref={canvasDonut} /></div>
-                <div style={{ marginTop:14,display:'flex',flexDirection:'column',gap:6 }}>
-                  {topCats.map(([cat,amt]) => (
-                    <div key={cat} style={{ display:'flex',alignItems:'center',gap:8 }}>
-                      <div style={{ width:10,height:10,borderRadius:2,background:catColor(cat),flexShrink:0 }} />
-                      <span style={{ fontSize:13,color:'#94a3b8',flex:1 }}>{catIcon(cat)} {cat}</span>
-                      <span style={{ fontSize:13,fontWeight:600,color:'#e2e8f0' }}>{fmt(amt)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-          }
-        </div>
-        <div className="card">
-          <div style={{ fontWeight:600,fontSize:14,marginBottom:16 }}>Income vs Spending — Last 6 Months</div>
-          <div className="chart-container" style={{ height:240 }}><canvas ref={canvasBar} /></div>
-        </div>
+      {/* Savings Goals (moved from its own nav page) */}
+      <div style={{ marginBottom:20 }}>
+        <Goals
+          embedded
+          goals={goals}
+          accounts={accounts}
+          onAdd={onAddGoal}
+          onEdit={onEditGoal}
+          onDelete={onDeleteGoal}
+          onDeposit={onDeposit}
+        />
       </div>
 
       {/* Recent transactions */}
@@ -447,7 +463,51 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
         }
       </div>
 
-            {/* Insights panel — Forecast + Net Worth Trajectory */}
+      {/* Insights */}
+      {insights.length > 0 && (
+        <div className="card" style={{ marginTop:20 }}>
+          <div style={{ fontWeight:600,fontSize:14,marginBottom:12 }}>💡 Spending Insights</div>
+          {insights.map(({cat,spent,avg,pct,dir}) => (
+            <div key={cat} style={{ fontSize:13,color:'#94a3b8',marginBottom:6,display:'flex',alignItems:'center',gap:6 }}>
+              <span>{dir==='up'?'⬆️':'⬇️'}</span>
+              <span>
+                <strong style={{ color:'#e2e8f0' }}>{catIcon(cat)} {cat}</strong>
+                {' '}is{' '}
+                <strong style={{ color: dir==='up'?'#c2735a':'#4ade80' }}>{pct.toFixed(0)}% {dir==='up'?'above':'below'}</strong>
+                {' '}your 3-month average ({fmt(spent)} vs {fmt(avg)} avg)
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Charts */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1.8fr', gap:14, marginTop:20 }}>
+        <div className="card">
+          <div style={{ fontWeight:600,fontSize:14,marginBottom:16 }}>Spending by Category</div>
+          {topCats.length === 0
+            ? <div className="empty-state"><div className="empty-icon">🍩</div><p>No expenses this month</p></div>
+            : <>
+                <div className="chart-container" style={{ height:160 }}><canvas ref={canvasDonut} /></div>
+                <div style={{ marginTop:14,display:'flex',flexDirection:'column',gap:6 }}>
+                  {topCats.map(([cat,amt]) => (
+                    <div key={cat} style={{ display:'flex',alignItems:'center',gap:8 }}>
+                      <div style={{ width:10,height:10,borderRadius:2,background:catColor(cat),flexShrink:0 }} />
+                      <span style={{ fontSize:13,color:'#94a3b8',flex:1 }}>{catIcon(cat)} {cat}</span>
+                      <span style={{ fontSize:13,fontWeight:600,color:'#e2e8f0' }}>{fmt(amt)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+          }
+        </div>
+        <div className="card">
+          <div style={{ fontWeight:600,fontSize:14,marginBottom:16 }}>Income vs Spending — Last 6 Months</div>
+          <div className="chart-container" style={{ height:240 }}><canvas ref={canvasBar} /></div>
+        </div>
+      </div>
+
+      {/* Insights panel — Forecast + Net Worth Trajectory */}
       <div style={{ marginTop:20, border:'1px solid #1e2736', borderRadius:12, overflow:'hidden' }}>
         <button
           onClick={()=>setInsightsOpen(o=>!o)}

@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { download, getAllCategories, thisMonth } from '../constants.js';
 import { promptNewDataFile } from '../dataLayer.js';
 import PlaidSync from './PlaidSync.jsx';
+import Recurring from './Recurring.jsx';
+import Equity from './Equity.jsx';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onToast }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onToast, onPlaidSyncComplete, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDemo,  setConfirmDemo]  = useState(false);
   const [importError,  setImportError]  = useState('');
@@ -27,6 +29,9 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   // Update states
   const [updateStatus, setUpdateStatus] = useState('idle'); // idle | checking | available | uptodate | installing | restart | error
   const [updateInfo,   setUpdateInfo]   = useState(null);
+
+  // Collapsible Investments section
+  const [investmentsOpen, setInvestmentsOpen] = useState(false);
 
 
   const demoTxCount  = transactions.filter(t=>t._seeded).length;
@@ -126,7 +131,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       <div className="settings-section">
         <div className="settings-section-title">🔑 API Keys</div>
         <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
-          Add a <strong style={{ color:'#e2e8f0' }}>Finnhub</strong> API key to enable live stock price fetching on the Investments page.
+          Add a <strong style={{ color:'#e2e8f0' }}>Finnhub</strong> API key to enable live stock price fetching in the Investments section below.
           {' '}<a href="https://finnhub.io/register" target="_blank" rel="noreferrer"
             style={{ color:'#7fa88b', textDecoration:'none', borderBottom:'1px dashed #7fa88b44' }}>
             Get a free key at finnhub.io
@@ -177,6 +182,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           existingTxs={transactions}
           onImport={rows => onPlaidImport?.(rows)}
           onToast={onToast}
+          onSyncComplete={onPlaidSyncComplete}
         />
       </div>
 
@@ -434,6 +440,54 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
             setNewCatName(''); setNewCatIcon('📦'); setNewCatColor('#94a3b8');
           }}>+ Add Category</button>
         </div>
+      </div>
+
+      {/* Recurring Rules (moved from its own nav page) */}
+      <div className="settings-section">
+        <div className="settings-section-title">🔁 Recurring Rules</div>
+        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+          Rules that auto-generate transactions on a schedule (rent, salary, subscriptions).
+          Generated transactions appear on the Transactions page with a 🔁 marker.
+        </p>
+        <Recurring
+          embedded
+          recurrences={recurrences}
+          accounts={accounts}
+          transactions={transactions}
+          onAdd={onAddRecurrence}
+          onEdit={onEditRecurrence}
+          onDelete={onDeleteRecurrence}
+          onToggle={onToggleRecurrence}
+          userCategories={userCategories}
+        />
+      </div>
+
+      {/* Investments (moved from its own nav page, collapsible) */}
+      <div className="settings-section">
+        <div
+          className="settings-section-title"
+          style={{ cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between' }}
+          onClick={() => setInvestmentsOpen(o => !o)}
+        >
+          <span>📈 Investments</span>
+          <span style={{ fontSize:12, color:'#64748b', fontWeight:400 }}>{investmentsOpen ? '▲ Collapse' : '▼ Expand'}</span>
+        </div>
+        {investmentsOpen && (
+          <div style={{ marginTop:12 }}>
+            <Equity
+              embedded
+              grants={grants}
+              onAdd={onAddGrant}
+              onEdit={onEditGrant}
+              onDelete={onDeleteGrant}
+              onAddTx={onAddTx}
+              onVestToAccount={onVestToAccount}
+              onUpdateGrantPrice={onUpdateGrantPrice}
+              investmentAccounts={accounts.filter(a => a.type === 'investment' || a.type === 'brokerage')}
+              finnhubKey={apiKeys.finnhub}
+            />
+          </div>
+        )}
       </div>
 
       {/* Full reset */}
