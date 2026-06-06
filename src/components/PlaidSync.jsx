@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -25,15 +25,32 @@ function daysAgo(n) {
   return d.toISOString().slice(0, 10);
 }
 
+// ── OAuth redirect support ───────────────────────────────────────────────────
+// OAuth institutions (Chase, Wells Fargo, …) send the user to the bank's site
+// and back to the redirect URI registered in the Plaid dashboard, with an
+// oauth_state_id query param. The page reloads on the way back, so the
+// link_token must be persisted and Link re-initialized with the SAME token
+// plus receivedRedirectUri.
+
+const OAUTH_REDIRECT_URI     = 'http://localhost';
+const LINK_TOKEN_STORAGE_KEY = 'plaid_link_token';
+
 // ── PlaidLink wrapper (rendered when we have a link_token) ───────────────────
 
-function PlaidLinkButton({ linkToken, onSuccess, onExit }) {
+function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit }) {
   const config = {
     token: linkToken,
+    receivedRedirectUri: receivedRedirectUri || undefined,
     onSuccess: (public_token, metadata) => onSuccess(public_token, metadata),
     onExit: (err) => { if (err) console.error('Plaid exit:', err); onExit?.(); },
   };
   const { open, ready } = usePlaidLink(config);
+
+  // OAuth continuation: resume Link automatically instead of waiting for a click
+  useEffect(() => {
+    if (receivedRedirectUri && ready) open();
+  }, [receivedRedirectUri, ready, open]);
+
   return (
     <button
       className="btn btn-primary"
@@ -48,7 +65,7 @@ function PlaidLinkButton({ linkToken, onSuccess, onExit }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function PlaidSync({ accounts, existingTxs, onImport }) {
+export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) {
   // ── Credentials state ──────────────────────────────────────────────────────
   const [creds, setCreds] = useState({ clientId: '', secret: '', env: 'sandbox' });
   const [credInput, setCredInput] = useState({ clientId: '', secret: '', env: 'sandbox' });
@@ -62,10 +79,12 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
   const [linkToken, setLinkToken] = useState(null);
   const [linking,   setLinking]   = useState(false);
   const [linkError, setLinkError] = useState('');
+  const [oauthRedirectUri, setOauthRedirectUri] = useState(null); // set when resuming an OAuth flow
 
   // ── Sync state ─────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState({}); // { [itemId]: 'idle'|'syncing'|'done'|'error' }
   const [syncMsg,    setSyncMsg]    = useState({}); // { [itemId]: string }
+  const warnedUnmatched = useRef(new Set());        // itemIds already warned about unmatched accounts
 
   // ── Load saved state on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -76,8 +95,32 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
       setCredEditing(!saved.clientId); // show form if no creds yet
       const savedItems = await getLinkedItems();
       setItems(savedItems);
+
+      // OAuth redirect continuation: the bank sent the user back with
+      // oauth_state_id in the URL — re-initialize Link with the persisted
+      // link_token and the full redirect URL.
+      if (window.location.href.includes('oauth_state_id')) {
+        const storedToken = localStorage.getItem(LINK_TOKEN_STORAGE_KEY);
+        if (storedToken) {
+          setOauthRedirectUri(window.location.href);
+          setLinkToken(storedToken);
+        } else {
+          setLinkError('Returned from bank OAuth, but no pending link session was found. Please start the connection again.');
+        }
+      }
     })();
   }, []);
+
+  // ── OAuth session cleanup (after Link finishes or is abandoned) ─────────────
+  const endLinkSession = () => {
+    localStorage.removeItem(LINK_TOKEN_STORAGE_KEY);
+    setOauthRedirectUri(null);
+    setLinkToken(null);
+    // Strip oauth_state_id etc. from the webview URL
+    if (window.location.search) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
 
   // ── Save credentials ───────────────────────────────────────────────────────
   const handleSaveCreds = async () => {
@@ -132,11 +175,15 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
     setLinking(true);
     try {
       const token = await invoke('plaid_create_link_token', {
-        clientId: creds.clientId,
-        secret:   creds.secret,
-        env:      creds.env,
-        userId:   'pocket-watch-user',
+        clientId:    creds.clientId,
+        secret:      creds.secret,
+        env:         creds.env,
+        userId:      'pocket-watch-user',
+        redirectUri: OAUTH_REDIRECT_URI,
       });
+      // Persist for OAuth continuation — the page reloads when the bank
+      // redirects back, so React state alone would lose the token.
+      localStorage.setItem(LINK_TOKEN_STORAGE_KEY, token);
       setLinkToken(token);
     } catch (e) {
       setLinkError(String(e));
@@ -147,7 +194,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
 
   // ── Handle successful Link flow ────────────────────────────────────────────
   const handleLinkSuccess = useCallback(async (publicToken, metadata) => {
-    setLinkToken(null);
+    endLinkSession();
     setLinkError('');
     try {
       const accessToken = await invoke('plaid_exchange_token', {
@@ -206,13 +253,29 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
 
       // Build account id → PW account id map
       const accountMap = {};
+      const unmatched  = [];
       for (const pa of item.accounts) {
         const match = accounts.find(a =>
           a.name?.toLowerCase().includes(pa.name?.toLowerCase()) ||
           a.name?.toLowerCase().includes(item.institutionName?.toLowerCase())
         );
-        if (match) accountMap[pa.id] = match.id;
-        else accountMap[pa.id] = pa.id; // fallback — import with Plaid account id
+        if (match) {
+          accountMap[pa.id] = match.id;
+        } else {
+          accountMap[pa.id] = pa.id; // fallback — import with Plaid account id
+          unmatched.push(`${pa.name}${pa.mask ? ` (…${pa.mask})` : ''}`);
+        }
+      }
+      // One-time warning per institution: unmatched accounts import under the
+      // raw Plaid account id and won't show up under any existing PW account.
+      if (unmatched.length > 0 && !warnedUnmatched.current.has(item.itemId)) {
+        warnedUnmatched.current.add(item.itemId);
+        onToast?.(
+          `No matching Pocket Watch account for ${unmatched.join(', ')} from ${item.institutionName}. ` +
+          `Their transactions were imported under the raw Plaid account id. ` +
+          `Rename your accounts to include "${item.institutionName}" (or the bank account name) so future syncs match.`,
+          'warning'
+        );
       }
 
       // Map and dedup
@@ -348,8 +411,9 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
           {linkToken ? (
             <PlaidLinkButton
               linkToken={linkToken}
+              receivedRedirectUri={oauthRedirectUri}
               onSuccess={handleLinkSuccess}
-              onExit={() => setLinkToken(null)}
+              onExit={endLinkSession}
             />
           ) : (
             <button

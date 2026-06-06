@@ -110,20 +110,27 @@ async fn plaid_create_link_token(
     secret: String,
     env: String,
     user_id: String,
+    redirect_uri: Option<String>,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
     let base = plaid_base_url(&env);
+    let mut payload = json!({
+        "client_id": client_id,
+        "secret":    secret,
+        "client_name": "Pocket Watch",
+        "user": { "client_user_id": user_id },
+        "products":      ["transactions"],
+        "country_codes": ["US"],
+        "language":      "en"
+    });
+    // OAuth institutions (Chase, Wells Fargo, …) require a redirect_uri that
+    // exactly matches one registered in the Plaid dashboard.
+    if let Some(uri) = redirect_uri {
+        payload["redirect_uri"] = json!(uri);
+    }
     let resp = client
         .post(format!("{}/link/token/create", base))
-        .json(&json!({
-            "client_id": client_id,
-            "secret":    secret,
-            "client_name": "Pocket Watch",
-            "user": { "client_user_id": user_id },
-            "products":      ["transactions"],
-            "country_codes": ["US"],
-            "language":      "en"
-        }))
+        .json(&payload)
         .send()
         .await
         .map_err(|e| e.to_string())?;
