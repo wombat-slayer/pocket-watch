@@ -242,6 +242,36 @@ async fn plaid_remove_item(
     }
 }
 
+// ── Popup bridge plugin ──────────────────────────────────────────────────────
+//
+// wry/WebView2 denies window.open() calls coming from cross-origin iframes,
+// which silently breaks Plaid Link's OAuth handoff ("Continue to login"
+// no-ops — Link's popup returns null and nothing happens). This init script
+// runs in EVERY frame: inside subframes it replaces window.open with a
+// postMessage to the top frame; PlaidSync.jsx listens for that message and
+// opens the URL in the system browser via the opener plugin. The bank flow
+// then completes by redirecting the browser to the loopback listener.
+
+const POPUP_BRIDGE_SCRIPT: &str = r#"
+(function () {
+  if (window.top === window.self) return; // subframes only
+  window.open = function (url) {
+    try {
+      if (typeof url === 'string' && /^https:\/\//.test(url)) {
+        window.top.postMessage({ __pocket_watch_open_external: true, url: url }, '*');
+      }
+    } catch (e) {}
+    return null; // callers must treat the popup as fire-and-forget
+  };
+})();
+"#;
+
+fn popup_bridge<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("pw-popup-bridge")
+        .js_init_script_on_all_frames(POPUP_BRIDGE_SCRIPT)
+        .build()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -249,6 +279,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_oauth::init())
+        .plugin(popup_bridge())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

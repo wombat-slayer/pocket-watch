@@ -136,6 +136,23 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) 
     return () => { stopOauthServer(); };
   }, []);
 
+  // ── Popup bridge receiver ────────────────────────────────────────────────────
+  // The webview denies window.open() from Plaid's cross-origin Link iframe,
+  // so an init script (popup_bridge in lib.rs) forwards the OAuth popup URL
+  // here via postMessage. We open it in the system browser; the bank then
+  // redirects that browser to the loopback listener to resume the flow.
+  useEffect(() => {
+    const onMessage = (e) => {
+      if (e.origin !== 'https://cdn.plaid.com') return; // only trust Link's frame
+      const data = e.data;
+      if (!data || data.__pocket_watch_open_external !== true) return;
+      if (typeof data.url !== 'string' || !data.url.startsWith('https://')) return;
+      openUrl(data.url);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
   // ── Loopback listener teardown ───────────────────────────────────────────────
   const stopOauthServer = async () => {
     if (oauthUnlisten.current) {
