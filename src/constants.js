@@ -58,7 +58,10 @@ export const download = (filename, content, type = 'text/plain') => {
 };
 
 // ─── Security helpers ─────────────────────────────────────────────────────────
-export const sanitizeText = (s, maxLen = 500) => String(s ?? '').replace(/<[^>]*>/g, '').slice(0, maxLen);
+export const sanitizeText = (s, maxLen = 500) => String(s ?? '')
+  .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '') // drop script/style elements incl. content
+  .replace(/<[^>]*>/g, '')
+  .slice(0, maxLen);
 export const safeNum      = (v, fallback = 0) => { const n = parseFloat(v); return isFinite(n) ? n : fallback; };
 export const safeDate     = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : today();
 

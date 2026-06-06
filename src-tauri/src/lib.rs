@@ -57,6 +57,43 @@ fn get_default_data_path(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
+// ── OS credential manager (encrypted secret storage) ────────────────────────
+//
+// Secrets (Plaid client_id/secret, per-item access tokens) live in the OS
+// keychain — Windows Credential Manager, macOS Keychain, or Linux Secret
+// Service — never in plaintext files. Keys are namespaced by the frontend
+// (see src/plaidLayer.js).
+
+const KEYRING_SERVICE: &str = "Pocket Watch";
+
+fn keyring_entry(key: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(KEYRING_SERVICE, key).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn secret_set(key: String, value: String) -> Result<(), String> {
+    keyring_entry(&key)?
+        .set_password(&value)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn secret_get(key: String) -> Result<Option<String>, String> {
+    match keyring_entry(&key)?.get_password() {
+        Ok(v) => Ok(Some(v)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn secret_delete(key: String) -> Result<(), String> {
+    match keyring_entry(&key)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 // ── Plaid helpers ────────────────────────────────────────────────────────────
 
 fn plaid_base_url(env: &str) -> String {
@@ -168,6 +205,36 @@ async fn plaid_fetch_transactions(
     }
 }
 
+#[tauri::command]
+async fn plaid_remove_item(
+    client_id:    String,
+    secret:       String,
+    env:          String,
+    access_token: String,
+) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let base = plaid_base_url(&env);
+    let resp = client
+        .post(format!("{}/item/remove", base))
+        .json(&json!({
+            "client_id":    client_id,
+            "secret":       secret,
+            "access_token": access_token
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let body: Value = resp.json().await.map_err(|e| e.to_string())?;
+    if body["error_code"].is_null() {
+        Ok(())
+    } else {
+        Err(body["error_message"]
+            .as_str()
+            .unwrap_or("Failed to remove item")
+            .to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -230,6 +297,10 @@ pub fn run() {
             plaid_create_link_token,
             plaid_exchange_token,
             plaid_fetch_transactions,
+            plaid_remove_item,
+            secret_set,
+            secret_get,
+            secret_delete,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

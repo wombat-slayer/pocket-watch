@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { invoke } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import {
   getPlaidCredentials,
   savePlaidCredentials,
@@ -93,9 +94,31 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
   };
 
   const handleClearCreds = async () => {
-    if (!confirm('Remove Plaid credentials and disconnect all linked accounts?')) return;
+    if (!confirm('Remove Plaid credentials and disconnect all linked accounts?\n\nThis also revokes access at Plaid (/item/remove) so billing stops for each item.')) return;
+    // Revoke each item at Plaid before deleting local state — Plaid keeps
+    // billing an item until /item/remove is called.
+    const failed = [];
+    for (const item of items) {
+      try {
+        await invoke('plaid_remove_item', {
+          clientId:    creds.clientId,
+          secret:      creds.secret,
+          env:         creds.env,
+          accessToken: item.accessToken,
+        });
+      } catch {
+        failed.push(item.institutionName);
+      }
+      await removeLinkedItem(item.itemId);
+    }
+    if (failed.length > 0) {
+      alert(
+        `Could not revoke access at Plaid for: ${failed.join(', ')}.\n\n` +
+        'Plaid continues billing an item until it is removed on their side. ' +
+        'Please remove these items manually in the Plaid Dashboard (https://dashboard.plaid.com).'
+      );
+    }
     await clearPlaidCredentials();
-    for (const item of items) await removeLinkedItem(item.itemId);
     setCreds({ clientId: '', secret: '', env: 'sandbox' });
     setCredInput({ clientId: '', secret: '', env: 'sandbox' });
     setItems([]);
@@ -223,10 +246,29 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
   };
 
   // ── Remove a linked item ───────────────────────────────────────────────────
-  const handleRemoveItem = async (itemId) => {
-    if (!confirm('Disconnect this bank? Transactions already imported will remain.')) return;
-    await removeLinkedItem(itemId);
-    setItems(prev => prev.filter(i => i.itemId !== itemId));
+  const handleRemoveItem = async (item) => {
+    if (!confirm(`Disconnect ${item.institutionName}? This revokes Pocket Watch's access at Plaid and stops billing for this connection. Transactions already imported will remain.`)) return;
+    // Revoke at Plaid first — billing for an item continues until
+    // /item/remove succeeds. If it fails, let the user remove locally
+    // anyway but tell them to clean up via the Plaid dashboard.
+    try {
+      await invoke('plaid_remove_item', {
+        clientId:    creds.clientId,
+        secret:      creds.secret,
+        env:         creds.env,
+        accessToken: item.accessToken,
+      });
+    } catch (e) {
+      const proceed = confirm(
+        `Could not revoke access at Plaid:\n${String(e)}\n\n` +
+        'Remove the connection from Pocket Watch anyway?\n\n' +
+        'Important: Plaid continues billing this item until it is removed on their side. ' +
+        'Please remove it manually in the Plaid Dashboard (https://dashboard.plaid.com).'
+      );
+      if (!proceed) return;
+    }
+    await removeLinkedItem(item.itemId);
+    setItems(prev => prev.filter(i => i.itemId !== item.itemId));
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -328,8 +370,18 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
       {/* ── Connected items ───────────────────────────────────────────────── */}
       {items.length > 0 && (
         <div>
-          <div style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600, marginBottom: 10 }}>
-            Connected Institutions
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+              Connected Institutions
+            </span>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: 11 }}
+              title="Audit or revoke Pocket Watch's access from your Plaid account"
+              onClick={() => openUrl('https://my.plaid.com')}
+            >
+              🔗 Manage at Plaid
+            </button>
           </div>
           {items.map(item => {
             const status = syncStatus[item.itemId] ?? 'idle';
@@ -362,7 +414,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
                   <button
                     className="btn btn-ghost btn-sm"
                     style={{ color: '#475569', fontSize: 11 }}
-                    onClick={() => handleRemoveItem(item.itemId)}
+                    onClick={() => handleRemoveItem(item)}
                   >
                     ✕ Disconnect
                   </button>
@@ -419,8 +471,11 @@ export default function PlaidSync({ accounts, existingTxs, onImport }) {
           paddingTop: 12,
           lineHeight: 1.6,
         }}>
-          🔒 Your Plaid access tokens are stored only on this device, never uploaded to any server.
-          Transactions are fetched directly from Plaid and written to your local data file.
+          🔒 Your Plaid credentials and access tokens are stored encrypted in your operating
+          system's credential manager (Windows Credential Manager / macOS Keychain), never in
+          plaintext files and never uploaded to any server. Transactions are fetched directly
+          from Plaid and written to your local data file. You can audit or revoke this app's
+          access any time at my.plaid.com.
           {creds.env === 'sandbox' && (
             <span style={{ color: '#f59e0b', marginLeft: 4 }}>
               ⚠ Sandbox mode — using test data only.

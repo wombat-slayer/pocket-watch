@@ -1,54 +1,116 @@
 /**
  * plaidLayer.js
- * Handles secure storage of Plaid credentials and linked-item metadata
- * via tauri-plugin-store (separate from the main pocket-watch.json).
+ * Handles storage of Plaid credentials and linked-item metadata.
  *
- * Stored keys:
- *   client_id  – Plaid client_id
- *   secret     – Plaid secret (sandbox / development / production)
- *   env        – "sandbox" | "development" | "production"
- *   items      – Array of { itemId, accessToken, institutionName, accounts: [{id, name, mask, type}], lastSync }
+ * Secrets live in the OS credential manager (Windows Credential Manager /
+ * macOS Keychain / Linux Secret Service) via the `secret_*` Tauri commands:
+ *   plaid-credentials      – JSON { clientId, secret, env }
+ *   plaid-token-<itemId>   – Plaid access_token for one linked item
+ *
+ * Non-secret metadata stays in tauri-plugin-store (plaid.json):
+ *   items – Array of { itemId, institutionName, accounts: [{id, name, mask, type, subtype}], lastSync }
+ *
+ * Legacy installs stored everything in plaintext in plaid.json;
+ * migrateLegacyPlaintext() moves those secrets into the credential manager
+ * and scrubs them from the store the first time the layer is touched.
  */
 
+import { invoke } from '@tauri-apps/api/core';
 import { load } from '@tauri-apps/plugin-store';
 
 const STORE_FILE = 'plaid.json';
+const CREDS_KEY  = 'plaid-credentials';
+const tokenKey   = (itemId) => `plaid-token-${itemId}`;
+
+const EMPTY_CREDS = { clientId: '', secret: '', env: 'sandbox' };
 
 async function getStore() {
   return await load(STORE_FILE, { autoSave: true });
 }
 
+// ── One-time migration of legacy plaintext secrets ───────────────────────────
+
+let migrationPromise = null;
+
+async function migrateLegacyPlaintext() {
+  // Run at most once per app session; concurrent callers share the promise
+  if (!migrationPromise) migrationPromise = doMigrate();
+  return migrationPromise;
+}
+
+async function doMigrate() {
+  const store = await getStore();
+  let dirty = false;
+
+  // Legacy credentials (client_id / secret / env as plaintext store keys)
+  const legacyClientId = await store.get('client_id');
+  const legacySecret   = await store.get('secret');
+  if (legacyClientId || legacySecret) {
+    await invoke('secret_set', {
+      key:   CREDS_KEY,
+      value: JSON.stringify({
+        clientId: legacyClientId ?? '',
+        secret:   legacySecret   ?? '',
+        env:      (await store.get('env')) ?? 'sandbox',
+      }),
+    });
+    await store.delete('client_id');
+    await store.delete('secret');
+    await store.delete('env');
+    dirty = true;
+  }
+
+  // Legacy items with embedded plaintext access tokens
+  const items = (await store.get('items')) ?? [];
+  if (items.some(i => i.accessToken)) {
+    for (const item of items) {
+      if (item.accessToken) {
+        await invoke('secret_set', { key: tokenKey(item.itemId), value: item.accessToken });
+        delete item.accessToken;
+      }
+    }
+    await store.set('items', items);
+    dirty = true;
+  }
+
+  if (dirty) await store.save();
+}
+
 // ── Credentials ──────────────────────────────────────────────────────────────
 
 export async function getPlaidCredentials() {
-  const store = await getStore();
-  return {
-    clientId: (await store.get('client_id')) ?? '',
-    secret:   (await store.get('secret'))    ?? '',
-    env:      (await store.get('env'))       ?? 'sandbox',
-  };
+  await migrateLegacyPlaintext();
+  const raw = await invoke('secret_get', { key: CREDS_KEY });
+  if (!raw) return { ...EMPTY_CREDS };
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      clientId: parsed.clientId ?? '',
+      secret:   parsed.secret   ?? '',
+      env:      parsed.env      ?? 'sandbox',
+    };
+  } catch {
+    return { ...EMPTY_CREDS };
+  }
 }
 
 export async function savePlaidCredentials({ clientId, secret, env }) {
-  const store = await getStore();
-  await store.set('client_id', clientId);
-  await store.set('secret',    secret);
-  await store.set('env',       env ?? 'sandbox');
-  await store.save();
+  await migrateLegacyPlaintext();
+  await invoke('secret_set', {
+    key:   CREDS_KEY,
+    value: JSON.stringify({ clientId, secret, env: env ?? 'sandbox' }),
+  });
 }
 
 export async function clearPlaidCredentials() {
-  const store = await getStore();
-  await store.delete('client_id');
-  await store.delete('secret');
-  await store.delete('env');
-  await store.save();
+  await invoke('secret_delete', { key: CREDS_KEY });
 }
 
 // ── Linked items ─────────────────────────────────────────────────────────────
 
 /**
- * Each item:
+ * Each item (as returned to callers — accessToken is rehydrated from the
+ * OS credential manager and only ever held in memory):
  * {
  *   itemId:          string,   // Plaid item_id
  *   accessToken:     string,   // Plaid access_token (keep on device only)
@@ -58,36 +120,53 @@ export async function clearPlaidCredentials() {
  * }
  */
 export async function getLinkedItems() {
+  await migrateLegacyPlaintext();
   const store = await getStore();
-  return (await store.get('items')) ?? [];
+  const items = (await store.get('items')) ?? [];
+  return Promise.all(items.map(async (item) => ({
+    ...item,
+    accessToken: (await invoke('secret_get', { key: tokenKey(item.itemId) })) ?? '',
+  })));
 }
 
 export async function addLinkedItem(item) {
+  await migrateLegacyPlaintext();
+  const { accessToken, ...meta } = item;
+  if (accessToken) {
+    await invoke('secret_set', { key: tokenKey(item.itemId), value: accessToken });
+  }
   const store = await getStore();
   const items = (await store.get('items')) ?? [];
   // Replace if itemId already exists, otherwise append
   const idx = items.findIndex(i => i.itemId === item.itemId);
   if (idx >= 0) {
-    items[idx] = { ...items[idx], ...item };
+    items[idx] = { ...items[idx], ...meta };
   } else {
-    items.push(item);
+    items.push(meta);
   }
   await store.set('items', items);
   await store.save();
 }
 
 export async function updateLinkedItem(itemId, patch) {
+  await migrateLegacyPlaintext();
+  const { accessToken, ...metaPatch } = patch;
+  if (accessToken) {
+    await invoke('secret_set', { key: tokenKey(itemId), value: accessToken });
+  }
+  if (Object.keys(metaPatch).length === 0) return;
   const store = await getStore();
   const items = (await store.get('items')) ?? [];
   const idx = items.findIndex(i => i.itemId === itemId);
   if (idx >= 0) {
-    items[idx] = { ...items[idx], ...patch };
+    items[idx] = { ...items[idx], ...metaPatch };
     await store.set('items', items);
     await store.save();
   }
 }
 
 export async function removeLinkedItem(itemId) {
+  await invoke('secret_delete', { key: tokenKey(itemId) });
   const store = await getStore();
   const items = ((await store.get('items')) ?? []).filter(i => i.itemId !== itemId);
   await store.set('items', items);
