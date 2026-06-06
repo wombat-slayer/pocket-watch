@@ -46,6 +46,7 @@ The app talks to the Plaid API directly from Rust — `plaid_create_link_token`,
 
 - Pages are flat in `src/components/` (Dashboard, Transactions, Accounts, Budgets, Goals, Recurring, Reports, Settings, plus `Equity.jsx` = the Investments nav page and `Calendar.jsx` = the Cashflow nav page).
 - `src/constants.js` is the shared utility module: categories, formatters, CSV parsing, `monthlyEquivalent`, `computeBalance`, `getNextRecurDate`, etc. Add cross-page helpers here, not in components.
+- Transaction amounts are **signed**: expenses negative, income positive (see TransactionForm). `computeBalance` sums raw amounts and the transaction list colors by sign — importers must preserve the sign, never `Math.abs` it.
 - `useCategoryMemory(transactions)` — the transactions array argument is required.
 - `useChart.js` lazy-loads Chart.js with a `let cancelled = false` cancellation guard; follow that pattern for new charts.
 - `useMarketData.js` fetches quotes: Finnhub for stocks (needs user API key, stored in app state `apiKeys.finnhub`), CoinGecko for crypto (no key).

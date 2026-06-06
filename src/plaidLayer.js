@@ -182,7 +182,11 @@ export async function removeLinkedItem(itemId) {
 export function mapPlaidTransaction(plaidTx, accountMap = {}) {
   if (plaidTx.pending) return null;
 
-  const amount = -(plaidTx.amount);           // Plaid: positive = debit; PW: positive = income
+  // Plaid: positive = debit (money out). Pocket Watch stores SIGNED amounts
+  // (expense negative, income positive — same convention as TransactionForm,
+  // computeBalance, and the transaction list coloring), so negate and keep
+  // the sign. Math.abs here would make every expense show as green income.
+  const amount = -(plaidTx.amount);
   const type   = amount < 0 ? 'expense' : 'income';
   const acct   = accountMap[plaidTx.account_id] ?? plaidTx.account_id;
 
@@ -195,7 +199,7 @@ export function mapPlaidTransaction(plaidTx, accountMap = {}) {
     fitid:       plaidTx.transaction_id,   // reuse same field for dedup
     date:        plaidTx.date,             // already YYYY-MM-DD
     description: plaidTx.merchant_name || plaidTx.name || '',
-    amount:      Math.abs(amount),
+    amount,
     type,
     account:     acct,
     category,
