@@ -17,6 +17,8 @@
     "dialog:allow-open",
     "store:default",
     "opener:default",
+    "oauth:allow-start",
+    "oauth:allow-cancel",
     "process:default",
     "updater:default"
   ]

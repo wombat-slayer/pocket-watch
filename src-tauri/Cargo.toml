@@ -1,6 +1,6 @@
 [package]
 name = "pocket-watch"
-version = "0.1.0"
+version = "0.3.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -29,3 +29,4 @@ tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 reqwest = { version = "0.13", features = ["json", "rustls"], default-features = false }
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
+tauri-plugin-oauth = "2.0.0"

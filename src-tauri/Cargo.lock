@@ -2721,7 +2721,7 @@ dependencies = [
 
 [[package]]
 name = "pocket-watch"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "keyring",
  "reqwest",
@@ -2731,6 +2731,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
+ "tauri-plugin-oauth",
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-store",
@@ -3997,6 +3998,21 @@ dependencies = [
  "tauri-utils",
  "thiserror 2.0.18",
  "toml 1.1.2+spec-1.1.0",
+ "url",
+]
+
+[[package]]
+name = "tauri-plugin-oauth"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eda564acdb23185caf700f89dd6e5d4540225d6a991516b2cad0cbcf27e4dcd3"
+dependencies = [
+ "httparse",
+ "log",
+ "serde",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 1.0.69",
  "url",
 ]
 

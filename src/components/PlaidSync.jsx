@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { start as startOauthServer, cancel as cancelOauthServer, onUrl as onOauthUrl } from '@fabianlars/tauri-plugin-oauth';
 import {
   getPlaidCredentials,
   savePlaidCredentials,
@@ -26,14 +27,29 @@ function daysAgo(n) {
 }
 
 // ── OAuth redirect support ───────────────────────────────────────────────────
-// OAuth institutions (Chase, Wells Fargo, …) send the user to the bank's site
-// and back to the redirect URI registered in the Plaid dashboard, with an
-// oauth_state_id query param. The page reloads on the way back, so the
-// link_token must be persisted and Link re-initialized with the SAME token
-// plus receivedRedirectUri.
+// OAuth institutions (Chase, Wells Fargo, …) hand off to the bank's site in
+// the SYSTEM browser (Tauri routes Plaid's window.open there), and the bank
+// redirects that browser to the redirect URI with an oauth_state_id query
+// param. Before opening Link we start a loopback listener on a dynamic port
+// (tauri-plugin-oauth) and register http://localhost:<port>/ as redirect_uri;
+// the listener captures the full redirect URL and forwards it into the
+// webview, where Link is re-initialized with the SAME link_token plus
+// receivedRedirectUri to resume the flow.
+//
+// Plaid matches redirect URIs EXACTLY (verified live: dynamic ports are
+// rejected with "OAuth redirect URI must be configured in the developer
+// dashboard"), so the listener binds port 80 first — matching the
+// registered http://localhost — and falls back to fixed ports when 80 is
+// unavailable (e.g. taken, or Linux privilege rules). The fallback URIs
+// http://localhost:58420 / :58421 / :58422 must be registered in the
+// Plaid dashboard for the fallback to work.
+//
+// The link_token is also persisted to localStorage so the flow survives a
+// page reload (e.g. if the app is restarted mid-OAuth).
 
-const OAUTH_REDIRECT_URI     = 'http://localhost';
 const LINK_TOKEN_STORAGE_KEY = 'plaid_link_token';
+const OAUTH_PORTS = [80, 58420, 58421, 58422]; // tried in order by the loopback listener
+const redirectUriForPort = (port) => port === 80 ? 'http://localhost' : `http://localhost:${port}`;
 
 // ── PlaidLink wrapper (rendered when we have a link_token) ───────────────────
 
@@ -43,6 +59,10 @@ function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit }) 
     receivedRedirectUri: receivedRedirectUri || undefined,
     onSuccess: (public_token, metadata) => onSuccess(public_token, metadata),
     onExit: (err) => { if (err) console.error('Plaid exit:', err); onExit?.(); },
+    // Diagnostic trail for OAuth handoff debugging (OPEN_OAUTH, HANDOFF, ERROR…)
+    onEvent: (eventName, metadata) => {
+      console.log('[plaid-link]', eventName, metadata?.view_name ?? '', metadata?.error_code ?? '');
+    },
   };
   const { open, ready } = usePlaidLink(config);
 
@@ -80,6 +100,8 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) 
   const [linking,   setLinking]   = useState(false);
   const [linkError, setLinkError] = useState('');
   const [oauthRedirectUri, setOauthRedirectUri] = useState(null); // set when resuming an OAuth flow
+  const oauthPort     = useRef(null); // loopback listener port, while one is running
+  const oauthUnlisten = useRef(null); // unsubscribe fn for the oauth://url event
 
   // ── Sync state ─────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState({}); // { [itemId]: 'idle'|'syncing'|'done'|'error' }
@@ -96,9 +118,10 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) 
       const savedItems = await getLinkedItems();
       setItems(savedItems);
 
-      // OAuth redirect continuation: the bank sent the user back with
-      // oauth_state_id in the URL — re-initialize Link with the persisted
-      // link_token and the full redirect URL.
+      // OAuth redirect continuation (fallback path): the webview itself was
+      // navigated with oauth_state_id in the URL — re-initialize Link with
+      // the persisted link_token and the full redirect URL. The primary
+      // path is the loopback listener below, which never reloads the page.
       if (window.location.href.includes('oauth_state_id')) {
         const storedToken = localStorage.getItem(LINK_TOKEN_STORAGE_KEY);
         if (storedToken) {
@@ -109,10 +132,26 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) 
         }
       }
     })();
+    // Shut the loopback listener down if the user navigates away mid-flow
+    return () => { stopOauthServer(); };
   }, []);
+
+  // ── Loopback listener teardown ───────────────────────────────────────────────
+  const stopOauthServer = async () => {
+    if (oauthUnlisten.current) {
+      oauthUnlisten.current();
+      oauthUnlisten.current = null;
+    }
+    if (oauthPort.current != null) {
+      const port = oauthPort.current;
+      oauthPort.current = null;
+      try { await cancelOauthServer(port); } catch { /* already stopped */ }
+    }
+  };
 
   // ── OAuth session cleanup (after Link finishes or is abandoned) ─────────────
   const endLinkSession = () => {
+    stopOauthServer();
     localStorage.removeItem(LINK_TOKEN_STORAGE_KEY);
     setOauthRedirectUri(null);
     setLinkToken(null);
@@ -174,19 +213,35 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) 
     setLinkError('');
     setLinking(true);
     try {
+      // Fresh loopback listener for this Link session. The bank's OAuth page
+      // opens in the system browser and redirects there on completion.
+      await stopOauthServer();
+      const port = await startOauthServer({ ports: OAUTH_PORTS });
+      oauthPort.current = port;
+      oauthUnlisten.current = await onOauthUrl((url) => {
+        // The localhost port is unprotected — verify this is really the
+        // Plaid OAuth redirect before acting on it.
+        let parsed;
+        try { parsed = new URL(url); } catch { return; }
+        if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') return;
+        if (!parsed.searchParams.get('oauth_state_id')) return;
+        oauthPort.current = null; // listener shuts itself down after one capture
+        setOauthRedirectUri(url); // re-initializes Link → auto-resumes the flow
+      });
+
       const token = await invoke('plaid_create_link_token', {
         clientId:    creds.clientId,
         secret:      creds.secret,
         env:         creds.env,
         userId:      'pocket-watch-user',
-        redirectUri: OAUTH_REDIRECT_URI,
+        redirectUri: redirectUriForPort(port),
       });
-      // Persist for OAuth continuation — the page reloads when the bank
-      // redirects back, so React state alone would lose the token.
+      // Persist so the flow survives an app restart mid-OAuth.
       localStorage.setItem(LINK_TOKEN_STORAGE_KEY, token);
       setLinkToken(token);
     } catch (e) {
       setLinkError(String(e));
+      await stopOauthServer();
     } finally {
       setLinking(false);
     }
@@ -410,6 +465,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast }) 
         <div style={{ marginBottom: 24 }}>
           {linkToken ? (
             <PlaidLinkButton
+              key={oauthRedirectUri ?? 'initial'}
               linkToken={linkToken}
               receivedRedirectUri={oauthRedirectUri}
               onSuccess={handleLinkSuccess}

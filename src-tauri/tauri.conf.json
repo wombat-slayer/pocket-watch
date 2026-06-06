@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Pocket Watch",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "identifier": "com.pocketwatch.finance",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -18,6 +18,7 @@
     }
   },
   "plugins": {
+    "oauth": "<html><body style=\"font-family: sans-serif; background: #0d1117; color: #e2e8f0; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;\"><div style=\"text-align: center;\"><div style=\"font-size: 40px;\">&#8986;</div><h2>Bank connection received</h2><p>You can close this tab and return to Pocket Watch.</p></div></body></html>",
     "updater": {
       "endpoints": [
         "https://github.com/wombat-slayer/pocket-watch/releases/latest/download/latest.json"
