@@ -259,7 +259,7 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 3 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 4 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
@@ -267,7 +267,7 @@ export default function App() {
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 3 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 4 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -651,7 +651,7 @@ export default function App() {
         {page==='investments'  && <Equity       grants={grants} onAdd={addGrant} onEdit={editGrant} onDelete={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} investmentAccounts={accounts.filter(a => a.type === 'investment' || a.type === 'brokerage')} finnhubKey={apiKeys.finnhub} />}
         {page==='cashflow'     && <Calendar     transactions={transactions} recurrences={recurrences} accounts={accounts} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onToast={showToast} />}
       </div>
 
       {showAdd && (

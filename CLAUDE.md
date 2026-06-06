@@ -44,7 +44,7 @@ The app talks to the Plaid API directly from Rust — `plaid_create_link_token`,
 
 ### Frontend conventions
 
-- Pages are flat in `src/components/` (Dashboard, Transactions, Accounts, Budgets, Goals, Recurring, Reports, Settings). `Equity.jsx` and `Calendar.jsx` exist but are out of the nav (Equity is dead code).
+- Pages are flat in `src/components/` (Dashboard, Transactions, Accounts, Budgets, Goals, Recurring, Reports, Settings, plus `Equity.jsx` = the Investments nav page and `Calendar.jsx` = the Cashflow nav page).
 - `src/constants.js` is the shared utility module: categories, formatters, CSV parsing, `monthlyEquivalent`, `computeBalance`, `getNextRecurDate`, etc. Add cross-page helpers here, not in components.
 - `useCategoryMemory(transactions)` — the transactions array argument is required.
 - `useChart.js` lazy-loads Chart.js with a `let cancelled = false` cancellation guard; follow that pattern for new charts.

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { uid, parseAmount, ACCOUNT_TYPES } from '../constants.js';
 
+// Names must match CATEGORIES in constants.js exactly
 const BUDGET_CATEGORIES = [
-  { name: 'Food & Drink',    icon: '🍔', placeholder: '500' },
+  { name: 'Food & Dining',   icon: '🍔', placeholder: '500' },
   { name: 'Housing',         icon: '🏠', placeholder: '1500' },
-  { name: 'Transport',       icon: '🚗', placeholder: '300' },
+  { name: 'Transportation',  icon: '🚗', placeholder: '300' },
   { name: 'Entertainment',   icon: '🎬', placeholder: '100' },
 ];
 

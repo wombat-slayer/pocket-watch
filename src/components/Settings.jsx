@@ -3,7 +3,7 @@ import { download, getAllCategories, thisMonth } from '../constants.js';
 import { promptNewDataFile } from '../dataLayer.js';
 import PlaidSync from './PlaidSync.jsx';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onToast }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDemo,  setConfirmDemo]  = useState(false);
   const [importError,  setImportError]  = useState('');
@@ -176,6 +176,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           accounts={accounts}
           existingTxs={transactions}
           onImport={rows => onPlaidImport?.(rows)}
+          onToast={onToast}
         />
       </div>
 

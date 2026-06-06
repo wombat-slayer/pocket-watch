@@ -211,23 +211,25 @@ export function mapPlaidTransaction(plaidTx, accountMap = {}) {
  * Falls back to 'Other' for unknown values.
  */
 function mapPlaidCategory(primary) {
+  // Values must be real category names from CATEGORIES in constants.js —
+  // anything else silently orphans imported transactions in the UI.
   const map = {
     INCOME:                  'Income',
     TRANSFER_IN:             'Transfer',
     TRANSFER_OUT:            'Transfer',
-    LOAN_PAYMENTS:           'Debt Payment',
-    BANK_FEES:               'Fees & Charges',
+    LOAN_PAYMENTS:           'Other',
+    BANK_FEES:               'Other',
     ENTERTAINMENT:           'Entertainment',
     FOOD_AND_DRINK:          'Food & Dining',
     GENERAL_MERCHANDISE:     'Shopping',
-    HOME_IMPROVEMENT:        'Home',
+    HOME_IMPROVEMENT:        'Housing',
     MEDICAL:                 'Healthcare',
     PERSONAL_CARE:           'Personal Care',
-    GENERAL_SERVICES:        'Services',
+    GENERAL_SERVICES:        'Other',
     GOVERNMENT_AND_NON_PROFIT: 'Other',
     TRANSPORTATION:          'Transportation',
     TRAVEL:                  'Travel',
-    RENT_AND_UTILITIES:      'Bills & Utilities',
+    RENT_AND_UTILITIES:      'Utilities',
   };
   return map[primary] ?? 'Other';
 }
