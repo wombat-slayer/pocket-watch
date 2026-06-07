@@ -229,7 +229,7 @@ const PLAID_TYPE_COMPAT = {
 const MATCH_STOP_TOKENS = new Set([
   'account', 'accounts', 'plan', 'the', 'of', 'my',
   'card', 'credit', 'debit', 'bank', 'banking', 'financial', 'services',
-  'checking', 'savings', 'total', 'cash',
+  'total', 'cash',
 ]);
 
 function nameTokens(s) {
