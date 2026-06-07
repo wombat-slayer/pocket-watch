@@ -17,7 +17,7 @@ import {
   setCursor,
 } from '../plaidLayer.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
-import { detectAndMarkTransferPairs } from '../constants.js';
+import { detectAndMarkTransferPairs, autoCategoryBusiness } from '../constants.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -449,6 +449,12 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
           // Priority 4: description matches a known transfer name pattern
           if (TRANSFER_PATTERNS.some(re => re.test(t.description))) {
             return { ...t, category: 'Transfer' };
+          }
+
+          // Priority 5: business account — apply business categorization
+          const destAcct = accounts.find(a => a.id === accountMap[rawPt?.account_id]);
+          if (destAcct?.isBusiness) {
+            return { ...t, category: autoCategoryBusiness(t.description) };
           }
 
           return t;

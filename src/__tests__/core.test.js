@@ -20,6 +20,8 @@ import {
   uid,
   getNextRecurDate,
   autoCategory,
+  autoCategoryBusiness,
+  SCHEDULE_C_LINES,
   parseCSVLine,
   parseAmount,
   monthlyEquivalent,
@@ -501,5 +503,152 @@ describe('calcEffectiveTaxRate()', () => {
 
   it('returns 0 when gross is null', () => {
     expect(calcEffectiveTaxRate(500, 100, null)).toBe(0);
+  });
+});
+
+// ─── autoCategoryBusiness ─────────────────────────────────────────────────────
+describe('autoCategoryBusiness()', () => {
+  it('maps Google Ads to Business - Advertising', () => {
+    expect(autoCategoryBusiness('Google Ads charge')).toBe('Business - Advertising');
+  });
+
+  it('maps GitHub to Business - Software & SaaS', () => {
+    expect(autoCategoryBusiness('GitHub subscription')).toBe('Business - Software & SaaS');
+  });
+
+  it('maps Zoom to Business - Software & SaaS', () => {
+    expect(autoCategoryBusiness('Zoom monthly plan')).toBe('Business - Software & SaaS');
+  });
+
+  it('maps restaurant to Business - Meals (50% deductible)', () => {
+    expect(autoCategoryBusiness('Client dinner restaurant')).toBe('Business - Meals (50% deductible)');
+  });
+
+  it('maps hotel to Business - Travel', () => {
+    expect(autoCategoryBusiness('Marriott hotel stay')).toBe('Business - Travel');
+  });
+
+  it('maps gas station to Business - Vehicle & Mileage', () => {
+    expect(autoCategoryBusiness('Shell gas station')).toBe('Business - Vehicle & Mileage');
+  });
+
+  it('maps office supplies to Business - Office Supplies', () => {
+    expect(autoCategoryBusiness('Staples purchase')).toBe('Business - Office Supplies');
+  });
+
+  it('unknown merchants fall back to Business - Other', () => {
+    expect(autoCategoryBusiness('Random merchant xyz')).toBe('Business - Other');
+  });
+});
+
+// ─── SCHEDULE_C_LINES ─────────────────────────────────────────────────────────
+describe('SCHEDULE_C_LINES', () => {
+  it('covers all 10 business categories', () => {
+    const BUSINESS_CATS = [
+      'Business - Advertising',
+      'Business - Office Supplies',
+      'Business - Software & SaaS',
+      'Business - Professional Services',
+      'Business - Meals (50% deductible)',
+      'Business - Travel',
+      'Business - Vehicle & Mileage',
+      'Business - Equipment',
+      'Business - Utilities',
+      'Business - Other',
+    ];
+    BUSINESS_CATS.forEach(cat => {
+      expect(SCHEDULE_C_LINES).toHaveProperty(cat);
+      expect(typeof SCHEDULE_C_LINES[cat]).toBe('number');
+    });
+  });
+
+  it('maps Advertising to line 8', () => {
+    expect(SCHEDULE_C_LINES['Business - Advertising']).toBe(8);
+  });
+
+  it('maps Vehicle & Mileage to line 9', () => {
+    expect(SCHEDULE_C_LINES['Business - Vehicle & Mileage']).toBe(9);
+  });
+
+  it('maps Utilities to line 25', () => {
+    expect(SCHEDULE_C_LINES['Business - Utilities']).toBe(25);
+  });
+});
+
+// ─── Business P&L calculation ─────────────────────────────────────────────────
+describe('Business P&L calculation', () => {
+  const bizAcctId  = 'biz-acct-1';
+  const persAcctId = 'pers-acct-1';
+
+  const txs = [
+    { id:'1', account: bizAcctId,  amount:  5000, type:'income',  category:'Income', date:'2026-06-01' },
+    { id:'2', account: bizAcctId,  amount:  -800, type:'expense', category:'Business - Software & SaaS', date:'2026-06-05' },
+    { id:'3', account: bizAcctId,  amount:  -200, type:'expense', category:'Business - Meals (50% deductible)', date:'2026-06-10' },
+    { id:'4', account: persAcctId, amount: -3000, type:'expense', category:'Housing', date:'2026-06-15' },
+  ];
+
+  const bizTxs = txs.filter(t => t.account === bizAcctId && t.type !== 'adjustment');
+
+  it('revenue sums only income in business accounts', () => {
+    const revenue = bizTxs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    expect(revenue).toBe(5000);
+  });
+
+  it('expenses exclude personal account transactions', () => {
+    const expenses = bizTxs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    expect(expenses).toBe(1000);
+  });
+
+  it('net income = revenue - expenses', () => {
+    const revenue  = bizTxs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const expenses = bizTxs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    expect(revenue - expenses).toBe(4000);
+  });
+});
+
+// ─── Meals 50% deductible ─────────────────────────────────────────────────────
+describe('Meals 50% deductible', () => {
+  it('$200 meals expense → $100 deductible', () => {
+    const mealAmount = 200;
+    const deductible = mealAmount * 0.5;
+    expect(deductible).toBe(100);
+  });
+
+  it('deductible rounds correctly for fractional amounts', () => {
+    expect(Math.round(75.50 * 0.5 * 100) / 100).toBe(37.75);
+  });
+});
+
+// ─── migrateData v6: isBusiness backfill ─────────────────────────────────────
+describe('migrateData v6 — isBusiness backfill', () => {
+  // Replicate the accounts migration from App.jsx migrateData
+  function migrateAccounts(rawAccounts) {
+    return rawAccounts.map(a => ({ holdings: [], isBusiness: false, ...a }));
+  }
+
+  it('adds isBusiness: false to accounts that lack it', () => {
+    const raw = [
+      { id: '1', name: 'Chase Checking', type: 'checking', balance: 1000 },
+      { id: '2', name: 'Chase Savings',  type: 'savings',  balance: 5000 },
+    ];
+    const migrated = migrateAccounts(raw);
+    expect(migrated[0].isBusiness).toBe(false);
+    expect(migrated[1].isBusiness).toBe(false);
+  });
+
+  it('preserves isBusiness: true for accounts already flagged', () => {
+    const raw = [
+      { id: '3', name: 'Biz Checking', type: 'checking', balance: 2000, isBusiness: true },
+    ];
+    const migrated = migrateAccounts(raw);
+    expect(migrated[0].isBusiness).toBe(true);
+  });
+
+  it('does not overwrite existing isBusiness: false', () => {
+    const raw = [
+      { id: '4', name: 'Personal', type: 'savings', balance: 500, isBusiness: false },
+    ];
+    const migrated = migrateAccounts(raw);
+    expect(migrated[0].isBusiness).toBe(false);
   });
 });

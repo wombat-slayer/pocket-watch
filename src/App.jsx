@@ -10,6 +10,7 @@ import {
 } from './dataLayer.js';
 import { invoke } from '@tauri-apps/api/core';
 
+import Business       from './components/Business.jsx';
 import Dashboard      from './components/Dashboard.jsx';
 import Transactions   from './components/Transactions.jsx';
 import Budgets        from './components/Budgets.jsx';
@@ -147,6 +148,7 @@ export default function App() {
     // Backfill transaction fields added in v2/v3
     const accounts = (data.accounts ?? []).map(a => ({
       holdings: [],
+      isBusiness: false,
       ...a,
     }));
     const transactions = (data.transactions ?? []).map(t => ({
@@ -172,7 +174,7 @@ export default function App() {
     return {
       ...data, accounts, transactions, budgets, goals,
       compensationProfile: data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE,
-      version: 5,
+      version: 6,
     };
   };
 
@@ -273,7 +275,7 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 5 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 6 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
@@ -281,7 +283,7 @@ export default function App() {
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 5 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 6 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -584,6 +586,7 @@ export default function App() {
     { id:'accounts',     icon:'🏦', label:'Accounts'     },
     { id:'budgets',      icon:'🎯', label:'Budgets'      },
     { id:'reports',      icon:'📊', label:'Reports'      },
+    { id:'business',     icon:'🏢', label:'Business'     },
     { id:'settings',     icon:'⚙️', label:'Settings'     },
   ];
 
@@ -650,6 +653,7 @@ export default function App() {
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} onCloseMonth={()=>setShowMonthClose(true)} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
+        {page==='business'     && <Business     accounts={accounts} transactions={transactions} onUpdateTransaction={editTx} />}
         {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} />}
       </div>
 

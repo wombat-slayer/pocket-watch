@@ -229,7 +229,7 @@ function DebtPayoffPanel({ debts }) {
 }
 
 function AccountForm({ initial, onSave, onClose }) {
-  const [form, setForm] = useState(initial ?? { name:'', type:'checking', balance:'' });
+  const [form, setForm] = useState(initial ?? { name:'', type:'checking', balance:'', isBusiness: false });
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const save = () => {
     if (!form.name.trim() || form.balance === '') return;
@@ -253,6 +253,13 @@ function AccountForm({ initial, onSave, onClose }) {
       <div style={{ fontSize:12,color:'#64748b' }}>
         {isDebtType(form.type)?'⚠️ Debt accounts subtract from your net worth.':'✅ Asset accounts add to your net worth.'}
       </div>
+      <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', padding:'8px 10px', background:'#0d1117', borderRadius:8, border:'1px solid #1e2736' }}>
+        <input type="checkbox" checked={!!form.isBusiness} onChange={e=>set('isBusiness', e.target.checked)} style={{ accentColor:'#7fa88b', width:15, height:15 }} />
+        <div>
+          <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500 }}>🏢 Business account</div>
+          <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>Mark accounts used for business income and expenses.</div>
+        </div>
+      </label>
       <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" onClick={save}>Save Account</button>

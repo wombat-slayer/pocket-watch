@@ -18,7 +18,17 @@ export const CATEGORIES = [
   { name: 'Other',         icon: '📦', color: '#94a3b8' },
   { name: 'Split',         icon: '🔀', color: '#94a3b8' },
   { name: 'Transfer',      icon: '↔️', color: '#64748b' },
-  { name: 'Adjustment',   icon: '📊', color: '#64748b' },
+  { name: 'Adjustment',            icon: '📊', color: '#64748b' },
+  { name: 'Business - Advertising',         icon: '📣', color: '#f97316' },
+  { name: 'Business - Office Supplies',     icon: '📎', color: '#a78bfa' },
+  { name: 'Business - Software & SaaS',     icon: '🖥️', color: '#38bdf8' },
+  { name: 'Business - Professional Services', icon: '🤝', color: '#34d399' },
+  { name: 'Business - Meals (50% deductible)', icon: '🍽️', color: '#fbbf24' },
+  { name: 'Business - Travel',              icon: '✈️', color: '#60a5fa' },
+  { name: 'Business - Vehicle & Mileage',   icon: '🚗', color: '#94a3b8' },
+  { name: 'Business - Equipment',           icon: '🖨️', color: '#c084fc' },
+  { name: 'Business - Utilities',           icon: '⚡', color: '#fb7185' },
+  { name: 'Business - Other',               icon: '🏢', color: '#64748b' },
 ];
 
 // ─── Account Types ────────────────────────────────────────────────────────────
@@ -145,6 +155,35 @@ export function autoCategory(desc, amount) {
   if (/salon|haircut|spa|massage|barber|nail|beauty/i.test(d)) return 'Personal Care';
   return 'Other';
 }
+
+// Auto-categorize business transactions by merchant keyword matching
+export function autoCategoryBusiness(desc) {
+  const d = desc.toLowerCase();
+  if (/facebook ads|google ads|meta ads|linkedin ads|twitter ads|advertising|mailchimp|constant contact|klaviyo/i.test(d))                                   return 'Business - Advertising';
+  if (/staples|office depot|officemax|amazon business|paper|printer|toner|binder|folder|whiteboard/i.test(d))                                                  return 'Business - Office Supplies';
+  if (/adobe|github|atlassian|salesforce|hubspot|quickbooks|slack|notion|figma|zoom |dropbox|aws |google cloud|azure|digitalocean|heroku|vercel|netlify|linear |jira|confluence|1password|lastpass|namecheap|godaddy|cloudflare|twilio|stripe|sendgrid/i.test(d)) return 'Business - Software & SaaS';
+  if (/lawyer|attorney|cpa |accountant|consultant|contractor|freelancer|legal |consulting|professional services/i.test(d))                                      return 'Business - Professional Services';
+  if (/restaurant|cafe|pizza|burger|sushi|taco|chipotle|mcdonald|starbucks|dunkin|doordash|grubhub|uber eats|chick-fil|panera|subway|domino|lunch|dinner|breakfast/i.test(d)) return 'Business - Meals (50% deductible)';
+  if (/hotel|airbnb|vrbo|flight|airline|united air|delta air|american air|southwest air|spirit air|expedia|booking\.com|kayak|car rental|enterprise rent/i.test(d)) return 'Business - Travel';
+  if (/shell|chevron|bp |exxon|mobil|sunoco|circle k|speedway|gas station|autozone|advance auto|mileage|fuel/i.test(d))                                        return 'Business - Vehicle & Mileage';
+  if (/apple\.com\/bill|apple store|amazon\.com|best buy|newegg|dell |hp |lenovo|microsoft store|b&h|adorama|equipment|hardware/i.test(d))                    return 'Business - Equipment';
+  if (/electric|water bill|internet|comcast|xfinity|at&t|verizon|t-mobile|utility|pg&e|con ed|spectrum/i.test(d))                                             return 'Business - Utilities';
+  return 'Business - Other';
+}
+
+// Schedule C line numbers for each business category
+export const SCHEDULE_C_LINES = {
+  'Business - Advertising':              8,
+  'Business - Office Supplies':         22,
+  'Business - Software & SaaS':         27,
+  'Business - Professional Services':   11,
+  'Business - Meals (50% deductible)': 24,
+  'Business - Travel':                  24,
+  'Business - Vehicle & Mileage':        9,
+  'Business - Equipment':               13,
+  'Business - Utilities':               25,
+  'Business - Other':                   27,
+};
 
 // ─── Recurring monthly equivalent ────────────────────────────────────────────
 /** Convert a recurrence's amount to its monthly equivalent value */
