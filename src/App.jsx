@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './App.css';
 
-import { isDebtType, today, uid, getNextRecurDate, detectAndMarkTransferPairs } from './constants.js';
+import { isDebtType, today, uid, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE } from './constants.js';
 import { seedTransactions, seedAccounts, seedBudgets, seedGoals } from './seed.js';
 import {
   getDataPath, setDataPath, getDefaultDataPath,
@@ -82,6 +82,7 @@ export default function App() {
   const [showMonthClose,  setShowMonthClose]  = useState(false);
   const [toasts,          setToasts]          = useState([]);
   const [lastSyncResult,  setLastSyncResult]  = useState(null); // { count, uncategorized } after a Plaid sync
+  const [compensationProfile, setCompensationProfile] = useState(DEFAULT_COMPENSATION_PROFILE);
 
   // ── Data loading status ────────────────────────────────────────────────────
   const [dataPath,        setDataPathState]   = useState(null);
@@ -168,7 +169,11 @@ export default function App() {
       linkedAccountId: null,
       ...g,
     }));
-    return { ...data, accounts, transactions, budgets, goals, version: 4 };
+    return {
+      ...data, accounts, transactions, budgets, goals,
+      compensationProfile: data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE,
+      version: 5,
+    };
   };
 
   const initFromPath = async (path) => {
@@ -196,6 +201,7 @@ export default function App() {
         setBudgetTemplates(data.budgetTemplates ?? []);
         setArchivedTransactions(data.archivedTransactions ?? []);
         setApiKeys(data.apiKeys             ?? { finnhub: '' });
+        setCompensationProfile(data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE);
         setOnboardingDone(data.onboardingComplete !== false);
       } else {
         // New file location — seed demo data
@@ -267,15 +273,15 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 4 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 5 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
-  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingDone, dataPath, appStatus]);
+  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingDone, dataPath, appStatus]);
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, onboardingComplete: onboardingDone, version: 4 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 5 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -639,12 +645,12 @@ export default function App() {
 
       {/* Main content */}
       <div className="main">
-        {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} onAddGoal={addGoal} onEditGoal={editGoal} onDeleteGoal={deleteGoal} onDeposit={depositGoal} onGoToBudgets={()=>setPage('budgets')} />}
+        {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} onAddGoal={addGoal} onEditGoal={editGoal} onDeleteGoal={deleteGoal} onDeposit={depositGoal} onGoToBudgets={()=>setPage('budgets')} compensationProfile={compensationProfile} onCategoryClick={cat=>{ setTxCatFilter(cat); setPage('transactions'); }} />}
         {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} recurrences={recurrences} lastSyncResult={lastSyncResult} onDismissSyncResult={()=>setLastSyncResult(null)} />}
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} onCloseMonth={()=>setShowMonthClose(true)} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} />}
       </div>
 
       {showAdd && (

@@ -1,49 +1,43 @@
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import Goals from './Goals.jsx';
 
-const DEFAULT_PREFS = {
-  showIncome: true,
-  showExpenses: true,
-  showNet: true,
-  showSavingsRate: true,
-  primaryChart: 'category', // 'category' | 'incomeVsExpenses'
-};
-
-function loadPrefs() {
-  try {
-    const raw = localStorage.getItem('pw_dashboard_prefs');
-    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
-  } catch {}
-  return DEFAULT_PREFS;
-}
-
-export default function Dashboard({ transactions, accounts, budgets, recurrences, onAddTx, grants, netWorthHistory = [], goals = [], onAddGoal, onEditGoal, onDeleteGoal, onDeposit, onGoToBudgets }) {
-  const canvasDonut        = useRef(null);
-  const canvasBar          = useRef(null);
+export default function Dashboard({
+  transactions, accounts, budgets, recurrences, onAddTx,
+  grants, netWorthHistory = [], goals = [],
+  onAddGoal, onEditGoal, onDeleteGoal, onDeposit, onGoToBudgets,
+  compensationProfile, onCategoryClick,
+}) {
   const canvasForecast     = useRef(null);
   const canvasNWTrajectory = useRef(null);
   const [selMonth, setSelMonth] = useState(thisMonth());
-  const [showCustomize, setShowCustomize] = useState(false);
   const [insightsOpen, setInsightsOpen] = useState(true);
-  const [prefs, setPrefs] = useState(loadPrefs);
-
-  const savePrefs = (next) => {
-    setPrefs(next);
-    try { localStorage.setItem('pw_dashboard_prefs', JSON.stringify(next)); } catch {}
-  };
-  const togglePref = (key) => savePrefs({ ...prefs, [key]: !prefs[key] });
 
   const availableMonths = useMemo(() => {
     const set = new Set([...transactions.map(t => t.date.slice(0,7)), thisMonth()]);
     return Array.from(set).sort().reverse();
   }, [transactions]);
 
+  // ── Month data ────────────────────────────────────────────────────────────
   const monthTxs      = useMemo(() => transactions.filter(t => t.date.startsWith(selMonth) && t.type !== 'adjustment'), [transactions, selMonth]);
   const monthExpenses = useMemo(() => monthTxs.filter(t => t.type === 'expense'), [monthTxs]);
   const monthIncome   = useMemo(() => monthTxs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0), [monthTxs]);
   const monthSpend    = useMemo(() => monthExpenses.reduce((s,t) => s + Math.abs(t.amount), 0), [monthExpenses]);
+  const monthSurplus  = monthIncome - monthSpend;
+
+  const prevMonth = useMemo(() => {
+    const d = new Date(selMonth + '-01'); d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0,7);
+  }, [selMonth]);
+
+  const { prevSpend, prevIncome, prevSurplus } = useMemo(() => {
+    const prevTxs   = transactions.filter(t => t.date.startsWith(prevMonth) && t.type !== 'adjustment');
+    const prevSpend  = prevTxs.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
+    const prevIncome = prevTxs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+    return { prevSpend, prevIncome, prevSurplus: prevIncome - prevSpend };
+  }, [transactions, prevMonth]);
+
   const projectedIncome = useMemo(() => {
     if (monthIncome > 0) return 0;
     return (recurrences ?? [])
@@ -51,48 +45,82 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
       .reduce((s, r) => s + Math.abs(monthlyEquivalent(r)), 0);
   }, [recurrences, selMonth, monthIncome]);
   const effectiveIncome = monthIncome + projectedIncome;
-  const isProjected = projectedIncome > 0;
-  const savingsRate = effectiveIncome > 0 ? Math.max(0, (effectiveIncome - monthSpend) / effectiveIncome * 100) : 0;
 
-  const prevMonth = useMemo(()=>{ const d=new Date(selMonth+'-01'); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); },[selMonth]);
-  const { prevSpend, prevIncome } = useMemo(() => {
-    const prevTxs   = transactions.filter(t => t.date.startsWith(prevMonth) && t.type !== 'adjustment');
-    const prevSpend = prevTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+Math.abs(t.amount),0);
-    const prevIncome= prevTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    return { prevSpend, prevIncome };
-  }, [transactions, prevMonth]);
-  const delta = (cur, prev) => {
+  const pctDelta = (cur, prev) => {
     if (prev === 0) return null;
-    const pct = ((cur - prev) / prev * 100).toFixed(0);
-    return { pct, up: cur > prev };
+    const pct = ((cur - prev) / Math.abs(prev) * 100).toFixed(0);
+    return { pct: Math.abs(pct), up: cur > prev };
   };
-  const spendDelta  = delta(monthSpend, prevSpend);
-  const incomeDelta = delta(monthIncome, prevIncome);
+  const surplusDelta  = pctDelta(monthSurplus, prevSurplus);
+  const incomeDelta   = pctDelta(monthIncome, prevIncome);
+  const spendDelta    = pctDelta(monthSpend, prevSpend);
 
-  const assets      = accounts.filter(a => !isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
-  const debts       = accounts.filter(a =>  isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
-  const equityValue = useMemo(() => (grants || []).reduce((s, g) => s + (g.vestedShares || 0) * (g.currentPrice || 0), 0), [grants]);
-  const netWorth    = assets - debts + equityValue;
-  const totalBudget = budgets.filter(b => b.month === selMonth).reduce((s,b) => s + b.amount, 0);
+  // ── Net worth ─────────────────────────────────────────────────────────────
+  const assets     = accounts.filter(a => !isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
+  const debts      = accounts.filter(a =>  isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
+  const equityValue = useMemo(() => (grants || []).reduce((s,g) => s + (g.vestedShares||0) * (g.currentPrice||0), 0), [grants]);
+  const netWorth   = assets - debts + equityValue;
 
+  const checkingBal  = accounts.filter(a => a.type === 'checking').reduce((s,a) => s + a.balance, 0);
+  const savingsBal   = accounts.filter(a => a.type === 'savings').reduce((s,a) => s + a.balance, 0);
+  const investBal    = accounts.filter(a => a.type === 'investment').reduce((s,a) => s + a.balance, 0);
+  const creditBal    = accounts.filter(a => a.type === 'credit').reduce((s,a) => s + a.balance, 0);
+
+  const prevMonthNW = useMemo(() => {
+    const pm = prevMonth;
+    const snapshots = netWorthHistory.filter(h => h.date.slice(0,7) === pm);
+    if (!snapshots.length) return null;
+    return snapshots[snapshots.length - 1].netWorth;
+  }, [netWorthHistory, prevMonth]);
+  const nwDelta = prevMonthNW != null ? netWorth - prevMonthNW : null;
+
+  // ── True Savings Rate ─────────────────────────────────────────────────────
+  const trueSavingsRate = useMemo(() => {
+    const gross = compensationProfile?.grossMonthlySalary ?? 0;
+    if (gross <= 0) return null;
+    const preTax = (compensationProfile.retirement401kPct / 100) * gross
+                 + (compensationProfile.hsaMonthly ?? 0);
+    const takehome = gross * (1 - (compensationProfile.effectiveTaxRate / 100)) - preTax;
+    const rate = takehome > 0
+      ? Math.min(100, Math.max(0, ((takehome - monthSpend + preTax) / gross) * 100))
+      : 0;
+    return rate;
+  }, [compensationProfile, monthSpend]);
+
+  // ── Category spending ─────────────────────────────────────────────────────
   const catSpend = useMemo(() => {
     const map = {};
     monthExpenses.forEach(t => { map[t.category] = (map[t.category] || 0) + Math.abs(t.amount); });
     return map;
   }, [monthExpenses]);
-  const topCats = useMemo(() => Object.entries(catSpend).sort((a,b) => b[1]-a[1]).slice(0,6), [catSpend]);
+  const topCats = useMemo(() => Object.entries(catSpend).sort((a,b) => b[1]-a[1]), [catSpend]);
 
-  const last6 = useMemo(() => Array.from({length:6}, (_,i) => {
-    const d = new Date(); d.setMonth(d.getMonth() - (5-i));
-    const m = d.toISOString().slice(0,7);
-    return {
-      label: d.toLocaleDateString('en-US',{month:'short'}),
-      spend:  transactions.filter(t => t.type==='expense' && t.date.startsWith(m)).reduce((s,t)=>s+Math.abs(t.amount),0),
-      income: transactions.filter(t => t.type==='income'  && t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0),
-    };
-  }), [transactions]);
+  // ── Budget progress ───────────────────────────────────────────────────────
+  const monthBudgets = useMemo(() =>
+    budgets.filter(b => b.month === selMonth).map(b => {
+      const spent = catSpend[b.category] || 0;
+      const pct   = b.amount > 0 ? (spent / b.amount) * 100 : 0;
+      return { ...b, spent, pct };
+    }).sort((a, b) => b.pct - a.pct)
+  , [budgets, catSpend, selMonth]);
 
-  // Spending Insights: 3-month avg vs current month
+  const barColor = (pct) => pct >= 100 ? '#c2735a' : pct >= 80 ? '#f59e0b' : '#4ade80';
+
+  // ── Goals on-track ────────────────────────────────────────────────────────
+  const last3Surplus = useMemo(() => {
+    const months = Array.from({length:3}, (_,i) => {
+      const d = new Date(selMonth + '-01'); d.setMonth(d.getMonth() - (i+1));
+      return d.toISOString().slice(0,7);
+    });
+    const tot = months.reduce((s, m) => {
+      const inc = transactions.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((a,t)=>a+t.amount,0);
+      const exp = transactions.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((a,t)=>a+Math.abs(t.amount),0);
+      return s + (inc - exp);
+    }, 0);
+    return tot / 3;
+  }, [transactions, selMonth]);
+
+  // ── Insights ──────────────────────────────────────────────────────────────
   const insights = useMemo(() => {
     const months3 = Array.from({length:3}, (_,i) => {
       const d = new Date(selMonth+'-01'); d.setMonth(d.getMonth() - (i+1));
@@ -105,7 +133,6 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
       });
     });
     Object.keys(avg3).forEach(k => { avg3[k] /= 3; });
-
     const flags = [];
     Object.entries(catSpend).forEach(([cat, spent]) => {
       const avg = avg3[cat];
@@ -117,58 +144,28 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
     return flags;
   }, [transactions, catSpend, selMonth]);
 
-  useChart(canvasDonut, () => ({
-    type: 'doughnut',
-    data: {
-      labels: topCats.map(([c]) => c),
-      datasets: [{ data: topCats.map(([,v]) => v), backgroundColor: topCats.map(([c]) => catColor(c)), borderWidth:0, hoverOffset:6 }],
-    },
-    options: { responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.label}: ${fmt(ctx.raw)}`}} } },
-  }), [JSON.stringify(catSpend)]);
-
-  useChart(canvasBar, () => ({
-    type: 'bar',
-    data: {
-      labels: last6.map(r => r.label),
-      datasets: [
-        { label:'Spending', data:last6.map(r=>r.spend),  backgroundColor:'#c2735a66', borderColor:'#c2735a', borderWidth:2, borderRadius:4 },
-        { label:'Income',   data:last6.map(r=>r.income), backgroundColor:'#4ade8066', borderColor:'#4ade80', borderWidth:2, borderRadius:4 },
-      ],
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{labels:{color:'#94a3b8',font:{size:12}}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${fmt(ctx.raw)}`}} },
-      scales:{ x:{grid:{color:'#1e2736'},ticks:{color:'#64748b'}}, y:{grid:{color:'#1e2736'},ticks:{color:'#64748b',callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}} },
-    },
-  }), [JSON.stringify(last6)]);
-
-  const recent = transactions.slice(0, 8);
-
-  // ── FIRE / Financial Independence calculation ─────────────────────────────────
+  // ── FIRE data ─────────────────────────────────────────────────────────────
   const fireData = useMemo(() => {
-    // Use 3-month rolling average for stable estimates
     const last3months = Array.from({length:3}, (_,i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (i + 1));
       return d.toISOString().slice(0, 7);
     });
     const totalSpend  = last3months.reduce((s, m) =>
-      s + transactions.filter(t => t.type === 'expense' && t.date.startsWith(m)).reduce((ss, t) => ss + Math.abs(t.amount), 0), 0);
+      s + transactions.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((ss,t)=>ss+Math.abs(t.amount),0), 0);
     const totalIncome = last3months.reduce((s, m) =>
-      s + transactions.filter(t => t.type === 'income' && t.date.startsWith(m)).reduce((ss, t) => ss + t.amount, 0), 0);
+      s + transactions.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((ss,t)=>ss+t.amount,0), 0);
     const avgMonthlySpend  = totalSpend  / 3;
     const avgMonthlyIncome = totalIncome / 3;
     const monthlySavings   = avgMonthlyIncome - avgMonthlySpend;
     const annualExpenses   = avgMonthlySpend * 12;
-    const fireNumber       = annualExpenses * 25; // 4% safe withdrawal rule
+    const fireNumber       = annualExpenses * 25;
     const gap              = fireNumber - netWorth;
-    const yearsToFire      = monthlySavings > 0 && gap > 0
-      ? gap / (monthlySavings * 12)
-      : null;
+    const yearsToFire      = monthlySavings > 0 && gap > 0 ? gap / (monthlySavings * 12) : null;
     const fireProgress     = fireNumber > 0 ? Math.min(100, (netWorth / fireNumber) * 100) : 0;
     return { fireNumber, gap, yearsToFire, fireProgress, annualExpenses, monthlySavings, avgMonthlySpend, avgMonthlyIncome };
   }, [transactions, netWorth]);
 
-  // ── Insights panel: Spending Forecast ────────────────────────────────────────
+  // ── Forecast data ─────────────────────────────────────────────────────────
   const forecastData = useMemo(() => {
     const months = Array.from({length:6}, (_,i) => {
       const d = new Date(); d.setMonth(d.getMonth()-(5-i));
@@ -185,30 +182,23 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
     const sumX2 = points.reduce((s,p)=>s+p.x*p.x,0);
     const slope     = (n*sumXY - sumX*sumY)/(n*sumX2 - sumX*sumX) || 0;
     const intercept = (sumY - slope*sumX)/n;
-    const labels = months.map(m=>{ const d=new Date(m+'-01'); return d.toLocaleDateString('en-US',{month:'short'}); });
-    const future = [1,2,3].map((_,i) => {
+    const labels    = months.map(m=>{ const d=new Date(m+'-01'); return d.toLocaleDateString('en-US',{month:'short'}); });
+    const future    = [1,2,3].map((_,i) => {
       const d = new Date(); d.setMonth(d.getMonth()+i+1);
       return d.toLocaleDateString('en-US',{month:'short'});
     });
-    const actualData     = points.map(p=>p.y);
-    const forecastValues = [6,7,8].map(i => Math.max(0, slope*i + intercept));
     return {
       labels:         [...labels,...future],
-      actualData:     [...actualData,...Array(3).fill(null)],
-      forecastValues: [...Array(6).fill(null),...forecastValues],
-      slope,
-      intercept,
+      actualData:     [...points.map(p=>p.y),...Array(3).fill(null)],
+      forecastValues: [...Array(6).fill(null),...[6,7,8].map(i=>Math.max(0,slope*i+intercept))],
     };
   }, [transactions]);
 
-  // ── Insights panel: Net Worth Trajectory ─────────────────────────────────────
   const nwTrajectoryData = useMemo(() => {
     const sorted = [...netWorthHistory].sort((a,b)=>a.date.localeCompare(b.date));
     return {
-      labels:   sorted.map(h => h.date.slice(0,7)),
-      netWorth: sorted.map(h => h.netWorth),
-      assets:   sorted.map(h => h.assets),
-      debts:    sorted.map(h => h.debts),
+      labels:   sorted.map(h=>h.date.slice(0,7)),
+      netWorth: sorted.map(h=>h.netWorth),
     };
   }, [netWorthHistory]);
 
@@ -275,15 +265,14 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
           <button className="btn btn-primary" onClick={onAddTx}>+ Add First Transaction</button>
         </div>
       )}
+
+      {/* Header */}
       <div className="section-header">
         <div>
           <div className="section-title">Dashboard</div>
           <div className="section-sub">{new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}</div>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <button className="btn btn-ghost btn-sm" style={{ fontSize:12 }} onClick={()=>setShowCustomize(c=>!c)}>
-            ⚙️ Customize
-          </button>
           <select value={selMonth} onChange={e=>setSelMonth(e.target.value)} style={{ width:170 }}>
             {availableMonths.map(m => (
               <option key={m} value={m}>{new Date(m+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</option>
@@ -293,139 +282,170 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
         </div>
       </div>
 
-      {/* Customize panel */}
-      {showCustomize && (
-        <div className="card" style={{ marginBottom:16, padding:'14px 18px' }}>
-          <div style={{ fontSize:13, fontWeight:600, color:'#94a3b8', marginBottom:10 }}>Dashboard Customization</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:16 }}>
-            <div>
-              <div style={{ fontSize:12, color:'#64748b', marginBottom:6 }}>Stat Cards</div>
-              {[
-                ['showIncome',      'Income'],
-                ['showExpenses',    'Expenses'],
-                ['showNet',         'Net (transactions)'],
-                ['showSavingsRate', 'Savings Rate'],
-              ].map(([key, label]) => (
-                <label key={key} style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, marginBottom:4, cursor:'pointer' }}>
-                  <input type="checkbox" checked={prefs[key]} onChange={()=>togglePref(key)} />
-                  {label}
-                </label>
-              ))}
+      {/* ── Module 1: Net Worth Bar ── */}
+      <div className="card" style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12, flexWrap:'wrap', gap:8 }}>
+          <div>
+            <div style={{ fontSize:12, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
+            <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(netWorth)}</div>
+          </div>
+          {nwDelta != null && (
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:12, color:'#64748b', marginBottom:2 }}>vs last month</div>
+              <div style={{ fontSize:16, fontWeight:700, color: nwDelta >= 0 ? '#4ade80' : '#c2735a' }}>
+                {nwDelta >= 0 ? '+' : ''}{fmt(nwDelta)}
+              </div>
             </div>
+          )}
+        </div>
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+          {checkingBal !== 0 && (
+            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'#64748b' }}>Checking </span>
+              <span style={{ color:'#e2e8f0', fontWeight:600 }}>{fmt(checkingBal)}</span>
+            </div>
+          )}
+          {savingsBal !== 0 && (
+            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'#64748b' }}>Savings </span>
+              <span style={{ color:'#e2e8f0', fontWeight:600 }}>{fmt(savingsBal)}</span>
+            </div>
+          )}
+          {investBal !== 0 && (
+            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'#64748b' }}>Investments </span>
+              <span style={{ color:'#8b5cf6', fontWeight:600 }}>{fmt(investBal)}</span>
+            </div>
+          )}
+          {equityValue > 0 && (
+            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'#64748b' }}>Equity </span>
+              <span style={{ color:'#8b5cf6', fontWeight:600 }}>{fmt(equityValue)}</span>
+            </div>
+          )}
+          {creditBal !== 0 && (
+            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'#64748b' }}>Credit </span>
+              <span style={{ color:'#c2735a', fontWeight:600 }}>{fmt(creditBal)}</span>
+            </div>
+          )}
+        </div>
+      </div>
 
+      {/* ── Module 2: Monthly Pulse ── */}
+      <div className="card" style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, flexWrap:'wrap', gap:8 }}>
+          <div style={{ fontWeight:600, fontSize:15 }}>Monthly Pulse</div>
+          {projectedIncome > 0 && <span style={{ fontSize:12, color:'#f59e0b' }}>📅 Income projected from recurring</span>}
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
+          <div style={{ background:'#0d1117', borderRadius:10, padding:'14px 16px' }}>
+            <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Income</div>
+            <div style={{ fontSize:22, fontWeight:700, color:'#4ade80' }}>{fmt(effectiveIncome)}</div>
+            {incomeDelta && (
+              <div style={{ fontSize:11, marginTop:4, color: incomeDelta.up ? '#4ade80' : '#c2735a' }}>
+                {incomeDelta.up ? '▲' : '▼'} {incomeDelta.pct}% vs prev
+              </div>
+            )}
+          </div>
+          <div style={{ background:'#0d1117', borderRadius:10, padding:'14px 16px' }}>
+            <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Spent</div>
+            <div style={{ fontSize:22, fontWeight:700, color:'#c2735a' }}>{fmt(monthSpend)}</div>
+            {spendDelta && (
+              <div style={{ fontSize:11, marginTop:4, color: spendDelta.up ? '#c2735a' : '#4ade80' }}>
+                {spendDelta.up ? '▲' : '▼'} {spendDelta.pct}% vs prev
+              </div>
+            )}
+          </div>
+          <div style={{ background:'#0d1117', borderRadius:10, padding:'14px 16px' }}>
+            <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Surplus</div>
+            <div style={{ fontSize:22, fontWeight:700, color: monthSurplus >= 0 ? '#4ade80' : '#c2735a' }}>
+              {monthSurplus >= 0 ? '+' : ''}{fmt(monthSurplus)}
+            </div>
+            {surplusDelta && (
+              <div style={{ fontSize:11, marginTop:4, color: surplusDelta.up ? '#4ade80' : '#c2735a' }}>
+                {surplusDelta.up ? '▲' : '▼'} {surplusDelta.pct}% vs prev
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {/* ── Budget status hero — first answer: "am I on budget this month?" ── */}
-      {(() => {
-        const monthBudgets = budgets
-          .filter(b => b.month === selMonth)
-          .map(b => {
-            const spent = catSpend[b.category] || 0;
-            const pct   = b.amount > 0 ? (spent / b.amount) * 100 : 0;
-            return { ...b, spent, pct };
-          })
-          .sort((a, b) => b.pct - a.pct);
-        const heroSpent = monthBudgets.reduce((s, b) => s + b.spent, 0);
-        const heroTotal = monthBudgets.reduce((s, b) => s + b.amount, 0);
-        const overCount = monthBudgets.filter(b => b.pct >= 100).length;
-        const barColor  = (pct) => pct >= 100 ? '#c2735a' : pct >= 80 ? '#f59e0b' : '#4ade80';
-        return (
-          <div className="card" style={{ marginBottom:20 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14, flexWrap:'wrap', gap:8 }}>
-              <div style={{ fontWeight:600, fontSize:15 }}>🎯 Budget Status</div>
-              {monthBudgets.length > 0 && (
-                <div style={{ fontSize:13, color:'#94a3b8' }}>
-                  <strong style={{ color: heroSpent > heroTotal ? '#c2735a' : '#e2e8f0' }}>{fmt(heroSpent)}</strong>
-                  {' '}of <strong style={{ color:'#e2e8f0' }}>{fmt(heroTotal)}</strong> spent this month
-                  {overCount > 0 && <span style={{ color:'#c2735a', marginLeft:8 }}>⚠ {overCount} over limit</span>}
-                </div>
-              )}
-            </div>
-            {monthBudgets.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'18px 0' }}>
-                <div style={{ fontSize:13, color:'#64748b', marginBottom:12 }}>
-                  No budgets set for this month — set spending limits to see at a glance whether you're on track.
-                </div>
-                <button className="btn btn-primary btn-sm" onClick={onGoToBudgets}>+ Create Budgets</button>
-              </div>
-            ) : (
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {monthBudgets.map(b => (
-                  <div
-                    key={b.id}
-                    onClick={onGoToBudgets}
-                    title="Manage budgets"
-                    style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}
-                  >
-                    <span style={{ fontSize:13, color:'#e2e8f0', width:170, flexShrink:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {catIcon(b.category)} {b.category}
-                    </span>
-                    <span style={{ fontSize:12, color:'#94a3b8', width:150, flexShrink:0, textAlign:'right' }}>
-                      {fmt(b.spent)} / {fmt(b.amount)}
-                    </span>
-                    <div style={{ flex:1, background:'#1e2736', borderRadius:5, height:8, overflow:'hidden' }}>
-                      <div style={{ height:'100%', borderRadius:5, width:`${Math.min(100, b.pct)}%`, background:barColor(b.pct), transition:'width 0.4s ease' }} />
-                    </div>
-                    <span style={{ fontSize:12, fontWeight:700, color:barColor(b.pct), width:44, flexShrink:0, textAlign:'right' }}>
-                      {Math.round(b.pct)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:`repeat(${[prefs.showIncome,prefs.showExpenses,prefs.showNet,prefs.showSavingsRate].filter(Boolean).length},1fr)`, gap:14, marginBottom:20 }}>
-        {prefs.showNet && (
-          <div className="stat-card">
-            <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Net Worth</div>
-            <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:netWorth>=0?'#4ade80':'#c2735a' }}>{fmt(netWorth)}</div>
-            <div style={{ fontSize:12,color:'#475569',marginTop:4 }}>{fmt(assets)} assets · {fmt(debts)} debts</div>
-            {equityValue > 0 && (
-              <div style={{ fontSize:11,color:'#8b5cf6',marginTop:3 }}>incl. {fmt(equityValue)} equity</div>
-            )}
-          </div>
-        )}
-        {prefs.showExpenses && (
-          <div className="stat-card">
-            <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Month Spent</div>
-            <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:'#c2735a' }}>{fmt(monthSpend)}</div>
-            {spendDelta
-              ? <div className={spendDelta.up ? 'delta-neg' : 'delta-pos'} style={{ marginTop:4 }}>{spendDelta.up?'▲':'▼'} {Math.abs(spendDelta.pct)}% vs prev month</div>
-              : totalBudget > 0 ? <div style={{ fontSize:12,color:'#475569',marginTop:4 }}>of {fmt(totalBudget)} budget · {Math.round(monthSpend/totalBudget*100)}%</div> : null}
-          </div>
-        )}
-        {prefs.showIncome && (
-          <div className="stat-card">
-            <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Month Income</div>
-            <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:'#4ade80' }}>{fmt(monthIncome)}</div>
-            {incomeDelta
-              ? <div className={incomeDelta.up ? 'delta-pos' : 'delta-neg'} style={{ marginTop:4 }}>{incomeDelta.up?'▲':'▼'} {Math.abs(incomeDelta.pct)}% vs prev month</div>
-              : <div style={{ fontSize:12,color:monthIncome-monthSpend>=0?'#4ade80':'#c2735a',marginTop:4 }}>
-                  {monthIncome-monthSpend>=0?'▲ ':'▼ '}{fmt(Math.abs(monthIncome-monthSpend))} {monthIncome-monthSpend>=0?'saved':'over'}
-                </div>}
-          </div>
-        )}
-        {prefs.showSavingsRate && (
-          <div className="stat-card">
-            <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Savings Rate</div>
-            <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:savingsRate>=20?'#4ade80':'#f59e0b' }}>{savingsRate.toFixed(0)}%</div>
-            <div style={{ fontSize:12,color:'#475569',marginTop:4 }}>
-              {isProjected
-                ? <span style={{ color:'#f59e0b' }}>📅 projected income</span>
-                : `${monthTxs.length} transactions this month`}
-            </div>
+        {trueSavingsRate != null && (
+          <div style={{ marginTop:12, padding:'10px 14px', background:'#0d1117', borderRadius:8, fontSize:13 }}>
+            <span style={{ color:'#64748b' }}>True Savings Rate </span>
+            <span style={{ fontWeight:700, color: trueSavingsRate >= 20 ? '#4ade80' : '#f59e0b', marginLeft:6 }}>
+              {trueSavingsRate.toFixed(1)}%
+            </span>
+            <span style={{ color:'#334155', fontSize:11, marginLeft:6 }}>of gross salary (including pre-tax)</span>
           </div>
         )}
       </div>
 
-      {/* Savings Goals (moved from its own nav page) */}
-      <div style={{ marginBottom:20 }}>
+      {/* ── Module 3 + 4: Category + Budget (2-column) ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:16 }}>
+        {/* Module 3: Spending by Category */}
+        <div className="card">
+          <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Spending by Category</div>
+          {topCats.length === 0 ? (
+            <div className="empty-state"><div className="empty-icon">📊</div><p>No expenses this month</p></div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+              {topCats.slice(0, 8).map(([cat, amt]) => {
+                const pct = monthSpend > 0 ? (amt / monthSpend) * 100 : 0;
+                return (
+                  <div
+                    key={cat}
+                    onClick={() => onCategoryClick?.(cat)}
+                    style={{ cursor: onCategoryClick ? 'pointer' : 'default' }}
+                  >
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
+                      <span style={{ fontSize:13, color:'#e2e8f0' }}>{catIcon(cat)} {cat}</span>
+                      <span style={{ fontSize:13, fontWeight:600, color:'#e2e8f0' }}>{fmt(amt)}</span>
+                    </div>
+                    <div style={{ background:'#1e2736', borderRadius:4, height:5, overflow:'hidden' }}>
+                      <div style={{ height:'100%', borderRadius:4, width:`${pct}%`, background: catColor(cat), transition:'width 0.4s ease' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Module 4: Budget Progress */}
+        <div className="card">
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14 }}>
+            <div style={{ fontWeight:600, fontSize:14 }}>Budget Progress</div>
+            {monthBudgets.length > 0 && (
+              <button className="btn btn-ghost btn-sm" style={{ fontSize:11 }} onClick={onGoToBudgets}>Manage →</button>
+            )}
+          </div>
+          {monthBudgets.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'18px 0' }}>
+              <div style={{ fontSize:13, color:'#64748b', marginBottom:12 }}>No budgets for this month</div>
+              <button className="btn btn-primary btn-sm" onClick={onGoToBudgets}>+ Create Budgets</button>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+              {monthBudgets.map(b => (
+                <div key={b.id} onClick={onGoToBudgets} style={{ cursor:'pointer' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
+                    <span style={{ fontSize:13, color:'#e2e8f0', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {catIcon(b.category)} {b.category}
+                    </span>
+                    <span style={{ fontSize:11, color:'#64748b', flexShrink:0, marginLeft:8 }}>{fmt(b.spent)} / {fmt(b.amount)}</span>
+                  </div>
+                  <div style={{ background:'#1e2736', borderRadius:4, height:6, overflow:'hidden' }}>
+                    <div style={{ height:'100%', borderRadius:4, width:`${Math.min(100, b.pct)}%`, background:barColor(b.pct), transition:'width 0.4s ease' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Module 5: Goals Progress ── */}
+      <div style={{ marginBottom:16 }}>
         <Goals
           embedded
           goals={goals}
@@ -434,41 +454,43 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
           onEdit={onEditGoal}
           onDelete={onDeleteGoal}
           onDeposit={onDeposit}
+          monthlySurplus={last3Surplus}
         />
       </div>
 
-      {/* Recent transactions */}
-      <div className="card">
-        <div style={{ fontWeight:600,fontSize:14,marginBottom:14 }}>Recent Transactions</div>
-        {recent.length === 0
-          ? <div className="empty-state"><div className="empty-icon">💸</div><p>No transactions yet</p></div>
-          : <table>
-              <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style={{ textAlign:'right' }}>Amount</th></tr></thead>
-              <tbody>
-                {recent.map(t => (
-                  <tr key={t.id}>
-                    <td style={{ color:'#64748b',fontSize:13 }}>{fmtDate(t.date)}</td>
-                    <td style={{ fontWeight:500 }}>
-                      {t.description}
-                      {t.recurringId && <span style={{ fontSize:10,background:'#1e2736',color:'#64748b',padding:'1px 6px',borderRadius:10,marginLeft:4 }}>🔁</span>}
-                    </td>
-                    <td><span className="tag">{catIcon(t.category)} {t.category}</span></td>
-                    <td style={{ textAlign:'right',fontWeight:700,color:t.amount>=0?'#4ade80':'#c2735a' }}>
-                      {t.amount>=0?'+':''}{fmt(t.amount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-        }
+      {/* ── Recent transactions ── */}
+      <div className="card" style={{ marginBottom:20 }}>
+        <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Recent Transactions</div>
+        {transactions.length === 0 ? (
+          <div className="empty-state"><div className="empty-icon">💸</div><p>No transactions yet</p></div>
+        ) : (
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style={{ textAlign:'right' }}>Amount</th></tr></thead>
+            <tbody>
+              {transactions.slice(0, 8).map(t => (
+                <tr key={t.id}>
+                  <td style={{ color:'#64748b', fontSize:13 }}>{fmtDate(t.date)}</td>
+                  <td style={{ fontWeight:500 }}>
+                    {t.description}
+                    {t.recurringId && <span style={{ fontSize:10, background:'#1e2736', color:'#64748b', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>🔁</span>}
+                  </td>
+                  <td><span className="tag">{catIcon(t.category)} {t.category}</span></td>
+                  <td style={{ textAlign:'right', fontWeight:700, color:t.amount>=0?'#4ade80':'#c2735a' }}>
+                    {t.amount>=0?'+':''}{fmt(t.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Insights */}
+      {/* ── Insights ── */}
       {insights.length > 0 && (
-        <div className="card" style={{ marginTop:20 }}>
-          <div style={{ fontWeight:600,fontSize:14,marginBottom:12 }}>💡 Spending Insights</div>
-          {insights.map(({cat,spent,avg,pct,dir}) => (
-            <div key={cat} style={{ fontSize:13,color:'#94a3b8',marginBottom:6,display:'flex',alignItems:'center',gap:6 }}>
+        <div className="card" style={{ marginBottom:20 }}>
+          <div style={{ fontWeight:600, fontSize:14, marginBottom:12 }}>💡 Spending Insights</div>
+          {insights.map(({cat, spent, avg, pct, dir}) => (
+            <div key={cat} style={{ fontSize:13, color:'#94a3b8', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
               <span>{dir==='up'?'⬆️':'⬇️'}</span>
               <span>
                 <strong style={{ color:'#e2e8f0' }}>{catIcon(cat)} {cat}</strong>
@@ -481,36 +503,10 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
         </div>
       )}
 
-      {/* Charts */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1.8fr', gap:14, marginTop:20 }}>
-        <div className="card">
-          <div style={{ fontWeight:600,fontSize:14,marginBottom:16 }}>Spending by Category</div>
-          {topCats.length === 0
-            ? <div className="empty-state"><div className="empty-icon">🍩</div><p>No expenses this month</p></div>
-            : <>
-                <div className="chart-container" style={{ height:160 }}><canvas ref={canvasDonut} /></div>
-                <div style={{ marginTop:14,display:'flex',flexDirection:'column',gap:6 }}>
-                  {topCats.map(([cat,amt]) => (
-                    <div key={cat} style={{ display:'flex',alignItems:'center',gap:8 }}>
-                      <div style={{ width:10,height:10,borderRadius:2,background:catColor(cat),flexShrink:0 }} />
-                      <span style={{ fontSize:13,color:'#94a3b8',flex:1 }}>{catIcon(cat)} {cat}</span>
-                      <span style={{ fontSize:13,fontWeight:600,color:'#e2e8f0' }}>{fmt(amt)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-          }
-        </div>
-        <div className="card">
-          <div style={{ fontWeight:600,fontSize:14,marginBottom:16 }}>Income vs Spending — Last 6 Months</div>
-          <div className="chart-container" style={{ height:240 }}><canvas ref={canvasBar} /></div>
-        </div>
-      </div>
-
-      {/* Insights panel — Forecast + Net Worth Trajectory */}
-      <div style={{ marginTop:20, border:'1px solid #1e2736', borderRadius:12, overflow:'hidden' }}>
+      {/* ── Insights panel: Forecast + NW Trajectory + FIRE ── */}
+      <div style={{ border:'1px solid #1e2736', borderRadius:12, overflow:'hidden' }}>
         <button
-          onClick={()=>setInsightsOpen(o=>!o)}
+          onClick={() => setInsightsOpen(o => !o)}
           style={{ width:'100%', background:'#111827', border:'none', padding:'14px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', color:'#e2e8f0' }}>
           <span style={{ fontWeight:600, fontSize:14 }}>Insights &amp; Forecast</span>
           <span style={{ fontSize:12, color:'#64748b' }}>{insightsOpen ? '▲ Collapse' : '▼ Expand'}</span>
@@ -521,14 +517,12 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
               <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Spending Forecast — Next 3 Months</div>
               <div className="chart-container" style={{ height:200 }}><canvas ref={canvasForecast} /></div>
             </div>
-            <div>
+            <div style={{ marginBottom:24 }}>
               <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Net Worth Trajectory</div>
               <div className="chart-container" style={{ height:200 }}><canvas ref={canvasNWTrajectory} /></div>
             </div>
-
-            {/* FIRE Calculator */}
             {fireData.avgMonthlySpend > 0 && (
-              <div style={{ marginTop:24, borderTop:'1px solid #1e2736', paddingTop:20 }}>
+              <div style={{ borderTop:'1px solid #1e2736', paddingTop:20 }}>
                 <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>🔥 FIRE Progress</div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
                   <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
@@ -554,7 +548,6 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
                     <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>at current savings rate</div>
                   </div>
                 </div>
-                {/* Progress bar */}
                 <div style={{ fontSize:11, color:'#64748b', marginBottom:4, display:'flex', justifyContent:'space-between' }}>
                   <span>Progress to FIRE</span>
                   <span style={{ color:'#7fa88b', fontWeight:600 }}>{fireData.fireProgress.toFixed(1)}%</span>
@@ -563,7 +556,7 @@ export default function Dashboard({ transactions, accounts, budgets, recurrences
                   <div style={{
                     height:'100%', borderRadius:6,
                     width:`${fireData.fireProgress}%`,
-                    background: fireData.fireProgress >= 100 ? '#4ade80' : 'linear-gradient(90deg, #7fa88b, #4ade80)',
+                    background: fireData.fireProgress >= 100 ? '#4ade80' : 'linear-gradient(90deg,#7fa88b,#4ade80)',
                     transition:'width 0.5s ease',
                   }} />
                 </div>

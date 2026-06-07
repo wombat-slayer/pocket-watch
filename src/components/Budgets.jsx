@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { CATEGORIES, getAllCategories, catColor, catIcon, fmt, thisMonth, nextMonth, prevMonth, uid, parseAmount } from '../constants.js';
+import { CATEGORIES, getAllCategories, catColor, catIcon, fmt, thisMonth, nextMonth, prevMonth, uid, parseAmount, suggestBudgetsFromActuals } from '../constants.js';
 import Modal from './Modal.jsx';
 
 function BudgetForm({ initial, defaultMonth, onSave, onClose, userCategories }) {
@@ -48,8 +48,10 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
   const [month,   setMonth]   = useState(thisMonth());
   const [showAdd, setShowAdd] = useState(false);
   const [editB,   setEditB]   = useState(null);
-  const [copied,  setCopied]  = useState(false);
-  const [view,    setView]    = useState('current');
+  const [copied,       setCopied]       = useState(false);
+  const [view,         setView]         = useState('current');
+  const [showSuggest,  setShowSuggest]  = useState(false);
+  const [suggestEdits, setSuggestEdits] = useState({});
   const alertedRef = useRef(new Set());
 
   const monthBudgets = budgets.filter(b => b.month === month);
@@ -92,6 +94,15 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
     const s = new Set([...budgets.map(b=>b.month), thisMonth()]);
     return Array.from(s).sort().reverse();
   }, [budgets]);
+
+  const suggestedItems = useMemo(() => {
+    const ref3 = Array.from({length:3}, (_,i) => {
+      const d = new Date(month + '-01'); d.setMonth(d.getMonth() - (i + 1));
+      return d.toISOString().slice(0,7);
+    });
+    const existing = new Set(monthBudgets.map(b => b.category));
+    return suggestBudgetsFromActuals(transactions, ref3).filter(s => !existing.has(s.category));
+  }, [transactions, month, monthBudgets]);
 
   const history6 = useMemo(() => Array.from({length:6}, (_,i) => {
     const d = new Date(); d.setMonth(d.getMonth() - (5-i));
@@ -243,6 +254,14 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
               {monthBudgets.length > 0 && (
                 <button className="btn btn-secondary" onClick={copyToNext} title={`Copy to ${nmLabel}`}>
                   {copied ? 'Copied!' : `Copy to ${nmLabel}`}
+                </button>
+              )}
+              {suggestedItems.length > 0 && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => { setSuggestEdits(Object.fromEntries(suggestedItems.map(s => [s.category, String(s.suggested)]))); setShowSuggest(true); }}
+                >
+                  💡 Suggest budgets
                 </button>
               )}
               <button className="btn btn-primary" onClick={()=>setShowAdd(true)}>+ Add Budget</button>
@@ -536,6 +555,45 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
       {editB && (
         <Modal title="Edit Budget" onClose={()=>setEditB(null)}>
           <BudgetForm initial={editB} defaultMonth={month} onSave={b=>{onEdit(b);setEditB(null);}} onClose={()=>setEditB(null)} userCategories={userCategories} />
+        </Modal>
+      )}
+
+      {showSuggest && (
+        <Modal title="Suggested Budgets from Your Spending" onClose={() => setShowSuggest(false)}>
+          <div style={{ marginBottom:12, fontSize:13, color:'#94a3b8' }}>
+            Based on your average spending over the last 3 months. Adjust any amount, then confirm to add only the categories you don't already have budgets for.
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:360, overflowY:'auto', marginBottom:16 }}>
+            {suggestedItems.map(s => (
+              <div key={s.category} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <span style={{ flex:1, fontSize:13, color:'#e2e8f0' }}>{s.category}</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="5"
+                  value={suggestEdits[s.category] ?? String(s.suggested)}
+                  onChange={e => setSuggestEdits(prev => ({ ...prev, [s.category]: e.target.value }))}
+                  style={{ width:90, textAlign:'right' }}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+            <button className="btn btn-secondary" onClick={() => setShowSuggest(false)}>Cancel</button>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                suggestedItems.forEach(s => {
+                  const raw = parseAmount(suggestEdits[s.category] ?? String(s.suggested));
+                  const amt = isNaN(raw) || raw <= 0 ? s.suggested : Math.round(raw);
+                  if (amt > 0) onAdd({ id: uid(), category: s.category, amount: amt, month, rollover: false });
+                });
+                setShowSuggest(false);
+              }}
+            >
+              Add {suggestedItems.length} Budget{suggestedItems.length !== 1 ? 's' : ''}
+            </button>
+          </div>
         </Modal>
       )}
     </div>

@@ -5,7 +5,7 @@ import PlaidSync from './PlaidSync.jsx';
 import Recurring from './Recurring.jsx';
 import Equity from './Equity.jsx';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDemo,  setConfirmDemo]  = useState(false);
   const [importError,  setImportError]  = useState('');
@@ -165,6 +165,64 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <p style={{ fontSize:11, color:'#475569', marginTop:8 }}>Keys are stored locally in your data file — never uploaded or shared.</p>
       </div>
 
+
+      {/* Compensation Profile */}
+      {compensationProfile !== undefined && onSetCompensationProfile && (
+        <div className="settings-section">
+          <div className="settings-section-title">💼 Compensation Profile</div>
+          <p style={{ fontSize:13, color:'#94a3b8', marginBottom:14 }}>
+            Used to calculate your True Savings Rate on the Dashboard. All values stay local — never uploaded.
+          </p>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, maxWidth:520 }}>
+            <div className="form-group">
+              <label className="form-label">Gross Monthly Salary ($)</label>
+              <input
+                type="number" min="0" step="100"
+                placeholder="0"
+                value={compensationProfile.grossMonthlySalary || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, grossMonthlySalary: +e.target.value || 0 })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">401(k) Contribution (%)</label>
+              <input
+                type="number" min="0" max="100" step="0.5"
+                placeholder="0"
+                value={compensationProfile.retirement401kPct || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, retirement401kPct: +e.target.value || 0 })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">HSA Monthly Contribution ($)</label>
+              <input
+                type="number" min="0" step="10"
+                placeholder="0"
+                value={compensationProfile.hsaMonthly || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, hsaMonthly: +e.target.value || 0 })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Effective Tax Rate (%)</label>
+              <input
+                type="number" min="0" max="100" step="0.5"
+                placeholder="0"
+                value={compensationProfile.effectiveTaxRate || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, effectiveTaxRate: +e.target.value || 0 })}
+              />
+            </div>
+          </div>
+          <div className="form-group" style={{ marginTop:6, maxWidth:520 }}>
+            <label className="form-label">Notes</label>
+            <input
+              type="text"
+              placeholder="e.g. base + bonus, excludes RSU"
+              value={compensationProfile.notes || ''}
+              onChange={e => onSetCompensationProfile({ ...compensationProfile, notes: e.target.value })}
+            />
+          </div>
+          <p style={{ fontSize:11, color:'#475569', marginTop:8 }}>Changes auto-save with the rest of your data.</p>
+        </div>
+      )}
 
       {/* Bank Sync */}
       <div className="settings-section">

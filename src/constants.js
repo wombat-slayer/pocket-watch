@@ -213,3 +213,32 @@ export function detectAndMarkTransferPairs(transactions) {
   }
   return txs;
 }
+
+// ── Compensation profile ──────────────────────────────────────────────────────
+
+export const DEFAULT_COMPENSATION_PROFILE = {
+  grossMonthlySalary: 0,
+  retirement401kPct: 0,
+  hsaMonthly: 0,
+  effectiveTaxRate: 0,
+  notes: '',
+};
+
+// ── Budget suggestions from spending history ──────────────────────────────────
+
+export function suggestBudgetsFromActuals(transactions, referenceMonths) {
+  const totals = {};
+  referenceMonths.forEach(m => {
+    transactions
+      .filter(t => t.type === 'expense' && t.date.startsWith(m))
+      .forEach(t => {
+        totals[t.category] = (totals[t.category] || 0) + Math.abs(t.amount);
+      });
+  });
+  return Object.entries(totals)
+    .map(([category, total]) => ({
+      category,
+      suggested: Math.round((total / referenceMonths.length) / 5) * 5,
+    }))
+    .sort((a, b) => b.suggested - a.suggested);
+}

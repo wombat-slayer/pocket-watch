@@ -28,6 +28,8 @@ import {
   computeBalance,
   sanitizeText,
   detectAndMarkTransferPairs,
+  DEFAULT_COMPENSATION_PROFILE,
+  suggestBudgetsFromActuals,
 } from '../constants.js';
 
 // ─── uid ──────────────────────────────────────────────────────────────────────
@@ -355,5 +357,65 @@ describe('detectAndMarkTransferPairs()', () => {
     detectAndMarkTransferPairs(txs);
     expect(txs[0].category).toBe('Other');
     expect(txs[1].category).toBe('Other');
+  });
+});
+
+// ─── DEFAULT_COMPENSATION_PROFILE ─────────────────────────────────────────────
+describe('DEFAULT_COMPENSATION_PROFILE', () => {
+  it('has all required keys with numeric/string defaults', () => {
+    expect(DEFAULT_COMPENSATION_PROFILE).toMatchObject({
+      grossMonthlySalary: 0,
+      retirement401kPct: 0,
+      hsaMonthly: 0,
+      effectiveTaxRate: 0,
+      notes: '',
+    });
+  });
+
+  it('is a plain object (not frozen, can be spread)', () => {
+    const copy = { ...DEFAULT_COMPENSATION_PROFILE, grossMonthlySalary: 5000 };
+    expect(copy.grossMonthlySalary).toBe(5000);
+    expect(DEFAULT_COMPENSATION_PROFILE.grossMonthlySalary).toBe(0);
+  });
+});
+
+// ─── suggestBudgetsFromActuals ────────────────────────────────────────────────
+describe('suggestBudgetsFromActuals()', () => {
+  const txs = [
+    { type: 'expense', date: '2025-01-05', category: 'Food & Dining',  amount: -300 },
+    { type: 'expense', date: '2025-01-15', category: 'Transportation', amount: -120 },
+    { type: 'expense', date: '2025-02-05', category: 'Food & Dining',  amount: -360 },
+    { type: 'expense', date: '2025-02-20', category: 'Transportation', amount: -80  },
+    { type: 'expense', date: '2025-03-05', category: 'Food & Dining',  amount: -240 },
+    { type: 'income',  date: '2025-01-01', category: 'Income',         amount:  5000 },
+  ];
+
+  it('averages spending over reference months and rounds to nearest $5', () => {
+    const result = suggestBudgetsFromActuals(txs, ['2025-01', '2025-02', '2025-03']);
+    const food = result.find(r => r.category === 'Food & Dining');
+    // (300 + 360 + 240) / 3 = 300 → rounds to 300
+    expect(food.suggested).toBe(300);
+    const transport = result.find(r => r.category === 'Transportation');
+    // (120 + 80 + 0) / 3 = 66.67 → rounds to nearest 5 = 65
+    expect(transport.suggested).toBe(65);
+  });
+
+  it('excludes income transactions', () => {
+    const result = suggestBudgetsFromActuals(txs, ['2025-01']);
+    expect(result.find(r => r.category === 'Income')).toBeUndefined();
+  });
+
+  it('returns results sorted by suggested amount descending', () => {
+    const result = suggestBudgetsFromActuals(txs, ['2025-01', '2025-02', '2025-03']);
+    const amounts = result.map(r => r.suggested);
+    expect(amounts).toEqual([...amounts].sort((a, b) => b - a));
+  });
+
+  it('returns empty array when no matching transactions', () => {
+    expect(suggestBudgetsFromActuals(txs, ['2020-01'])).toEqual([]);
+  });
+
+  it('returns empty array for empty transaction list', () => {
+    expect(suggestBudgetsFromActuals([], ['2025-01'])).toEqual([]);
   });
 });
