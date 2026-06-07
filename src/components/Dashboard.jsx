@@ -586,7 +586,7 @@ export default function Dashboard({
                   </div>
                   <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
                     <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Years to FIRE</div>
-                    <div style={{ fontSize:18, fontWeight:700, color: fireData.yearsToFire !== null && fireData.yearsToFire <= 15 ? '#7fa88b' : '#f59e0b' }}>
+                    <div style={{ fontSize:18, fontWeight:700, color: fireData.yearsToFire !== null && fireData.yearsToFire <= 15 ? 'var(--green)' : 'var(--amber)' }}>
                       {fireData.yearsToFire === null
                         ? netWorth >= fireData.fireNumber ? '🎉 Now!' : '—'
                         : fireData.yearsToFire < 1 ? '<1 yr'
@@ -597,13 +597,13 @@ export default function Dashboard({
                 </div>
                 <div style={{ fontSize:11, color:'#64748b', marginBottom:4, display:'flex', justifyContent:'space-between' }}>
                   <span>Progress to FIRE</span>
-                  <span style={{ color:'#7fa88b', fontWeight:600 }}>{fireData.fireProgress.toFixed(1)}%</span>
+                  <span style={{ color:'var(--green)', fontWeight:600 }}>{fireData.fireProgress.toFixed(1)}%</span>
                 </div>
                 <div style={{ background:'#1e2736', borderRadius:6, height:10, overflow:'hidden' }}>
                   <div style={{
                     height:'100%', borderRadius:6,
                     width:`${fireData.fireProgress}%`,
-                    background: fireData.fireProgress >= 100 ? '#4ade80' : 'linear-gradient(90deg,#7fa88b,#4ade80)',
+                    background: fireData.fireProgress >= 100 ? 'var(--green)' : 'linear-gradient(90deg,#10b981,#34d399)',
                     transition:'width 0.5s ease',
                   }} />
                 </div>
@@ -614,7 +614,4 @@ export default function Dashboard({
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
+      </div

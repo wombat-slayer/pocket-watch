@@ -442,7 +442,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       {tagFilter !== 'All' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: '#94a3b8' }}>
           <span style={{ background: '#1e2736', border: '1px solid #334155', borderRadius: 12, padding: '2px 10px' }}>
-            Filtered by <span style={{ color: '#7fa88b', fontWeight: 600 }}>#{tagFilter}</span>
+            Filtered by <span style={{ color: 'var(--accent)', fontWeight: 600 }}>#{tagFilter}</span>
           </span>
           <button className="btn btn-ghost btn-sm" onClick={() => setTagFilter('All')} style={{ fontSize: 12, padding: '2px 8px' }}>· Clear</button>
         </div>
@@ -503,7 +503,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Spending by Category</div>
               {weekBudgetContext.map(({ cat, weekSpent, mtdSpent, budget }) => {
                 const pct = budget ? Math.min(100, (mtdSpent / budget) * 100) : null;
-                const barColor = pct == null ? '#7fa88b' : pct >= 100 ? '#c2735a' : pct >= 80 ? '#f59e0b' : '#4ade80';
+                const barColor = pct == null ? 'var(--green)' : pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--green)';
                 return (
                   <div key={cat} style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -625,7 +625,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
                 <div className="stat-card">
                   <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Total Deductible</div>
-                  <div style={{ fontSize:22, fontWeight:700, color:'#7fa88b' }}>{fmt(taxData.grandTotal)}</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'var(--green)' }}>{fmt(taxData.grandTotal)}</div>
                 </div>
                 <div className="stat-card">
                   <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Transactions</div>
@@ -651,12 +651,12 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                     <tr key={cat} style={{ borderBottom:'1px solid #1e2736' }}>
                       <td style={{ padding:'8px 10px', color:'#94a3b8' }}>{catIcon(cat)} {cat}</td>
                       <td style={{ padding:'8px 10px', textAlign:'right', color:'#64748b' }}>{data.txs.length}</td>
-                      <td style={{ padding:'8px 10px', textAlign:'right', color:'#7fa88b', fontWeight:600 }}>{fmt(data.total)}</td>
+                      <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--green)', fontWeight:600 }}>{fmt(data.total)}</td>
                     </tr>
                   ))}
                   <tr style={{ borderTop:'2px solid #334155' }}>
                     <td colSpan={2} style={{ padding:'10px 10px', fontWeight:700, color:'#94a3b8' }}>Total</td>
-                    <td style={{ padding:'10px 10px', textAlign:'right', fontWeight:700, color:'#7fa88b', fontSize:16 }}>{fmt(taxData.grandTotal)}</td>
+                    <td style={{ padding:'10px 10px', textAlign:'right', fontWeight:700, color:'var(--green)', fontSize:16 }}>{fmt(taxData.grandTotal)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -679,7 +679,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                         <td style={{ padding:'6px 10px', color:'#64748b', whiteSpace:'nowrap' }}>{t.date}</td>
                         <td style={{ padding:'6px 10px', color:'#94a3b8' }}>{t.description}</td>
                         <td style={{ padding:'6px 10px', color:'#64748b' }}>{catIcon(t.category)} {t.category}</td>
-                        <td style={{ padding:'6px 10px', textAlign:'right', color:'#7fa88b' }}>{fmt(Math.abs(t.amount))}</td>
+                        <td style={{ padding:'6px 10px', textAlign:'right', color:'var(--green)' }}>{fmt(Math.abs(t.amount))}</td>
                       </tr>
                     ))
                   }
@@ -715,9 +715,4 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                 </div>
               </>
             )
-          }
-        </div>
-      )}
-    </div>
-  );
-}
+          
