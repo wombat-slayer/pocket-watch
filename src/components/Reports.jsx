@@ -715,4 +715,9 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                 </div>
               </>
             )
-          
+          }
+        </div>
+      )}
+    </div>
+  );
+}
