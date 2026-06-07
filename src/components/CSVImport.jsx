@@ -4,16 +4,17 @@ import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCat
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 
 const CSV_PRESETS = {
-  'auto':        { label: 'Auto-detect',       dateCol: null,               descCol: null,          amountCol: null,  debitCol: null,  creditCol: null },
-  'chase':       { label: 'Chase Bank',        dateCol: 'Transaction Date', descCol: 'Description', amountCol: 'Amount',  flip: true },
-  'bofa':        { label: 'Bank of America',   dateCol: 'Date',             descCol: 'Description', amountCol: 'Amount',  flip: false },
-  'amex':        { label: 'American Express',  dateCol: 'Date',             descCol: 'Description', amountCol: 'Amount',  flip: true },
-  'capital-one': { label: 'Capital One',       dateCol: 'Transaction Date', descCol: 'Description', debitCol: 'Debit', creditCol: 'Credit' },
-  'discover':    { label: 'Discover',          dateCol: 'Trans. Date',      descCol: 'Description', amountCol: 'Amount',  flip: true },
-  'wells-fargo': { label: 'Wells Fargo',       dateCol: 'Date',             descCol: 'Description', amountCol: 'Amount',  flip: false },
-  'citi':        { label: 'Citi',              dateCol: 'Date',             descCol: 'Description', debitCol: 'Debit', creditCol: 'Credit' },
-  'usaa':        { label: 'USAA',              dateCol: 'Date',             descCol: 'Description', amountCol: 'Amount',  flip: false },
-  'generic':     { label: 'Generic CSV',       dateCol: 'Date',             descCol: 'Description', amountCol: 'Amount',  flip: false },
+  'auto':        { label: 'Auto-detect',       dateCol: null,                  descCol: null,          amountCol: null,          debitCol: null,  creditCol: null },
+  'chase':       { label: 'Chase Bank',        dateCol: 'Transaction Date',    descCol: 'Description', amountCol: 'Amount',      flip: true },
+  'bofa':        { label: 'Bank of America',   dateCol: 'Date',                descCol: 'Description', amountCol: 'Amount',      flip: false },
+  'amex':        { label: 'American Express',  dateCol: 'Date',                descCol: 'Description', amountCol: 'Amount',      flip: true },
+  'apple-card':  { label: 'Apple Card',        dateCol: 'Transaction Date',    descCol: 'Description', amountCol: 'Amount (USD)', flip: true },
+  'capital-one': { label: 'Capital One',       dateCol: 'Transaction Date',    descCol: 'Description', debitCol: 'Debit',        creditCol: 'Credit' },
+  'discover':    { label: 'Discover',          dateCol: 'Trans. Date',         descCol: 'Description', amountCol: 'Amount',      flip: true },
+  'wells-fargo': { label: 'Wells Fargo',       dateCol: 'Date',                descCol: 'Description', amountCol: 'Amount',      flip: false },
+  'citi':        { label: 'Citi',              dateCol: 'Date',                descCol: 'Description', debitCol: 'Debit',        creditCol: 'Credit' },
+  'usaa':        { label: 'USAA',              dateCol: 'Date',                descCol: 'Description', amountCol: 'Amount',      flip: false },
+  'generic':     { label: 'Generic CSV',       dateCol: 'Date',                descCol: 'Description', amountCol: 'Amount',      flip: false },
 };
 
 function parseOFXDate(raw) {
@@ -77,12 +78,37 @@ function findDuplicates(newTxs, existingTxs, isOFX) {
   });
 }
 
+// Normalize any common date format to YYYY-MM-DD so the app's date display never sees "Invalid Date".
+// Handles: YYYY-MM-DD (passthrough), MM/DD/YYYY, M/D/YYYY, MM-DD-YYYY, "January 15, 2026", "Jan 15, 2026".
+function normalizeDateStr(raw) {
+  const s = (raw || '').replace(/"/g, '').trim();
+  if (!s) return '';
+  // Already ISO YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // MM/DD/YYYY or M/D/YYYY
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  // MM-DD-YYYY or M-D-YYYY (when dashes are used instead of slashes)
+  const mdyD = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (mdyD) return `${mdyD[3]}-${mdyD[1].padStart(2,'0')}-${mdyD[2].padStart(2,'0')}`;
+  // "January 15, 2026" or "Jan 15, 2026" (Apple Card long-form)
+  const longM = s.match(/^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})$/);
+  if (longM) {
+    const d = new Date(`${longM[1]} ${longM[2]}, ${longM[3]}`);
+    if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  }
+  // Last resort: let the browser parse it
+  const d = new Date(s);
+  if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  return s;
+}
+
 function buildCSVRows(lines, rawHeaders, dateIdx, descIdx, amtIdx, creditIdx, debitIdx, flip, accountId, suggest) {
   const result = [];
   for (let i = 1; i < lines.length; i++) {
     const c = parseCSVLine(lines[i]);
     const g = (idx) => idx >= 0 ? (c[idx] ?? '') : '';
-    const date = g(dateIdx).replace(/"/g, '').trim();
+    const date = normalizeDateStr(g(dateIdx));
     const desc = g(descIdx).trim();
     if (!date || !desc) continue;
     let amt;
@@ -143,7 +169,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
       };
       dateIdx   = col('date', 'posted', 'transaction date', 'trans date', 'trans. date');
       descIdx   = col('description', 'merchant', 'payee', 'memo', 'name', 'details', 'narrative');
-      amtIdx    = col('amount', 'transaction amount');
+      amtIdx    = col('amount', 'transaction amount', 'amount (usd)');
       creditIdx = col('credit');
       debitIdx  = col('debit');
       flip      = false;
