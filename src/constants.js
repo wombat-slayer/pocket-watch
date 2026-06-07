@@ -5,9 +5,11 @@ export const CATEGORIES = [
   { name: 'Transportation',icon: '🚗', color: '#3b82f6' },
   { name: 'Entertainment', icon: '🎬', color: '#ec4899' },
   { name: 'Healthcare',    icon: '💊', color: '#10b981' },
+  { name: 'Insurance',     icon: '🛡️', color: '#0ea5e9' },
   { name: 'Shopping',      icon: '🛍️', color: '#8b5cf6' },
   { name: 'Utilities',     icon: '⚡', color: '#f97316' },
   { name: 'Subscriptions', icon: '📱', color: '#06b6d4' },
+  { name: 'Technology',    icon: '💻', color: '#6366f1' },
   { name: 'Travel',        icon: '✈️', color: '#84cc16' },
   { name: 'Education',     icon: '📚', color: '#a78bfa' },
   { name: 'Personal Care', icon: '💆', color: '#fb7185' },
@@ -133,6 +135,8 @@ export function autoCategory(desc, amount) {
   if (/amazon|target|walmart|costco|best buy|ebay|etsy|wayfair|home depot|lowe|ikea|marshalls|tj maxx/i.test(d)) return 'Shopping';
   if (/electric|water bill|internet|comcast|xfinity|at&t|verizon|t-mobile|utility|pg&e|con ed|spectrum/i.test(d)) return 'Utilities';
   if (/pharmacy|cvs|walgreens|rite aid|doctor|hospital|urgent care|health|dental|vision|optometrist|therapy/i.test(d)) return 'Healthcare';
+  if (/liberty mutual|state farm|allstate|geico|progressive|safeco|nationwide|farmers|usaa|aaa insurance|travelers ins|aflac|metlife|cigna|aetna|humana|anthem|blue cross|blue shield|bwi aviation|skywatch/i.test(d)) return 'Insurance';
+  if (/adobe|microsoft|apple\.com|google one|github|namecheap|godaddy|cloudflare|aws |amazon web|digitalocean|heroku|vercel|netlify|zoom |slack |notion|figma|1password|lastpass|dropbox|icloud|antivirus|norton|mcafee/i.test(d)) return 'Technology';
   if (/gym|planet fitness|la fitness|24 hour|crossfit|peloton|movie|amc |regal |concert|ticketmaster|bar |club |bowling/i.test(d)) return 'Entertainment';
   if (/hotel|airbnb|vrbo|flight|airline|united|delta|american air|southwest|spirit|expedia|booking.com|kayak/i.test(d)) return 'Travel';
   if (/payroll|direct deposit|salary|paycheck|employer|freelance|consulting|client payment/i.test(d)) return 'Income';
