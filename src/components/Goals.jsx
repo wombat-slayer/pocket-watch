@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { fmt, uid, sanitizeText, safeNum } from '../constants.js';
 import Modal from './Modal.jsx';
+import DatePicker from './DatePicker.jsx';
 
 function GoalForm({ goal, accounts, onSave, onClose }) {
   const [form, setForm] = useState(goal ?? { name:'', emoji:'🎯', target:1000, current:0, targetDate:'', color:'#3b82f6', linkedAccountId:null });
@@ -33,7 +34,7 @@ function GoalForm({ goal, accounts, onSave, onClose }) {
       </div>
       <div className="form-group">
         <label className="form-label">Target Date (optional)</label>
-        <input type="date" value={form.targetDate} onChange={e=>set('targetDate',e.target.value)} />
+        <DatePicker value={form.targetDate} onChange={v => set('targetDate', v)} placeholder="No target date" />
       </div>
       <div className="form-group">
         <label className="form-label">Link to Account (optional)</label>
