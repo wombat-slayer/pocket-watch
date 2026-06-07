@@ -124,8 +124,10 @@ async fn plaid_create_link_token(
         "language":      "en"
     });
     // OAuth institutions (Chase, Wells Fargo, …) require a redirect_uri that
-    // exactly matches one registered in the Plaid dashboard.
-    if let Some(uri) = redirect_uri {
+    // exactly matches one registered in the Plaid dashboard. Production
+    // rejects http:// URIs, so the frontend only passes one in sandbox —
+    // never include the field when it's absent or empty.
+    if let Some(uri) = redirect_uri.filter(|u| !u.is_empty()) {
         payload["redirect_uri"] = json!(uri);
     }
     let resp = client

@@ -53,15 +53,20 @@ const redirectUriForPort = (port) => port === 80 ? 'http://localhost' : `http://
 
 // ── PlaidLink wrapper (rendered when we have a link_token) ───────────────────
 
-function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit }) {
+function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit, onOauthError }) {
   const config = {
     token: linkToken,
     receivedRedirectUri: receivedRedirectUri || undefined,
     onSuccess: (public_token, metadata) => onSuccess(public_token, metadata),
-    onExit: (err) => { if (err) console.error('Plaid exit:', err); onExit?.(); },
+    onExit: (err) => {
+      if (err) console.error('Plaid exit:', err);
+      if (err?.error_code === 'OAUTH_ERROR') onOauthError?.();
+      onExit?.();
+    },
     // Diagnostic trail for OAuth handoff debugging (OPEN_OAUTH, HANDOFF, ERROR…)
     onEvent: (eventName, metadata) => {
       console.log('[plaid-link]', eventName, metadata?.view_name ?? '', metadata?.error_code ?? '');
+      if (metadata?.error_code === 'OAUTH_ERROR') onOauthError?.();
     },
   };
   const { open, ready } = usePlaidLink(config);
@@ -230,28 +235,37 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
     setLinkError('');
     setLinking(true);
     try {
-      // Fresh loopback listener for this Link session. The bank's OAuth page
-      // opens in the system browser and redirects there on completion.
       await stopOauthServer();
-      const port = await startOauthServer({ ports: OAUTH_PORTS });
-      oauthPort.current = port;
-      oauthUnlisten.current = await onOauthUrl((url) => {
-        // The localhost port is unprotected — verify this is really the
-        // Plaid OAuth redirect before acting on it.
-        let parsed;
-        try { parsed = new URL(url); } catch { return; }
-        if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') return;
-        if (!parsed.searchParams.get('oauth_state_id')) return;
-        oauthPort.current = null; // listener shuts itself down after one capture
-        setOauthRedirectUri(url); // re-initializes Link → auto-resumes the flow
-      });
+      // Plaid production rejects http:// redirect URIs ("redirect_uri must
+      // use HTTPS"), so the localhost loopback OAuth flow only works in
+      // sandbox. Outside sandbox we skip the listener and omit redirect_uri
+      // entirely — non-OAuth banks work; OAuth banks (Chase, Wells Fargo, …)
+      // fail with OAUTH_ERROR, which we surface with a friendly message.
+      let redirectUri = null;
+      if (creds.env === 'sandbox') {
+        // Fresh loopback listener for this Link session. The bank's OAuth page
+        // opens in the system browser and redirects there on completion.
+        const port = await startOauthServer({ ports: OAUTH_PORTS });
+        oauthPort.current = port;
+        oauthUnlisten.current = await onOauthUrl((url) => {
+          // The localhost port is unprotected — verify this is really the
+          // Plaid OAuth redirect before acting on it.
+          let parsed;
+          try { parsed = new URL(url); } catch { return; }
+          if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') return;
+          if (!parsed.searchParams.get('oauth_state_id')) return;
+          oauthPort.current = null; // listener shuts itself down after one capture
+          setOauthRedirectUri(url); // re-initializes Link → auto-resumes the flow
+        });
+        redirectUri = redirectUriForPort(port);
+      }
 
       const token = await invoke('plaid_create_link_token', {
         clientId:    creds.clientId,
         secret:      creds.secret,
         env:         creds.env,
         userId:      'pocket-watch-user',
-        redirectUri: redirectUriForPort(port),
+        redirectUri,
       });
       // Persist so the flow survives an app restart mid-OAuth.
       localStorage.setItem(LINK_TOKEN_STORAGE_KEY, token);
@@ -490,6 +504,16 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
               receivedRedirectUri={oauthRedirectUri}
               onSuccess={handleLinkSuccess}
               onExit={endLinkSession}
+              onOauthError={() => {
+                // Only relevant outside sandbox, where no redirect_uri is
+                // registered and OAuth institutions cannot complete Link.
+                if (creds.env !== 'sandbox') {
+                  setLinkError(
+                    "This bank requires OAuth which isn't supported in production yet. " +
+                    'Try a different bank or use sandbox mode for testing.'
+                  );
+                }
+              }}
             />
           ) : (
             <button
