@@ -14,6 +14,7 @@ import {
   mapPlaidTransaction,
   extractBalanceUpdates,
 } from '../plaidLayer.js';
+import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,18 @@ function daysAgo(n) {
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
 }
+
+// ── Transfer pattern matching ─────────────────────────────────────────────────
+// Fallback name-pattern list for transactions that Plaid doesn't classify as
+// transfers via personal_finance_category or the legacy category array.
+const TRANSFER_PATTERNS = [
+  /payment thank you/i,
+  /payment to chase/i,
+  /american express ach pmt/i,
+  /apple card/i,
+  /chase card payment/i,
+  /credit card payment/i,
+];
 
 // ── OAuth redirect support ───────────────────────────────────────────────────
 // OAuth institutions (Chase, Wells Fargo, …) hand off to the bank's site in
@@ -113,6 +126,10 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
   const [syncStatus, setSyncStatus] = useState({}); // { [itemId]: 'idle'|'syncing'|'done'|'error' }
   const [syncMsg,    setSyncMsg]    = useState({}); // { [itemId]: string }
   const warnedUnmatched = useRef(new Set());        // itemIds already warned about unmatched accounts
+
+  // Category memory: user's explicit past categorization choices per merchant.
+  // Used in handleSync to override Plaid's suggested categories.
+  const { suggest: suggestCategory } = useCategoryMemory(existingTxs);
 
   // ── Load saved state on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -391,7 +408,37 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       const newTxs = plaidTxs
         .map(pt => mapPlaidTransaction(pt, accountMap))
         .filter(t => t !== null)
-        .filter(t => !existingFitids.has(t.fitid) && !existingIds.has(t.id));
+        .filter(t => !existingFitids.has(t.fitid) && !existingIds.has(t.id))
+        .map(t => {
+          // Priority 1: category memory — user's explicit past choices win always
+          const memorized = suggestCategory(t.description);
+          if (memorized) return { ...t, category: memorized };
+
+          // Priority 2: Plaid personal_finance_category already handled by
+          // mapPlaidCategory inside mapPlaidTransaction — if it produced
+          // 'Transfer' we keep it; if it produced something else we keep that too.
+          // We only need to check the raw Plaid data for the legacy category array
+          // and name patterns when mapPlaidCategory fell back to 'Other'.
+          if (t.category !== 'Other') return t;
+
+          // Re-examine the original Plaid tx for the raw category array.
+          // plaidTxs index lookup: find by transaction_id (same as t.id / t.fitid).
+          const rawPt = plaidTxs.find(p => p.transaction_id === t.id);
+
+          // Priority 3: Plaid legacy category[0] is 'Transfer' or 'Payment'
+          const cat0 = rawPt?.category?.[0];
+          if (cat0 === 'Transfer' || cat0 === 'Payment') {
+            return { ...t, category: 'Transfer' };
+          }
+
+          // Priority 4: description matches a known transfer name pattern
+          if (TRANSFER_PATTERNS.some(re => re.test(t.description))) {
+            return { ...t, category: 'Transfer' };
+          }
+
+          // Priority 5: keep 'Other' as-is
+          return t;
+        });
 
       if (newTxs.length > 0) {
         onImport(newTxs);

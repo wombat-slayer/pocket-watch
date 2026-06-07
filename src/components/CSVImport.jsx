@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as XLSX from 'xlsx';
 import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory } from '../constants.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 
@@ -193,9 +194,37 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
   const handleFile = (file) => {
     if (!file) return;
     setError('');
-    const ext   = file.name.split('.').pop().toLowerCase();
-    const isOFX = ext === 'ofx' || ext === 'qfx';
+    const ext    = file.name.split('.').pop().toLowerCase();
+    const isOFX  = ext === 'ofx' || ext === 'qfx';
+    const isXLSX = ext === 'xlsx' || ext === 'xls';
     setFileType(isOFX ? 'ofx' : 'csv');
+
+    if (isXLSX) {
+      // Excel: read as ArrayBuffer, parse with SheetJS, convert first sheet to CSV text,
+      // then feed through the identical processCSV / column-mapping path.
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const buffer   = new Uint8Array(ev.target.result);
+          const workbook = XLSX.read(buffer, { type: 'array' });
+          const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+          // raw:false → all values as formatted strings (dates as "MM/DD/YYYY", numbers as "1234.56")
+          const rows2d   = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+          if (!rows2d.length) { setError('Excel file appears to be empty.'); return; }
+          // Serialize to CSV text so processCSV can handle it identically to a real CSV upload.
+          // sheet_to_csv produces standard RFC 4180 CSV that parseCSVLine can parse.
+          const csvText  = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+          const parsed   = processCSV(csvText, csvPreset, importAcct);
+          if (parsed === null) return; // column-map UI shown
+          if (!parsed.length) { setError('Could not parse Excel file. Ensure it has Date, Description, and Amount columns, or choose a bank format above.'); return; }
+          setRows(findDuplicates(parsed, existingTxs || [], false));
+          setStep('review-all');
+        } catch (err) { setError('Error reading Excel file: ' + err.message); }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
@@ -239,7 +268,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
       <p style={{ fontSize:13, color:'#64748b', marginBottom:16 }}>
         Import transactions from your bank export.
         <strong style={{ color:'#94a3b8' }}> OFX / QFX</strong> is recommended — it includes bank-assigned transaction IDs for reliable duplicate detection.
-        <strong style={{ color:'#94a3b8' }}> CSV</strong> also supported.
+        <strong style={{ color:'#94a3b8' }}> CSV</strong> and <strong style={{ color:'#94a3b8' }}> Excel (.xlsx)</strong> also supported.
       </p>
 
       <div style={{ marginBottom:14 }}>
@@ -277,9 +306,9 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
         style={{ border:'2px dashed ' + (dragOver ? '#6366f1' : '#2d3a4a'), borderRadius:10, padding:'28px 24px', textAlign:'center', marginBottom:12, background: dragOver ? '#6366f108' : 'transparent', transition:'border-color 0.15s, background 0.15s' }}>
         <div style={{ fontSize:32, marginBottom:6 }}>📥</div>
         <p style={{ color:'#94a3b8', marginBottom:3, fontSize:14 }}>Drag and drop your export file here</p>
-        <p style={{ color:'#475569', marginBottom:12, fontSize:12 }}>OFX · QFX · CSV · TXT</p>
+        <p style={{ color:'#475569', marginBottom:12, fontSize:12 }}>OFX · QFX · CSV · TXT · XLSX · XLS</p>
         <label className="file-label" htmlFor="tx-import-file">📂 Choose File</label>
-        <input id="tx-import-file" type="file" accept=".csv,.txt,.ofx,.qfx" onChange={e => handleFile(e.target.files[0])} />
+        <input id="tx-import-file" type="file" accept=".csv,.txt,.ofx,.qfx,.xlsx,.xls" onChange={e => handleFile(e.target.files[0])} />
       </div>
 
       <div style={{ background:'#0f172a', borderRadius:8, padding:'9px 13px', fontSize:12, color:'#64748b', lineHeight:1.6 }}>
