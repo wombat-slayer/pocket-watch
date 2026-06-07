@@ -317,6 +317,25 @@ export function extractBalanceUpdates(plaidAccounts, appAccounts, institutionNam
   return { balanceUpdates, plaidIdMap };
 }
 
+// ── Sync cursors ─────────────────────────────────────────────────────────────
+// Cursors are stored in plaid.json under the key 'syncCursors' (object keyed
+// by Plaid item_id). A null/absent cursor means "no prior sync" — Plaid will
+// return all available history on the first /transactions/sync call.
+
+export async function getCursor(itemId) {
+  const store = await getStore();
+  const cursors = (await store.get('syncCursors')) ?? {};
+  return cursors[itemId] ?? null;
+}
+
+export async function setCursor(itemId, cursor) {
+  const store = await getStore();
+  const cursors = (await store.get('syncCursors')) ?? {};
+  cursors[itemId] = cursor;
+  await store.set('syncCursors', cursors);
+  await store.save();
+}
+
 /**
  * Map Plaid personal_finance_category primary values to Pocket Watch categories.
  * Falls back to 'Other' for unknown values.

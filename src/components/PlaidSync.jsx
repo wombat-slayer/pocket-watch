@@ -13,19 +13,16 @@ import {
   removeLinkedItem,
   mapPlaidTransaction,
   extractBalanceUpdates,
+  getCursor,
+  setCursor,
 } from '../plaidLayer.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
+import { detectAndMarkTransferPairs } from '../constants.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function today() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
 }
 
 // ── Transfer pattern matching ─────────────────────────────────────────────────
@@ -104,7 +101,7 @@ function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit, on
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function PlaidSync({ accounts, existingTxs, onImport, onToast, onSyncComplete, onUpdateBalances }) {
+export default function PlaidSync({ accounts, existingTxs, onImport, onToast, onSyncComplete, onUpdateBalances, onModifyTxs, onRemoveTxs }) {
   // ── Credentials state ──────────────────────────────────────────────────────
   const [creds, setCreds] = useState({ clientId: '', secret: '', env: 'sandbox' });
   const [credInput, setCredInput] = useState({ clientId: '', secret: '', env: 'sandbox' });
@@ -125,6 +122,8 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
   // ── Sync state ─────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState({}); // { [itemId]: 'idle'|'syncing'|'done'|'error' }
   const [syncMsg,    setSyncMsg]    = useState({}); // { [itemId]: string }
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncAllMsg, setSyncAllMsg] = useState('');
   const warnedUnmatched = useRef(new Set());        // itemIds already warned about unmatched accounts
 
   // Category memory: user's explicit past categorization choices per merchant.
@@ -337,29 +336,15 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
     }
   }, [creds]);
 
-  // ── Sync transactions for one item ────────────────────────────────────────
-  const handleSync = async (item, daysBack = 30) => {
+  // ── Sync transactions for one item (cursor-based, no 500-tx cap) ──────────
+  const handleSync = async (item) => {
     setSyncStatus(s => ({ ...s, [item.itemId]: 'syncing' }));
     setSyncMsg(s => ({ ...s, [item.itemId]: '' }));
 
     try {
-      const raw = await invoke('plaid_fetch_transactions', {
-        clientId:    creds.clientId,
-        secret:      creds.secret,
-        env:         creds.env,
-        accessToken: item.accessToken,
-        startDate:   daysAgo(daysBack),
-        endDate:     today(),
-      });
-
-      const payload = JSON.parse(raw);
-      const plaidTxs = payload.transactions ?? [];
-
-      // ── Authoritative accounts — fetch first so matching drives both
-      // transaction routing AND balance updates in one pass ─────────────────
-      // /accounts/get returns every account type; falls back to the accounts
-      // embedded in /transactions/get if the call fails.
-      let plaidAccounts = payload.accounts ?? [];
+      // Fetch accounts first so matching drives both transaction routing and
+      // balance updates in one pass.
+      let plaidAccounts = [];
       try {
         const rawAccounts = await invoke('plaid_fetch_accounts', {
           clientId:    creds.clientId,
@@ -367,18 +352,14 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
           env:         creds.env,
           accessToken: item.accessToken,
         });
-        plaidAccounts = JSON.parse(rawAccounts).accounts ?? plaidAccounts;
+        plaidAccounts = JSON.parse(rawAccounts).accounts ?? [];
       } catch (e) {
-        console.warn('Plaid accounts fetch failed (falling back to /transactions/get balances):', e);
+        console.warn('Plaid accounts fetch failed:', e);
       }
 
-      // Smart matching: same mask/token/institution logic used for balances.
-      // plaidIdMap keys are Plaid account_ids (what transactions carry);
-      // values are the matched Pocket Watch account id.
       const { balanceUpdates, plaidIdMap } = extractBalanceUpdates(plaidAccounts, accounts, item.institutionName);
 
-      // Unmatched = Plaid accounts from this item with no app account match.
-      // Fall back to the raw Plaid account id so transactions aren't silently dropped.
+      // plaidIdMap keys are Plaid account_ids; values are matched PW account ids.
       const accountMap = {};
       const unmatched  = [];
       for (const pa of item.accounts) {
@@ -389,8 +370,6 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
           unmatched.push(`${pa.name}${pa.mask ? ` (…${pa.mask})` : ''}`);
         }
       }
-      // One-time warning per institution: unmatched accounts import under the
-      // raw Plaid account id and won't show up under any existing PW account.
       if (unmatched.length > 0 && !warnedUnmatched.current.has(item.itemId)) {
         warnedUnmatched.current.add(item.itemId);
         onToast?.(
@@ -401,11 +380,51 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
         );
       }
 
-      // Map and dedup
+      // Cursor-based /transactions/sync loop.
+      // First call (cursor = null) pulls all available history; subsequent
+      // calls are incremental — only added/modified/removed since last cursor.
+      let cursor = await getCursor(item.itemId);
+      const allAdded    = [];
+      const allModified = [];
+      const allRemoved  = [];
+      let hasMore = true;
+
+      while (hasMore) {
+        const raw = await invoke('plaid_sync_transactions', {
+          clientId:    creds.clientId,
+          secret:      creds.secret,
+          env:         creds.env,
+          accessToken: item.accessToken,
+          cursor:      cursor || null,
+        });
+        const page = JSON.parse(raw);
+        allAdded.push(...(page.added ?? []));
+        allModified.push(...(page.modified ?? []));
+        allRemoved.push(...(page.removed ?? []));
+        cursor = page.next_cursor;
+        hasMore = page.has_more === true;
+      }
+      await setCursor(item.itemId, cursor);
+
+      // Handle removed: delete matching transactions by Plaid transaction_id
+      if (allRemoved.length > 0) {
+        const removedIds = allRemoved.map(r => r.transaction_id);
+        onRemoveTxs?.(removedIds);
+      }
+
+      // Handle modified: update matching transactions in place
+      if (allModified.length > 0) {
+        const updates = allModified
+          .map(pt => mapPlaidTransaction(pt, accountMap))
+          .filter(Boolean);
+        onModifyTxs?.(updates);
+      }
+
+      // Dedup added against existing transactions
       const existingFitids = new Set(existingTxs.map(t => t.fitid).filter(Boolean));
       const existingIds    = new Set(existingTxs.map(t => t.id));
 
-      const newTxs = plaidTxs
+      const newTxs = allAdded
         .map(pt => mapPlaidTransaction(pt, accountMap))
         .filter(t => t !== null)
         .filter(t => !existingFitids.has(t.fitid) && !existingIds.has(t.id))
@@ -414,16 +433,12 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
           const memorized = suggestCategory(t.description);
           if (memorized) return { ...t, category: memorized };
 
-          // Priority 2: Plaid personal_finance_category already handled by
-          // mapPlaidCategory inside mapPlaidTransaction — if it produced
-          // 'Transfer' we keep it; if it produced something else we keep that too.
-          // We only need to check the raw Plaid data for the legacy category array
-          // and name patterns when mapPlaidCategory fell back to 'Other'.
+          // Priority 2: Plaid personal_finance_category (already mapped in
+          // mapPlaidTransaction). Keep if it resolved to something other than Other.
           if (t.category !== 'Other') return t;
 
-          // Re-examine the original Plaid tx for the raw category array.
-          // plaidTxs index lookup: find by transaction_id (same as t.id / t.fitid).
-          const rawPt = plaidTxs.find(p => p.transaction_id === t.id);
+          // Re-examine raw Plaid data for legacy category array and name patterns.
+          const rawPt = allAdded.find(p => p.transaction_id === t.id);
 
           // Priority 3: Plaid legacy category[0] is 'Transfer' or 'Payment'
           const cat0 = rawPt?.category?.[0];
@@ -436,17 +451,20 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
             return { ...t, category: 'Transfer' };
           }
 
-          // Priority 5: keep 'Other' as-is
           return t;
         });
 
-      if (newTxs.length > 0) {
-        onImport(newTxs);
-      }
-      // Post-sync review banner: report how many came in and how many landed
-      // in the fallback 'Other' category (i.e. need a human to categorize).
-      onSyncComplete?.(newTxs.length, newTxs.filter(t => t.category === 'Other').length);
+      // Auto-detect transfer pairs across the full combined transaction set.
+      // Pairs already in existingTxs (marked Transfer) won't be overridden.
+      const combined    = detectAndMarkTransferPairs([...existingTxs, ...newTxs]);
+      const newIds      = new Set(newTxs.map(t => t.id));
+      const markedNewTxs = combined.filter(t => newIds.has(t.id));
 
+      if (markedNewTxs.length > 0) {
+        onImport(markedNewTxs);
+      }
+
+      onSyncComplete?.(markedNewTxs.length, markedNewTxs.filter(t => t.category === 'Other').length);
       if (balanceUpdates.length > 0) onUpdateBalances?.(balanceUpdates);
 
       const now = today();
@@ -459,14 +477,36 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
         : '';
       setSyncMsg(s => ({
         ...s,
-        [item.itemId]: (newTxs.length > 0
-          ? `✅ Imported ${newTxs.length} new transaction${newTxs.length !== 1 ? 's' : ''}.`
+        [item.itemId]: (markedNewTxs.length > 0
+          ? `✅ Imported ${markedNewTxs.length} new transaction${markedNewTxs.length !== 1 ? 's' : ''}.`
           : '✅ All up to date — no new transactions.') + balNote,
       }));
+
+      return true;
     } catch (e) {
       setSyncStatus(s => ({ ...s, [item.itemId]: 'error' }));
       setSyncMsg(s => ({ ...s, [item.itemId]: '❌ ' + String(e) }));
+      return false;
     }
+  };
+
+  // ── Sync all institutions in sequence ─────────────────────────────────────
+  const handleSyncAll = async () => {
+    if (syncingAll || !items.length) return;
+    setSyncingAll(true);
+    setSyncAllMsg('');
+    let errorCount = 0;
+    for (let i = 0; i < items.length; i++) {
+      setSyncAllMsg(`Syncing ${items[i].institutionName} (${i + 1}/${items.length})…`);
+      const ok = await handleSync(items[i]);
+      if (!ok) errorCount++;
+    }
+    setSyncAllMsg(
+      errorCount > 0
+        ? `Done — ${errorCount} institution${errorCount !== 1 ? 's' : ''} had errors.`
+        : '✅ All institutions synced.'
+    );
+    setSyncingAll(false);
   };
 
   // ── Remove a linked item ───────────────────────────────────────────────────
@@ -497,6 +537,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const hasCreds = !!(creds.clientId && creds.secret);
+  const anySyncing = syncingAll || Object.values(syncStatus).some(s => s === 'syncing');
 
   return (
     <div>
@@ -606,7 +647,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       {/* ── Connected items ───────────────────────────────────────────────── */}
       {items.length > 0 && (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
               Connected Institutions
             </span>
@@ -618,7 +659,26 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
             >
               🔗 Manage at Plaid
             </button>
+            {items.length > 1 && (
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={anySyncing}
+                onClick={handleSyncAll}
+                style={{ fontSize: 12 }}
+              >
+                {syncingAll ? '⏳ Syncing All…' : '↻ Sync All'}
+              </button>
+            )}
           </div>
+          {syncAllMsg && (
+            <div style={{
+              fontSize: 12,
+              color: syncingAll ? '#94a3b8' : (syncAllMsg.startsWith('✅') ? '#4ade80' : '#c2735a'),
+              marginBottom: 8,
+            }}>
+              {syncAllMsg}
+            </div>
+          )}
           {items.map(item => {
             const status = syncStatus[item.itemId] ?? 'idle';
             const msg    = syncMsg[item.itemId] ?? '';
@@ -659,24 +719,10 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     className="btn btn-primary btn-sm"
-                    disabled={status === 'syncing'}
-                    onClick={() => handleSync(item, 30)}
+                    disabled={status === 'syncing' || syncingAll}
+                    onClick={() => handleSync(item)}
                   >
-                    {status === 'syncing' ? '⏳ Syncing…' : '↻ Sync Last 30 Days'}
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    disabled={status === 'syncing'}
-                    onClick={() => handleSync(item, 90)}
-                  >
-                    90 days
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    disabled={status === 'syncing'}
-                    onClick={() => handleSync(item, 365)}
-                  >
-                    1 year
+                    {status === 'syncing' ? '⏳ Syncing…' : '↻ Sync'}
                   </button>
                   {msg && (
                     <span style={{ fontSize: 12, color: status === 'error' ? '#c2735a' : '#4ade80' }}>

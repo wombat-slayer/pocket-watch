@@ -176,3 +176,40 @@ export function computeBalance(accountId, transactions, accountType) {
 export function getAllCategories(userCategories = []) {
   return [...CATEGORIES, ...userCategories];
 }
+
+// ─── Transfer pair detection ───────────────────────────────────────────────
+/**
+ * Auto-detect credit-card-payment transfer pairs and silently mark both sides
+ * as "Transfer". A pair matches when:
+ *   - abs(amount) matches within $0.01
+ *   - dates within 3 calendar days of each other
+ *   - different account IDs
+ *   - neither side already has category "Transfer"
+ * Returns a new transactions array; does not mutate the input.
+ */
+export function detectAndMarkTransferPairs(transactions) {
+  const txs = transactions.map(t => ({ ...t }));
+  const matched = new Set();
+  for (let i = 0; i < txs.length; i++) {
+    if (txs[i].category === 'Transfer') continue;
+    if (matched.has(i)) continue;
+    for (let j = i + 1; j < txs.length; j++) {
+      if (txs[j].category === 'Transfer') continue;
+      if (matched.has(j)) continue;
+      if (txs[i].account === txs[j].account) continue;
+      if (Math.abs(Math.abs(txs[i].amount) - Math.abs(txs[j].amount)) > 0.01) continue;
+      const daysDiff = Math.abs(
+        new Date(txs[i].date + 'T00:00:00') - new Date(txs[j].date + 'T00:00:00')
+      ) / 86400000;
+      if (daysDiff > 3) continue;
+      txs[i].category = 'Transfer';
+      txs[i]._transferPair = true;
+      txs[j].category = 'Transfer';
+      txs[j]._transferPair = true;
+      matched.add(i);
+      matched.add(j);
+      break;
+    }
+  }
+  return txs;
+}

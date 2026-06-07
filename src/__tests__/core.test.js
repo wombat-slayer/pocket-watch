@@ -27,6 +27,7 @@ import {
   safeDate,
   computeBalance,
   sanitizeText,
+  detectAndMarkTransferPairs,
 } from '../constants.js';
 
 // ─── uid ──────────────────────────────────────────────────────────────────────
@@ -289,5 +290,70 @@ describe('archive roundtrip logic', () => {
     const archived = [allTxs[0], allTxs[1]];
     const restored = [...active, ...archived].sort((a, b) => b.date.localeCompare(a.date));
     expect(restored.map(t => t.id)).toEqual(['d', 'c', 'b', 'a']);
+  });
+});
+
+// ─── detectAndMarkTransferPairs ───────────────────────────────────────────────
+describe('detectAndMarkTransferPairs()', () => {
+  it('marks both sides of a matching pair as Transfer', () => {
+    const txs = [
+      { id: '1', date: '2025-01-01', amount: -500,  account: 'checking', category: 'Food & Dining' },
+      { id: '2', date: '2025-01-02', amount:  500,  account: 'credit',   category: 'Other' },
+    ];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].category).toBe('Transfer');
+    expect(result[1].category).toBe('Transfer');
+    expect(result[0]._transferPair).toBe(true);
+    expect(result[1]._transferPair).toBe(true);
+  });
+
+  it('does not match when amounts differ by more than $0.01', () => {
+    const txs = [
+      { id: '1', date: '2025-01-01', amount: -500,    account: 'checking', category: 'Other' },
+      { id: '2', date: '2025-01-01', amount:  499.98, account: 'credit',   category: 'Other' },
+    ];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].category).toBe('Other');
+    expect(result[1].category).toBe('Other');
+  });
+
+  it('does not override an already-Transfer side', () => {
+    const txs = [
+      { id: '1', date: '2025-01-01', amount: -200, account: 'checking', category: 'Transfer' },
+      { id: '2', date: '2025-01-01', amount:  200, account: 'credit',   category: 'Shopping' },
+    ];
+    const result = detectAndMarkTransferPairs(txs);
+    // tx '1' already Transfer → skipped in outer loop; tx '2' never paired
+    expect(result[1].category).toBe('Shopping');
+  });
+
+  it('does not match transactions on the same account', () => {
+    const txs = [
+      { id: '1', date: '2025-06-01', amount: -100, account: 'checking', category: 'Other' },
+      { id: '2', date: '2025-06-01', amount:  100, account: 'checking', category: 'Other' },
+    ];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].category).toBe('Other');
+    expect(result[1].category).toBe('Other');
+  });
+
+  it('does not match when dates are more than 3 days apart', () => {
+    const txs = [
+      { id: '1', date: '2025-01-01', amount: -300, account: 'checking', category: 'Other' },
+      { id: '2', date: '2025-01-05', amount:  300, account: 'credit',   category: 'Other' },
+    ];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].category).toBe('Other');
+    expect(result[1].category).toBe('Other');
+  });
+
+  it('does not mutate the input array', () => {
+    const txs = [
+      { id: '1', date: '2025-01-01', amount: -100, account: 'a', category: 'Other' },
+      { id: '2', date: '2025-01-01', amount:  100, account: 'b', category: 'Other' },
+    ];
+    detectAndMarkTransferPairs(txs);
+    expect(txs[0].category).toBe('Other');
+    expect(txs[1].category).toBe('Other');
   });
 });

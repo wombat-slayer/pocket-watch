@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './App.css';
 
-import { isDebtType, today, uid, getNextRecurDate } from './constants.js';
+import { isDebtType, today, uid, getNextRecurDate, detectAndMarkTransferPairs } from './constants.js';
 import { seedTransactions, seedAccounts, seedBudgets, seedGoals } from './seed.js';
 import {
   getDataPath, setDataPath, getDefaultDataPath,
@@ -92,6 +92,7 @@ export default function App() {
   const undoStack = useRef([]);
   const redoStack = useRef([]);
   const recurGenerated = useRef(false);
+  const transferPairFixRef = useRef(false);
   const [undoLen, setUndoLen] = useState(0);
   const snapshot = useCallback(() => ({ transactions, accounts, budgets, goals }), [transactions, accounts, budgets, goals]);
 
@@ -249,6 +250,17 @@ export default function App() {
     }
   };
 
+  // ── One-time transfer pair backfill on mount after data loads ────────────
+  useEffect(() => {
+    if (appStatus !== 'ready' || transferPairFixRef.current) return;
+    transferPairFixRef.current = true;
+    setTransactions(prev => {
+      const marked = detectAndMarkTransferPairs(prev);
+      const changed = marked.some((t, i) => t.category !== prev[i]?.category);
+      return changed ? marked : prev;
+    });
+  }, [appStatus]); // eslint-disable-line
+
   // ── Auto-save: debounced 600ms whenever state changes ────────────────────
   const saveTimer = useRef(null);
   useEffect(() => {
@@ -381,6 +393,18 @@ export default function App() {
   };
   const bulkDelete = (ids) => { pushUndo(); const s=new Set(ids); setTransactions(ts=>ts.filter(t=>!s.has(t.id))); showToast(`${ids.length} transactions deleted`, 'info'); };
   const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); showToast(`${rows.length} transaction${rows.length!==1?'s':''} imported`); };
+  const plaidModifyTxs = (updates) => {
+    if (!updates?.length) return;
+    setTransactions(ts => ts.map(t => {
+      const u = updates.find(u => u.id === t.fitid || u.id === t.id);
+      return u ? { ...t, ...u } : t;
+    }));
+  };
+  const plaidRemoveTxs = (ids) => {
+    if (!ids?.length) return;
+    const idSet = new Set(ids);
+    setTransactions(ts => ts.filter(t => !idSet.has(t.id) && !idSet.has(t.fitid)));
+  };
 
   // ── Account handlers ────────────────────────────────────────────────────────
   const addAcct    = (a)   => { pushUndo(); setAccounts(as=>[...as,a]); showToast(`Account "${a.name}" added`); };
@@ -620,7 +644,7 @@ export default function App() {
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} onCloseMonth={()=>setShowMonthClose(true)} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} />}
       </div>
 
       {showAdd && (

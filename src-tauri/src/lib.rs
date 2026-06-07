@@ -248,6 +248,45 @@ async fn plaid_fetch_accounts(
     }
 }
 
+// /transactions/sync: cursor-based, incremental, no 500-tx cap.
+// Omit cursor on the first call to pull all available history; include it on
+// subsequent calls for the delta only. Returns the raw JSON response body
+// (added, modified, removed, next_cursor, has_more).
+#[tauri::command]
+async fn plaid_sync_transactions(
+    client_id:    String,
+    secret:       String,
+    env:          String,
+    access_token: String,
+    cursor:       Option<String>,
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let base = plaid_base_url(&env);
+    let mut payload = json!({
+        "client_id":    client_id,
+        "secret":       secret,
+        "access_token": access_token,
+    });
+    if let Some(c) = cursor.filter(|c| !c.is_empty()) {
+        payload["cursor"] = json!(c);
+    }
+    let resp = client
+        .post(format!("{}/transactions/sync", base))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let body: Value = resp.json().await.map_err(|e| e.to_string())?;
+    if body["error_code"].is_null() {
+        Ok(body.to_string())
+    } else {
+        Err(body["error_message"]
+            .as_str()
+            .unwrap_or("Failed to sync transactions")
+            .to_string())
+    }
+}
+
 #[tauri::command]
 async fn plaid_remove_item(
     client_id:    String,
@@ -373,6 +412,7 @@ pub fn run() {
             plaid_exchange_token,
             plaid_fetch_transactions,
             plaid_fetch_accounts,
+            plaid_sync_transactions,
             plaid_remove_item,
             secret_set,
             secret_get,
