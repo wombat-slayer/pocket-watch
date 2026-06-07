@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeUnvestedRSUValue } from '../constants.js';
+import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeUnvestedRSUValue, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import Goals from './Goals.jsx';
 
@@ -222,14 +222,14 @@ export default function Dashboard({
     data: {
       labels: forecastData.labels,
       datasets: [
-        { label:'Actual',   data:forecastData.actualData,     borderColor:'#c2735a', backgroundColor:'#c2735a22', tension:0.4, fill:true,  pointBackgroundColor:'#c2735a', spanGaps:false },
-        { label:'Forecast', data:forecastData.forecastValues, borderColor:'#7fa88b', backgroundColor:'transparent', tension:0.4, fill:false, borderDash:[5,4], pointBackgroundColor:'#7fa88b', spanGaps:false },
+        { label:'Actual',   data:forecastData.actualData,     borderColor:CHART.expense, backgroundColor:CHART.expense+'22', tension:0.4, fill:true,  pointBackgroundColor:CHART.expense, spanGaps:false },
+        { label:'Forecast', data:forecastData.forecastValues, borderColor:CHART.income, backgroundColor:'transparent', tension:0.4, fill:false, borderDash:[5,4], pointBackgroundColor:CHART.income, spanGaps:false },
       ],
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{labels:{color:'#94a3b8'}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?'$'+(ctx.raw>=1000?(ctx.raw/1000).toFixed(1)+'k':ctx.raw.toFixed(0)):'—'}`}} },
-      scales:{ x:{grid:{color:'#1e2736'},ticks:{color:'#64748b'}}, y:{grid:{color:'#1e2736'},ticks:{color:'#64748b',callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}} },
+      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?'$'+(ctx.raw>=1000?(ctx.raw/1000).toFixed(1)+'k':ctx.raw.toFixed(0)):'—'}`}} },
+      scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}} },
     },
   }), [JSON.stringify(forecastData)]);
 
@@ -238,18 +238,18 @@ export default function Dashboard({
     data: {
       labels: nwTrajectoryData.labels,
       datasets: [
-        { label:'Net Worth', data:nwTrajectoryData.netWorth, borderColor:'#7fa88b', backgroundColor:'#7fa88b22', tension:0.4, fill:true, pointBackgroundColor:'#7fa88b' },
+        { label:'Net Worth', data:nwTrajectoryData.netWorth, borderColor:CHART.income, backgroundColor:CHART.income+'22', tension:0.4, fill:true, pointBackgroundColor:CHART.income },
         ...goals.filter(g=>g.target>0).map(g=>({
           label: g.name,
           data: nwTrajectoryData.labels.map(()=>g.target),
-          borderColor:'#4ade8066', borderDash:[4,4], borderWidth:1, pointRadius:0, fill:false,
+          borderColor:CHART.income+'66', borderDash:[4,4], borderWidth:1, pointRadius:0, fill:false,
         })),
       ],
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{labels:{color:'#94a3b8'}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: $${ctx.raw!=null?(ctx.raw>=1000?(ctx.raw/1000).toFixed(1)+'k':ctx.raw.toFixed(0)):'—'}`}} },
-      scales:{ x:{grid:{color:'#1e2736'},ticks:{color:'#64748b'}}, y:{grid:{color:'#1e2736'},ticks:{color:'#64748b',callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}} },
+      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: $${ctx.raw!=null?(ctx.raw>=1000?(ctx.raw/1000).toFixed(1)+'k':ctx.raw.toFixed(0)):'—'}`}} },
+      scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}} },
     },
   }), [JSON.stringify(nwTrajectoryData), JSON.stringify(goals)]);
 

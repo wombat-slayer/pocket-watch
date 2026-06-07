@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { catColor, catIcon, fmt, thisMonth, isDebtType } from '../constants.js';
+import { catColor, catIcon, fmt, thisMonth, isDebtType, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 
 export default function Reports({ transactions, accounts = [], netWorthHistory = [], budgets = [], onCategoryDrillDown, initialTab }) {
@@ -232,7 +232,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
   }, [weekCatBreakdown, weekRange, transactions, budgets]);
 
   // ── Color palette for category trend lines ─────────────────────────────────
-  const LINE_COLORS = ['#7fa88b', '#c2735a', '#60a5fa', '#f59e0b', '#a78bfa'];
+  const LINE_COLORS = [CHART.income, CHART.expense, CHART.primary, CHART.amber, CHART.secondary];
 
   // ── Charts ─────────────────────────────────────────────────────────────────
   useChart(canvasCat, () => ({
@@ -254,8 +254,8 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       },
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${fmt(ctx.raw)}` } } },
       scales: {
-        x: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
-        y: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        y: { grid: { display: false }, ticks: { color: CHART.gridLabel } },
       },
     },
   }), [JSON.stringify(catTotals), months]);
@@ -265,17 +265,17 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     data: {
       labels: trendData.map(r => r.label),
       datasets: [
-        { label: 'Income',   data: trendData.map(r => r.income), borderColor: '#4ade80', backgroundColor: '#4ade8022', tension: 0.4, fill: true, pointBackgroundColor: '#4ade80', pointRadius: trendData.length > 24 ? 2 : 4 },
-        { label: 'Spending', data: trendData.map(r => r.spend),  borderColor: '#c2735a', backgroundColor: '#c2735a22', tension: 0.4, fill: true, pointBackgroundColor: '#c2735a', pointRadius: trendData.length > 24 ? 2 : 4 },
-        { label: 'Net',      data: trendData.map(r => r.income - r.spend), borderColor: '#7fa88b', backgroundColor: 'transparent', tension: 0.4, fill: false, borderDash: [5, 4], pointBackgroundColor: '#7fa88b', borderWidth: 2, pointRadius: trendData.length > 24 ? 2 : 4 },
+        { label: 'Income',   data: trendData.map(r => r.income), borderColor: CHART.income, backgroundColor: CHART.income + '22', tension: 0.4, fill: true, pointBackgroundColor: CHART.income, pointRadius: trendData.length > 24 ? 2 : 4 },
+        { label: 'Spending', data: trendData.map(r => r.spend),  borderColor: CHART.expense, backgroundColor: CHART.expense + '22', tension: 0.4, fill: true, pointBackgroundColor: CHART.expense, pointRadius: trendData.length > 24 ? 2 : 4 },
+        { label: 'Net',      data: trendData.map(r => r.income - r.spend), borderColor: CHART.primary, backgroundColor: 'transparent', tension: 0.4, fill: false, borderDash: [5, 4], pointBackgroundColor: CHART.primary, borderWidth: 2, pointRadius: trendData.length > 24 ? 2 : 4 },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
       scales: {
-        x: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', maxTicksLimit: months === null ? 16 : 12 } },
-        y: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', callback: v => '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: months === null ? 16 : 12 } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
       },
     },
   }), [JSON.stringify(trendData), months]);
@@ -287,16 +287,16 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       datasets: yoyYears.map((y, i) => ({
         label: String(y),
         data: yoyData.map(r => r[y] || 0),
-        backgroundColor: i === 0 ? '#c2735acc' : i === 1 ? '#64748b66' : '#7fa88b55',
+        backgroundColor: i === 0 ? CHART.expense + 'cc' : i === 1 ? CHART.gridLabel + '66' : CHART.income + '55',
         borderRadius: 4, borderWidth: 0,
       })),
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
       scales: {
-        x: { grid: { color: '#1e2736' }, ticks: { color: '#64748b' } },
-        y: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
       },
     },
   }), [JSON.stringify(yoyData)]);
@@ -319,10 +319,10 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
       scales: {
-        x: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', maxTicksLimit: 16 } },
-        y: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) }, min: 0 },
+        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: 16 } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) }, min: 0 },
       },
     },
   }), [JSON.stringify(catTrendData)]);
@@ -335,22 +335,22 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
         {
           label: 'Net Worth',
           data: nwHistoryData.map(d => d.isActual ? d.value : null),
-          borderColor: '#7fa88b',
-          backgroundColor: '#7fa88b22',
+          borderColor: CHART.income,
+          backgroundColor: CHART.income + '22',
           tension: 0.3, fill: true,
           pointRadius: nwHistoryData.length > 24 ? 2 : 4,
-          pointBackgroundColor: '#7fa88b',
+          pointBackgroundColor: CHART.income,
           spanGaps: false,
         },
         {
           label: 'Estimated (reconstructed)',
           data: nwHistoryData.map(d => !d.isActual ? d.value : null),
-          borderColor: '#7fa88b77',
-          backgroundColor: '#7fa88b11',
+          borderColor: CHART.income + '77',
+          backgroundColor: CHART.income + '11',
           borderDash: [6, 4],
           tension: 0.3, fill: false,
           pointRadius: nwHistoryData.length > 24 ? 2 : 3,
-          pointBackgroundColor: '#7fa88b77',
+          pointBackgroundColor: CHART.income + '77',
           spanGaps: false,
         },
       ],
@@ -358,12 +358,12 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: '#94a3b8' } },
+        legend: { labels: { color: CHART.gridLabel } },
         tooltip: { callbacks: { label: (ctx) => ` Net Worth: ${fmt(ctx.raw)}` } },
       },
       scales: {
-        x: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', maxTicksLimit: 16 } },
-        y: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', callback: v => '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: 16 } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
       },
     },
   }), [JSON.stringify(nwHistoryData)]);

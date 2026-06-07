@@ -1,3 +1,15 @@
+// ── Chart design-system palette ───────────────────────────────
+export const CHART = {
+  primary:   '#6366f1',
+  secondary: '#8b5cf6',
+  tertiary:  '#06b6d4',
+  income:    '#10b981',
+  expense:   '#ef4444',
+  amber:     '#f59e0b',
+  gridLine:  'rgba(255,255,255,0.06)',
+  gridLabel: '#8b8fa8',
+};
+
 // ─── Categories ───────────────────────────────────────────────────────────────
 export const CATEGORIES = [
   { name: 'Housing',       icon: '🏠', color: '#6366f1' },

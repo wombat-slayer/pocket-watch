@@ -88,6 +88,11 @@ export default function App() {
   const [compensationProfile, setCompensationProfile] = useState(DEFAULT_COMPENSATION_PROFILE);
   const [budgetAlerts, setBudgetAlerts] = useState({ enabled: true, warnAt: 80, alertAt: 100 });
   const [privacyMode,  setPrivacyMode]  = useState(() => localStorage.getItem('pw_privacy') === '1');
+  const [theme, setTheme] = useState(() => localStorage.getItem('pw-theme') ?? 'dark');
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light');
+    localStorage.setItem('pw-theme', theme);
+  }, [theme]);
   const notifiedThresholds = useRef(new Set());
 
   // ── Data loading status ────────────────────────────────────────────────────
@@ -674,8 +679,16 @@ export default function App() {
           ))}
         </nav>
         {!sidebarCollapsed && (
-          <div style={{ padding:'10px 16px 16px',fontSize:11,color:'#334155',textAlign:'center' }} className="sidebar-footer">
-            Local · Private · Yours
+          <div style={{ padding: '10px 16px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} className="sidebar-footer">
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pocket Watch</span>
+            <button
+              className="btn-ghost btn-sm"
+              onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{ fontSize: 16, padding: '4px 8px', lineHeight: 1 }}
+            >
+              {theme === 'dark' ? '☀' : '☾'}
+            </button>
           </div>
         )}
       </div>
