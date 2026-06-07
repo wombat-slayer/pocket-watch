@@ -210,6 +210,113 @@ export function mapPlaidTransaction(plaidTx, accountMap = {}) {
   };
 }
 
+// ── Balance sync ─────────────────────────────────────────────────────────────
+
+// Plaid account.type → compatible Pocket Watch account types. Keeps a credit
+// card's Plaid balance from overwriting a checking account that merely shares
+// the institution name in the user's account naming.
+const PLAID_TYPE_COMPAT = {
+  depository: ['checking', 'savings', 'cash', 'other'],
+  credit:     ['credit'],
+  loan:       ['loan'],
+  investment: ['investment'],
+  brokerage:  ['investment'],
+};
+
+// Tokens too generic to disambiguate account names ("account" appears in
+// nearly every Plaid account name, "card" in any credit card's — matching on
+// them produces false positives like "CREDIT CARD" → "Discover Card").
+const MATCH_STOP_TOKENS = new Set([
+  'account', 'accounts', 'plan', 'the', 'of', 'my',
+  'card', 'credit', 'debit', 'bank', 'banking', 'financial', 'services',
+  'checking', 'savings', 'total', 'cash',
+]);
+
+function nameTokens(s) {
+  return new Set(
+    (s ?? '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(t => t.length >= 2 && !MATCH_STOP_TOKENS.has(t))
+  );
+}
+
+/**
+ * Build authoritative balance updates for app accounts from a Plaid accounts
+ * array (/accounts/get or /transactions/get response).
+ *
+ * balances.current is authoritative; balances.available is the fallback
+ * (some credit cards report current as null). Plaid reports credit/loan
+ * balances as POSITIVE amounts owed — Pocket Watch stores debt balances
+ * positive too (net worth = assets − debts, see Accounts.jsx), so the value
+ * is written as-is, no sign change.
+ *
+ * Matching, in priority order against type-compatible app accounts only:
+ *   1. last-4 mask appearing in the app account name — strongest; rename
+ *      accounts like "Fidelity HSA 3654" for guaranteed matching
+ *   2. distinctive-token overlap between the app account name (institution
+ *      words removed) and the Plaid name + subtype, e.g.
+ *      "Fidelity HSA" ∩ ("Health Savings Account" + "hsa") = {hsa}
+ *   3. institution name — ONLY when the institution reports a single account
+ *      of that type group; with several, "name contains 'Fidelity'" would
+ *      assign balances by Plaid's response order (live Fidelity item put the
+ *      RSU brokerage balance on the HSA account this way)
+ * Each app account is claimed by at most one Plaid account. No match → no
+ * update: a stale balance is recoverable, a wrong one is misinformation.
+ *
+ * Returns [{ id, balance }] for the app accounts that matched.
+ */
+export function extractBalanceUpdates(plaidAccounts, appAccounts, institutionName = '') {
+  const updates = [];
+  const claimed = new Set();
+  const instTokens = nameTokens(institutionName);
+  const groupOf = (t) => (t === 'brokerage' ? 'investment' : t);
+  // Accounts per type group, to gate the institution fallback to singletons
+  const groupCounts = {};
+  for (const pa of plaidAccounts ?? []) {
+    if ((pa.balances?.current ?? pa.balances?.available) == null) continue;
+    const g = groupOf(pa.type);
+    groupCounts[g] = (groupCounts[g] ?? 0) + 1;
+  }
+
+  for (const pa of plaidAccounts ?? []) {
+    const bal = pa.balances?.current ?? pa.balances?.available;
+    if (bal == null) continue;
+    const compat = PLAID_TYPE_COMPAT[pa.type] ?? null;
+    const candidates = (appAccounts ?? []).filter(a =>
+      !claimed.has(a.id) && (compat === null || compat.includes(a.type))
+    );
+
+    const byMask = pa.mask ? candidates.find(a => a.name?.includes(pa.mask)) : undefined;
+
+    const paTokens = nameTokens(pa.name);
+    if (pa.subtype) paTokens.add(String(pa.subtype).toLowerCase());
+    const overlapCount = (a) => {
+      let n = 0;
+      for (const t of nameTokens(a.name)) if (!instTokens.has(t) && paTokens.has(t)) n++;
+      return n;
+    };
+    let byTokens, byTokensScore = 0;
+    for (const a of candidates) {
+      const n = overlapCount(a);
+      if (n > byTokensScore) { byTokens = a; byTokensScore = n; }
+    }
+
+    const instLc = (institutionName ?? '').toLowerCase();
+    const fallbackAllowed = groupCounts[groupOf(pa.type)] === 1;
+    const byInst = fallbackAllowed && instLc
+      ? candidates.find(a => a.name?.toLowerCase().includes(instLc))
+      : undefined;
+
+    const match = byMask || byTokens || byInst || null;
+    if (!match) continue;
+    claimed.add(match.id);
+    updates.push({ id: match.id, balance: +Number(bal).toFixed(2) });
+  }
+
+  return updates;
+}
+
 /**
  * Map Plaid personal_finance_category primary values to Pocket Watch categories.
  * Falls back to 'Other' for unknown values.

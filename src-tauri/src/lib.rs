@@ -119,7 +119,7 @@ async fn plaid_create_link_token(
         "secret":    secret,
         "client_name": "Pocket Watch",
         "user": { "client_user_id": user_id },
-        "products":      ["transactions"],
+        "products":      ["transactions", "investments"],
         "country_codes": ["US"],
         "language":      "en"
     });
@@ -210,6 +210,40 @@ async fn plaid_fetch_transactions(
         Err(body["error_message"]
             .as_str()
             .unwrap_or("Failed to fetch transactions")
+            .to_string())
+    }
+}
+
+// /accounts/get returns current balances for ALL account types (depository,
+// credit, investment) and only needs the transactions product, so it works
+// on items linked before "investments" was requested at link time. The full
+// response is returned as JSON; the frontend reads accounts[].balances.current.
+#[tauri::command]
+async fn plaid_fetch_accounts(
+    client_id:    String,
+    secret:       String,
+    env:          String,
+    access_token: String,
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let base = plaid_base_url(&env);
+    let resp = client
+        .post(format!("{}/accounts/get", base))
+        .json(&json!({
+            "client_id":    client_id,
+            "secret":       secret,
+            "access_token": access_token
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let body: Value = resp.json().await.map_err(|e| e.to_string())?;
+    if body["error_code"].is_null() {
+        Ok(body.to_string())
+    } else {
+        Err(body["error_message"]
+            .as_str()
+            .unwrap_or("Failed to fetch accounts")
             .to_string())
     }
 }
@@ -338,6 +372,7 @@ pub fn run() {
             plaid_create_link_token,
             plaid_exchange_token,
             plaid_fetch_transactions,
+            plaid_fetch_accounts,
             plaid_remove_item,
             secret_set,
             secret_get,

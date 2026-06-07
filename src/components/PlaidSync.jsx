@@ -12,6 +12,7 @@ import {
   updateLinkedItem,
   removeLinkedItem,
   mapPlaidTransaction,
+  extractBalanceUpdates,
 } from '../plaidLayer.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit, on
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function PlaidSync({ accounts, existingTxs, onImport, onToast, onSyncComplete }) {
+export default function PlaidSync({ accounts, existingTxs, onImport, onToast, onSyncComplete, onUpdateBalances }) {
   // ── Credentials state ──────────────────────────────────────────────────────
   const [creds, setCreds] = useState({ clientId: '', secret: '', env: 'sandbox' });
   const [credInput, setCredInput] = useState({ clientId: '', secret: '', env: 'sandbox' });
@@ -380,16 +381,40 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       // in the fallback 'Other' category (i.e. need a human to categorize).
       onSyncComplete?.(newTxs.length, newTxs.filter(t => t.category === 'Other').length);
 
+      // ── Authoritative balances ─────────────────────────────────────────
+      // /accounts/get returns current balances for EVERY account type
+      // (depository, credit, investment) and only needs the transactions
+      // product, so use it as the single source of balance truth instead of
+      // the partial accounts array on /transactions/get. A failure here only
+      // skips balance updates — the transaction sync above already succeeded.
+      let plaidAccounts = payload.accounts ?? [];
+      try {
+        const rawAccounts = await invoke('plaid_fetch_accounts', {
+          clientId:    creds.clientId,
+          secret:      creds.secret,
+          env:         creds.env,
+          accessToken: item.accessToken,
+        });
+        plaidAccounts = JSON.parse(rawAccounts).accounts ?? plaidAccounts;
+      } catch (e) {
+        console.warn('Plaid accounts fetch failed (falling back to /transactions/get balances):', e);
+      }
+      const balanceUpdates = extractBalanceUpdates(plaidAccounts, accounts, item.institutionName);
+      if (balanceUpdates.length > 0) onUpdateBalances?.(balanceUpdates);
+
       const now = today();
       await updateLinkedItem(item.itemId, { lastSync: now });
       setItems(prev => prev.map(i => i.itemId === item.itemId ? { ...i, lastSync: now } : i));
 
       setSyncStatus(s => ({ ...s, [item.itemId]: 'done' }));
+      const balNote = balanceUpdates.length > 0
+        ? ` ${balanceUpdates.length} balance${balanceUpdates.length !== 1 ? 's' : ''} updated.`
+        : '';
       setSyncMsg(s => ({
         ...s,
-        [item.itemId]: newTxs.length > 0
+        [item.itemId]: (newTxs.length > 0
           ? `✅ Imported ${newTxs.length} new transaction${newTxs.length !== 1 ? 's' : ''}.`
-          : '✅ All up to date — no new transactions.',
+          : '✅ All up to date — no new transactions.') + balNote,
       }));
     } catch (e) {
       setSyncStatus(s => ({ ...s, [item.itemId]: 'error' }));

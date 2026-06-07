@@ -749,7 +749,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                           })()}
                           {oldUncleared.length > 0 && (
                             <div style={{ fontSize:11,color:'#f59e0b',marginTop:3 }}>
-                              \u26a0 {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
+                              ⚠ {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
                             </div>
                           )}
                         </div>
@@ -762,7 +762,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             if (diff < 0.01) return null;
                             return (
                               <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'#f59e0b', marginTop:3, cursor:'help' }}>
-                                \u26a0 tx total: {fmt(computed)}
+                                ⚠ tx total: {fmt(computed)}
                               </div>
                             );
                           })()}
