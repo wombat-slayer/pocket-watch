@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent } from '../constants.js';
+import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeUnvestedRSUValue } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import Goals from './Goals.jsx';
 
@@ -58,8 +58,10 @@ export default function Dashboard({
   // ── Net worth ─────────────────────────────────────────────────────────────
   const assets     = accounts.filter(a => !isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
   const debts      = accounts.filter(a =>  isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
-  const equityValue = useMemo(() => (grants || []).reduce((s,g) => s + (g.vestedShares||0) * (g.currentPrice||0), 0), [grants]);
-  const netWorth   = assets - debts + equityValue;
+  const equityValue    = useMemo(() => (grants || []).reduce((s,g) => s + (g.vestedShares||0) * (g.currentPrice||0), 0), [grants]);
+  const netWorth       = assets - debts + equityValue;
+  const unvestedRSU    = useMemo(() => computeUnvestedRSUValue(accounts), [accounts]);
+  const vestedNetWorth = netWorth - unvestedRSU;
 
   const checkingBal  = accounts.filter(a => a.type === 'checking').reduce((s,a) => s + a.balance, 0);
   const savingsBal   = accounts.filter(a => a.type === 'savings').reduce((s,a) => s + a.balance, 0);
@@ -286,8 +288,26 @@ export default function Dashboard({
       <div className="card" style={{ marginBottom:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12, flexWrap:'wrap', gap:8 }}>
           <div>
-            <div style={{ fontSize:12, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
-            <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(netWorth)}</div>
+            {unvestedRSU > 0 ? (
+              <>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                  <div style={{ fontSize:12, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Vested Net Worth</div>
+                  <span
+                    title="Unvested RSU value is excluded from this figure. Update in Accounts."
+                    style={{ fontSize:12, color:'#475569', cursor:'help' }}
+                  >ⓘ</span>
+                </div>
+                <div style={{ fontSize:30, fontWeight:700, color: vestedNetWorth >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(vestedNetWorth)}</div>
+                <div style={{ fontSize:12, color:'#475569', marginTop:3 }}>
+                  + {fmt(unvestedRSU)} <span style={{ color:'#334155' }}>locked (unvested RSUs)</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:12, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
+                <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(netWorth)}</div>
+              </>
+            )}
           </div>
           {nwDelta != null && (
             <div style={{ textAlign:'right' }}>

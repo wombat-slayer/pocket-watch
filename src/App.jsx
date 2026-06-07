@@ -149,6 +149,7 @@ export default function App() {
     const accounts = (data.accounts ?? []).map(a => ({
       holdings: [],
       isBusiness: false,
+      unvestedRSUValue: 0,
       ...a,
     }));
     const transactions = (data.transactions ?? []).map(t => ({
@@ -174,7 +175,7 @@ export default function App() {
     return {
       ...data, accounts, transactions, budgets, goals,
       compensationProfile: data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE,
-      version: 6,
+      version: 7,
     };
   };
 
@@ -275,7 +276,7 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 6 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 7 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
@@ -283,7 +284,7 @@ export default function App() {
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 6 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 7 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };

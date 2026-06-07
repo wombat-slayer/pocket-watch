@@ -22,6 +22,7 @@ import {
   autoCategory,
   autoCategoryBusiness,
   SCHEDULE_C_LINES,
+  computeUnvestedRSUValue,
   parseCSVLine,
   parseAmount,
   monthlyEquivalent,
@@ -650,5 +651,153 @@ describe('migrateData v6 — isBusiness backfill', () => {
     ];
     const migrated = migrateAccounts(raw);
     expect(migrated[0].isBusiness).toBe(false);
+  });
+});
+
+// ─── parseRSUStatement ────────────────────────────────────────────────────────
+import { parseRSUStatement } from '../utils/parseRSUStatement.js';
+
+describe('parseRSUStatement()', () => {
+  const sampleFidelityText = `
+    Amazon.com Inc  AMZN
+    Stock Plan Services
+    Unvested Shares: 412
+    Current Price: $201.50
+    Total Unvested Value: $82,958.00
+    Grant Schedule
+    08/18/2025  17  RSU
+    11/18/2025  17  RSU
+  `;
+
+  it('extracts ticker from Fidelity statement', () => {
+    const result = parseRSUStatement(sampleFidelityText);
+    expect(result.ticker).toBe('AMZN');
+  });
+
+  it('extracts unvested share count', () => {
+    const result = parseRSUStatement(sampleFidelityText);
+    expect(result.unvestedShares).toBe(412);
+  });
+
+  it('extracts current price per share', () => {
+    const result = parseRSUStatement(sampleFidelityText);
+    expect(result.currentPrice).toBe(201.50);
+  });
+
+  it('reads unvested value directly from statement text', () => {
+    const result = parseRSUStatement(sampleFidelityText);
+    expect(result.unvestedValue).toBe(82958.00);
+  });
+
+  it('extracts next vest date and shares from grant schedule', () => {
+    const result = parseRSUStatement(sampleFidelityText);
+    expect(result.nextVestDate).toBe('2025-08-18');
+    expect(result.nextVestShares).toBe(17);
+  });
+
+  it('returns null fields gracefully when text does not match', () => {
+    const result = parseRSUStatement('This PDF has no RSU data whatsoever.');
+    expect(result.ticker).toBeNull();
+    expect(result.unvestedShares).toBeNull();
+    expect(result.currentPrice).toBeNull();
+    expect(result.unvestedValue).toBeNull();
+  });
+
+  it('does not throw on empty string', () => {
+    expect(() => parseRSUStatement('')).not.toThrow();
+  });
+
+  it('does not throw on null input', () => {
+    expect(() => parseRSUStatement(null)).not.toThrow();
+  });
+
+  it('computes unvestedValue from shares × price when not in text', () => {
+    const text = 'AMZN Unvested: 100 Current Price: $200.00';
+    const result = parseRSUStatement(text);
+    expect(result.unvestedShares).toBe(100);
+    expect(result.currentPrice).toBe(200);
+    expect(result.unvestedValue).toBe(20000);
+  });
+});
+
+// ─── computeUnvestedRSUValue ──────────────────────────────────────────────────
+describe('computeUnvestedRSUValue()', () => {
+  it('sums unvestedRSUValue across multiple accounts', () => {
+    const accounts = [
+      { id:'1', unvestedRSUValue: 50000 },
+      { id:'2', unvestedRSUValue: 74000 },
+      { id:'3', unvestedRSUValue: 0 },
+    ];
+    expect(computeUnvestedRSUValue(accounts)).toBe(124000);
+  });
+
+  it('ignores accounts with unvestedRSUValue: 0', () => {
+    const accounts = [
+      { id:'1', unvestedRSUValue: 0 },
+      { id:'2', unvestedRSUValue: 0 },
+    ];
+    expect(computeUnvestedRSUValue(accounts)).toBe(0);
+  });
+
+  it('treats missing unvestedRSUValue as 0', () => {
+    const accounts = [
+      { id:'1', balance: 1000 },
+      { id:'2', unvestedRSUValue: 5000 },
+    ];
+    expect(computeUnvestedRSUValue(accounts)).toBe(5000);
+  });
+
+  it('returns 0 for an empty accounts array', () => {
+    expect(computeUnvestedRSUValue([])).toBe(0);
+  });
+});
+
+// ─── migrateData v7: unvestedRSUValue backfill ───────────────────────────────
+describe('migrateData v7 — unvestedRSUValue backfill', () => {
+  function migrateAccountsV7(rawAccounts) {
+    return rawAccounts.map(a => ({ holdings: [], isBusiness: false, unvestedRSUValue: 0, ...a }));
+  }
+
+  it('adds unvestedRSUValue: 0 to accounts that lack it', () => {
+    const raw = [
+      { id:'1', name:'Fidelity', type:'investment', balance: 124000 },
+    ];
+    const migrated = migrateAccountsV7(raw);
+    expect(migrated[0].unvestedRSUValue).toBe(0);
+  });
+
+  it('preserves an existing non-zero unvestedRSUValue', () => {
+    const raw = [
+      { id:'2', name:'Fidelity', type:'investment', balance: 124000, unvestedRSUValue: 83000 },
+    ];
+    const migrated = migrateAccountsV7(raw);
+    expect(migrated[0].unvestedRSUValue).toBe(83000);
+  });
+});
+
+// ─── Dashboard net worth split ────────────────────────────────────────────────
+describe('Dashboard net worth split logic', () => {
+  it('vestedNetWorth = total minus unvested when unvestedRSU > 0', () => {
+    const accounts = [
+      { id:'1', type:'checking',   balance: 10000, unvestedRSUValue: 0 },
+      { id:'2', type:'investment', balance: 124000, unvestedRSUValue: 83000 },
+    ];
+    const assets      = accounts.filter(a => !['credit','loan'].includes(a.type)).reduce((s,a) => s + a.balance, 0);
+    const netWorth    = assets; // no debts, no equity grants in this fixture
+    const unvestedRSU = computeUnvestedRSUValue(accounts);
+    const vestedNetWorth = netWorth - unvestedRSU;
+    expect(unvestedRSU).toBe(83000);
+    expect(vestedNetWorth).toBe(netWorth - 83000);
+  });
+
+  it('shows no split UI when all unvestedRSUValue are 0', () => {
+    const accounts = [
+      { id:'1', type:'checking',   balance: 10000, unvestedRSUValue: 0 },
+      { id:'2', type:'investment', balance: 50000, unvestedRSUValue: 0 },
+    ];
+    const unvestedRSU = computeUnvestedRSUValue(accounts);
+    expect(unvestedRSU).toBe(0);
+    // UI condition: unvestedRSU > 0 → false → standard net worth label shown
+    expect(unvestedRSU > 0).toBe(false);
   });
 });

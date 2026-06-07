@@ -3,6 +3,7 @@ import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, p
 import { useChart } from '../hooks/useChart.js';
 import Modal from './Modal.jsx';
 import StatementImport from './StatementImport.jsx';
+import RSUImportModal from './RSUImportModal.jsx';
 
 // ─── Debt Payoff Calculator ──────────────────────────────────────────────────
 function DebtPayoffPanel({ debts }) {
@@ -229,7 +230,8 @@ function DebtPayoffPanel({ debts }) {
 }
 
 function AccountForm({ initial, onSave, onClose }) {
-  const [form, setForm] = useState(initial ?? { name:'', type:'checking', balance:'', isBusiness: false });
+  const [form, setForm] = useState(initial ?? { name:'', type:'checking', balance:'', isBusiness: false, unvestedRSUValue: 0 });
+  const [showRSUModal, setShowRSUModal] = useState(false);
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const save = () => {
     if (!form.name.trim() || form.balance === '') return;
@@ -238,33 +240,65 @@ function AccountForm({ initial, onSave, onClose }) {
     onSave({ ...form, id: form.id ?? uid(), balance: Math.abs(bal) });
   };
   return (
-    <div className="form-grid" style={{ gap:14 }}>
-      <div className="form-group"><label className="form-label">Account Name</label><input type="text" placeholder="e.g. Chase Checking" value={form.name} onChange={e=>set('name',e.target.value)} /></div>
-      <div className="form-grid form-grid-2">
-        <div className="form-group"><label className="form-label">Type</label>
-          <select value={form.type} onChange={e=>set('type',e.target.value)}>
-            {ACCOUNT_TYPES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+    <>
+      <div className="form-grid" style={{ gap:14 }}>
+        <div className="form-group"><label className="form-label">Account Name</label><input type="text" placeholder="e.g. Chase Checking" value={form.name} onChange={e=>set('name',e.target.value)} /></div>
+        <div className="form-grid form-grid-2">
+          <div className="form-group"><label className="form-label">Type</label>
+            <select value={form.type} onChange={e=>set('type',e.target.value)}>
+              {ACCOUNT_TYPES.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group"><label className="form-label">Current Balance ($)</label>
+            <input type="text" placeholder="0.00" value={form.balance} onChange={e=>set('balance',e.target.value)} />
+          </div>
         </div>
-        <div className="form-group"><label className="form-label">Current Balance ($)</label>
-          <input type="text" placeholder="0.00" value={form.balance} onChange={e=>set('balance',e.target.value)} />
+        <div style={{ fontSize:12,color:'#64748b' }}>
+          {isDebtType(form.type)?'⚠️ Debt accounts subtract from your net worth.':'✅ Asset accounts add to your net worth.'}
+        </div>
+        {form.type === 'investment' && (
+          <div className="form-group">
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+              <label className="form-label" style={{ marginBottom:0 }}>Unvested RSU Value ($)</label>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize:11 }}
+                onClick={() => setShowRSUModal(true)}
+              >📄 Import from Statement</button>
+            </div>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={form.unvestedRSUValue || ''}
+              onChange={e => set('unvestedRSUValue', e.target.value === '' ? 0 : +e.target.value)}
+            />
+            <div style={{ fontSize:11, color:'#64748b', marginTop:4 }}>
+              Enter the current market value of unvested RSU grants. This is excluded from your vested net worth on the dashboard.
+            </div>
+          </div>
+        )}
+        <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', padding:'8px 10px', background:'#0d1117', borderRadius:8, border:'1px solid #1e2736' }}>
+          <input type="checkbox" checked={!!form.isBusiness} onChange={e=>set('isBusiness', e.target.checked)} style={{ accentColor:'#7fa88b', width:15, height:15 }} />
+          <div>
+            <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500 }}>🏢 Business account</div>
+            <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>Mark accounts used for business income and expenses.</div>
+          </div>
+        </label>
+        <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save}>Save Account</button>
         </div>
       </div>
-      <div style={{ fontSize:12,color:'#64748b' }}>
-        {isDebtType(form.type)?'⚠️ Debt accounts subtract from your net worth.':'✅ Asset accounts add to your net worth.'}
-      </div>
-      <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', padding:'8px 10px', background:'#0d1117', borderRadius:8, border:'1px solid #1e2736' }}>
-        <input type="checkbox" checked={!!form.isBusiness} onChange={e=>set('isBusiness', e.target.checked)} style={{ accentColor:'#7fa88b', width:15, height:15 }} />
-        <div>
-          <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500 }}>🏢 Business account</div>
-          <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>Mark accounts used for business income and expenses.</div>
-        </div>
-      </label>
-      <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
-        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={save}>Save Account</button>
-      </div>
-    </div>
+      {showRSUModal && (
+        <RSUImportModal
+          onConfirm={({ unvestedRSUValue }) => { set('unvestedRSUValue', unvestedRSUValue); setShowRSUModal(false); }}
+          onClose={() => setShowRSUModal(false)}
+        />
+      )}
+    </>
   );
 }
 

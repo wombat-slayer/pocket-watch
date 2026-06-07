@@ -265,6 +265,10 @@ export const DEFAULT_COMPENSATION_PROFILE = {
 
 // ── Budget suggestions from spending history ──────────────────────────────────
 
+export function computeUnvestedRSUValue(accounts) {
+  return accounts.reduce((sum, a) => sum + (a.unvestedRSUValue || 0), 0);
+}
+
 export function suggestBudgetsFromActuals(transactions, referenceMonths) {
   const totals = {};
   referenceMonths.forEach(m => {
