@@ -338,18 +338,37 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       const payload = JSON.parse(raw);
       const plaidTxs = payload.transactions ?? [];
 
-      // Build account id → PW account id map
+      // ── Authoritative accounts — fetch first so matching drives both
+      // transaction routing AND balance updates in one pass ─────────────────
+      // /accounts/get returns every account type; falls back to the accounts
+      // embedded in /transactions/get if the call fails.
+      let plaidAccounts = payload.accounts ?? [];
+      try {
+        const rawAccounts = await invoke('plaid_fetch_accounts', {
+          clientId:    creds.clientId,
+          secret:      creds.secret,
+          env:         creds.env,
+          accessToken: item.accessToken,
+        });
+        plaidAccounts = JSON.parse(rawAccounts).accounts ?? plaidAccounts;
+      } catch (e) {
+        console.warn('Plaid accounts fetch failed (falling back to /transactions/get balances):', e);
+      }
+
+      // Smart matching: same mask/token/institution logic used for balances.
+      // plaidIdMap keys are Plaid account_ids (what transactions carry);
+      // values are the matched Pocket Watch account id.
+      const { balanceUpdates, plaidIdMap } = extractBalanceUpdates(plaidAccounts, accounts, item.institutionName);
+
+      // Unmatched = Plaid accounts from this item with no app account match.
+      // Fall back to the raw Plaid account id so transactions aren't silently dropped.
       const accountMap = {};
       const unmatched  = [];
       for (const pa of item.accounts) {
-        const match = accounts.find(a =>
-          a.name?.toLowerCase().includes(pa.name?.toLowerCase()) ||
-          a.name?.toLowerCase().includes(item.institutionName?.toLowerCase())
-        );
-        if (match) {
-          accountMap[pa.id] = match.id;
+        if (plaidIdMap[pa.id]) {
+          accountMap[pa.id] = plaidIdMap[pa.id];
         } else {
-          accountMap[pa.id] = pa.id; // fallback — import with Plaid account id
+          accountMap[pa.id] = pa.id;
           unmatched.push(`${pa.name}${pa.mask ? ` (…${pa.mask})` : ''}`);
         }
       }
@@ -381,25 +400,6 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       // in the fallback 'Other' category (i.e. need a human to categorize).
       onSyncComplete?.(newTxs.length, newTxs.filter(t => t.category === 'Other').length);
 
-      // ── Authoritative balances ─────────────────────────────────────────
-      // /accounts/get returns current balances for EVERY account type
-      // (depository, credit, investment) and only needs the transactions
-      // product, so use it as the single source of balance truth instead of
-      // the partial accounts array on /transactions/get. A failure here only
-      // skips balance updates — the transaction sync above already succeeded.
-      let plaidAccounts = payload.accounts ?? [];
-      try {
-        const rawAccounts = await invoke('plaid_fetch_accounts', {
-          clientId:    creds.clientId,
-          secret:      creds.secret,
-          env:         creds.env,
-          accessToken: item.accessToken,
-        });
-        plaidAccounts = JSON.parse(rawAccounts).accounts ?? plaidAccounts;
-      } catch (e) {
-        console.warn('Plaid accounts fetch failed (falling back to /transactions/get balances):', e);
-      }
-      const balanceUpdates = extractBalanceUpdates(plaidAccounts, accounts, item.institutionName);
       if (balanceUpdates.length > 0) onUpdateBalances?.(balanceUpdates);
 
       const now = today();

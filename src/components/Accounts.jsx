@@ -756,6 +756,19 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                         <div style={{ textAlign:'right', marginRight:8 }}>
                           <div style={{ fontSize:17,fontWeight:700,color:'#c2735a' }}>{fmt(a.balance)}</div>
                           {(() => {
+                            if (a.lastPlaidSync) {
+                              const d = new Date(a.lastPlaidSync);
+                              const today = new Date(); today.setHours(0,0,0,0);
+                              const syncDay = new Date(d); syncDay.setHours(0,0,0,0);
+                              const diffDays = Math.round((today - syncDay) / 86400000);
+                              const label = diffDays === 0 ? 'today' : diffDays === 1 ? 'yesterday'
+                                : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+                              return (
+                                <div style={{ fontSize:11, color:'#475569', marginTop:3 }}>
+                                  Balance from bank · synced {label}
+                                </div>
+                              );
+                            }
                             const computed = computeBalance(a.id, transactions, a.type);
                             if (computed === null) return null;
                             const diff = Math.abs(computed - a.balance);

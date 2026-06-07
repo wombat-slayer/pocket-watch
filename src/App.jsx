@@ -388,9 +388,10 @@ export default function App() {
   // entry (the paired transaction import already pushed one).
   const updateAcctBalances = (updates) => {
     if (!updates?.length) return;
+    const now = new Date().toISOString();
     setAccounts(as => as.map(a => {
       const u = updates.find(x => x.id === a.id);
-      return u && u.balance !== a.balance ? { ...a, balance: u.balance } : a;
+      return u ? { ...a, balance: u.balance, lastPlaidSync: now } : a;
     }));
   };
   const editAcct   = (a)   => { pushUndo(); setAccounts(as=>as.map(x=>x.id===a.id?a:x)); showToast('Account updated'); };

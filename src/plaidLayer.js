@@ -267,21 +267,19 @@ function nameTokens(s) {
  * Returns [{ id, balance }] for the app accounts that matched.
  */
 export function extractBalanceUpdates(plaidAccounts, appAccounts, institutionName = '') {
-  const updates = [];
+  const balanceUpdates = [];
+  const plaidIdMap = {}; // plaid account_id → app account id
   const claimed = new Set();
   const instTokens = nameTokens(institutionName);
   const groupOf = (t) => (t === 'brokerage' ? 'investment' : t);
   // Accounts per type group, to gate the institution fallback to singletons
   const groupCounts = {};
   for (const pa of plaidAccounts ?? []) {
-    if ((pa.balances?.current ?? pa.balances?.available) == null) continue;
     const g = groupOf(pa.type);
     groupCounts[g] = (groupCounts[g] ?? 0) + 1;
   }
 
   for (const pa of plaidAccounts ?? []) {
-    const bal = pa.balances?.current ?? pa.balances?.available;
-    if (bal == null) continue;
     const compat = PLAID_TYPE_COMPAT[pa.type] ?? null;
     const candidates = (appAccounts ?? []).filter(a =>
       !claimed.has(a.id) && (compat === null || compat.includes(a.type))
@@ -311,10 +309,12 @@ export function extractBalanceUpdates(plaidAccounts, appAccounts, institutionNam
     const match = byMask || byTokens || byInst || null;
     if (!match) continue;
     claimed.add(match.id);
-    updates.push({ id: match.id, balance: +Number(bal).toFixed(2) });
+    plaidIdMap[pa.account_id] = match.id;
+    const bal = pa.balances?.current ?? pa.balances?.available;
+    if (bal != null) balanceUpdates.push({ id: match.id, balance: +Number(bal).toFixed(2) });
   }
 
-  return updates;
+  return { balanceUpdates, plaidIdMap };
 }
 
 /**
