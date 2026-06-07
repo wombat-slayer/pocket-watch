@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { fmt, uid, sanitizeText, safeNum } from '../constants.js';
 import Modal from './Modal.jsx';
 import DatePicker from './DatePicker.jsx';
+import MortgageCalculator from './MortgageCalculator.jsx';
 
 function GoalForm({ goal, accounts, onSave, onClose }) {
   const [form, setForm] = useState(goal ?? { name:'', emoji:'🎯', target:1000, current:0, targetDate:'', color:'#3b82f6', linkedAccountId:null });
@@ -63,10 +64,14 @@ function GoalForm({ goal, accounts, onSave, onClose }) {
 }
 
 export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDeposit, embedded = false }) {
-  const [showAdd,     setShowAdd]     = useState(false);
-  const [editGoal,    setEditGoal]    = useState(null);
-  const [depositGoal, setDepositGoal] = useState(null);
-  const [depositAmt,  setDepositAmt]  = useState('');
+  const [showAdd,          setShowAdd]          = useState(false);
+  const [editGoal,         setEditGoal]         = useState(null);
+  const [depositGoal,      setDepositGoal]      = useState(null);
+  const [depositAmt,       setDepositAmt]       = useState('');
+  const [mortgageCalcIds,  setMortgageCalcIds]  = useState(new Set());
+
+  const toggleMortgageCalc = (id) =>
+    setMortgageCalcIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   // Resolve current value: if linked to account, use account balance
   const resolvedCurrent = (g) => {
@@ -177,6 +182,13 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
                       }
                     </div>
                   )}
+                  <div style={{ marginTop:8 }}>
+                    <button className="btn btn-ghost btn-sm" style={{ fontSize:11, color:'#64748b', width:'100%' }}
+                      onClick={() => toggleMortgageCalc(g.id)}>
+                      {mortgageCalcIds.has(g.id) ? '▲ Hide Mortgage Calc' : '🏠 Mortgage Calculator'}
+                    </button>
+                    {mortgageCalcIds.has(g.id) && <MortgageCalculator goal={{ ...g, current: resolvedCurrent(g) }} />}
+                  </div>
                 </div>
               );
             })}

@@ -7,7 +7,7 @@ export default function Dashboard({
   transactions, accounts, budgets, recurrences, onAddTx,
   grants, netWorthHistory = [], goals = [],
   onAddGoal, onEditGoal, onDeleteGoal, onDeposit, onGoToBudgets,
-  compensationProfile, onCategoryClick,
+  compensationProfile, onCategoryClick, onGoToReports,
 }) {
   const canvasForecast     = useRef(null);
   const canvasNWTrajectory = useRef(null);
@@ -145,6 +145,19 @@ export default function Dashboard({
     });
     return flags;
   }, [transactions, catSpend, selMonth]);
+
+  // ── This Week ─────────────────────────────────────────────────────────────
+  const weekStats = useMemo(() => {
+    const now = new Date();
+    const sun = new Date(now); sun.setDate(now.getDate() - now.getDay()); sun.setHours(0,0,0,0);
+    const sat = new Date(sun); sat.setDate(sun.getDate() + 6);
+    const start = sun.toISOString().slice(0,10);
+    const end   = sat.toISOString().slice(0,10);
+    const weekTxs = transactions.filter(t => t.type === 'expense' && t.date >= start && t.date <= end);
+    const total   = weekTxs.reduce((s,t) => s + Math.abs(t.amount), 0);
+    const cats    = [...new Set(weekTxs.map(t => t.category))].length;
+    return { total, cats, count: weekTxs.length };
+  }, [transactions]);
 
   // ── FIRE data ─────────────────────────────────────────────────────────────
   const fireData = useMemo(() => {
@@ -351,6 +364,20 @@ export default function Dashboard({
           )}
         </div>
       </div>
+
+      {/* ── Weekly callout ── */}
+      {weekStats.count > 0 && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1e273640', borderRadius:8, padding:'8px 16px', marginBottom:16, fontSize:13 }}>
+          <span style={{ color:'#94a3b8' }}>
+            This week: <span style={{ color:'#c2735a', fontWeight:600 }}>{fmt(weekStats.total)}</span> spent across <span style={{ fontWeight:600 }}>{weekStats.cats}</span> categor{weekStats.cats===1?'y':'ies'}
+          </span>
+          {onGoToReports && (
+            <button className="btn btn-ghost btn-sm" style={{ fontSize:12 }} onClick={() => onGoToReports('week')}>
+              Reports →
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Module 2: Monthly Pulse ── */}
       <div className="card" style={{ marginBottom:16 }}>

@@ -17,7 +17,7 @@ function saveFilters(patch) {
   } catch {}
 }
 
-export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive, recurrences = [], lastSyncResult, onDismissSyncResult }) {
+export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive, recurrences = [], lastSyncResult, onDismissSyncResult, dataPath }) {
   const saved = loadFilters();
   const [search,      setSearch]      = useState(saved.search      ?? '');
   const [catFilter,   setCatFilter]   = useState(() => initialCatFilter && initialCatFilter !== 'All' ? initialCatFilter : (saved.catFilter ?? 'All'));
@@ -450,6 +450,12 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                           🧾
                                         </span>
                                       )}
+                                      {(t.receipts?.length > 0) && (
+                                        <span title={`${t.receipts.length} receipt${t.receipts.length>1?'s':''} attached`}
+                                          style={{ fontSize:10, background:'#1e2736', color:'#94a3b8', padding:'1px 6px', borderRadius:10 }}>
+                                          📎
+                                        </span>
+                                      )}
                                     </div>
                                     {t.notes && <div style={{ fontSize:12,color:'#475569' }}>{t.notes}</div>}
                                     {(t.tags ?? []).length > 0 && (
@@ -556,12 +562,12 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
 
       {showAdd && (
         <Modal title="Add Transaction" onClose={()=>setShowAdd(false)}>
-          <TransactionForm accounts={accounts} onSave={tx=>{ onAdd(tx); setShowAdd(false); }} onClose={()=>setShowAdd(false)} userCategories={userCategories} existingTransactions={transactions} />
+          <TransactionForm accounts={accounts} onSave={tx=>{ onAdd(tx); setShowAdd(false); }} onClose={()=>setShowAdd(false)} userCategories={userCategories} existingTransactions={transactions} dataPath={dataPath} />
         </Modal>
       )}
       {editTx && (
         <Modal title="Edit Transaction" onClose={()=>setEditTx(null)}>
-          <TransactionForm initial={editTx} accounts={accounts} onSave={tx=>{ onEdit(tx); setEditTx(null); }} onClose={()=>setEditTx(null)} userCategories={userCategories} existingTransactions={transactions} />
+          <TransactionForm initial={editTx} accounts={accounts} onSave={tx=>{ onEdit(tx); setEditTx(null); }} onClose={()=>setEditTx(null)} userCategories={userCategories} existingTransactions={transactions} dataPath={dataPath} />
         </Modal>
       )}
       {showCSV && (

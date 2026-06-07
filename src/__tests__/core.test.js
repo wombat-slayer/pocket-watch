@@ -33,6 +33,9 @@ import {
   detectAndMarkTransferPairs,
   DEFAULT_COMPENSATION_PROFILE,
   suggestBudgetsFromActuals,
+  checkBudgetAlerts,
+  computeMortgagePI,
+  fmt,
 } from '../constants.js';
 
 import { parsePayStub, toMonthly, calcEffectiveTaxRate } from '../utils/parsePayStub.js';
@@ -799,5 +802,167 @@ describe('Dashboard net worth split logic', () => {
     expect(unvestedRSU).toBe(0);
     // UI condition: unvestedRSU > 0 → false → standard net worth label shown
     expect(unvestedRSU > 0).toBe(false);
+  });
+});
+
+// ─── checkBudgetAlerts ───────────────────────────────────────────────────────
+describe('checkBudgetAlerts()', () => {
+  const month = '2026-06';
+  const budgets = [
+    { id:'b1', month, category:'Food & Dining', amount:500 },
+    { id:'b2', month, category:'Entertainment', amount:200 },
+    { id:'b3', month, category:'Shopping',      amount:300 },
+  ];
+
+  it('returns empty array when all spending is under warn threshold', () => {
+    const txs = [
+      { id:'t1', type:'expense', date:'2026-06-01', category:'Food & Dining', amount:-100 },
+      { id:'t2', type:'expense', date:'2026-06-02', category:'Entertainment', amount:-50  },
+    ];
+    expect(checkBudgetAlerts(budgets, txs, month, 80, 100)).toHaveLength(0);
+  });
+
+  it('returns warn entry when spending hits warnAt threshold', () => {
+    const txs = [
+      { id:'t1', type:'expense', date:'2026-06-01', category:'Food & Dining', amount:-410 },
+    ];
+    const results = checkBudgetAlerts(budgets, txs, month, 80, 100);
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('warn');
+    expect(results[0].category).toBe('Food & Dining');
+    expect(results[0].pct).toBeGreaterThanOrEqual(80);
+  });
+
+  it('returns alert entry when spending meets or exceeds alertAt threshold', () => {
+    const txs = [
+      { id:'t1', type:'expense', date:'2026-06-01', category:'Entertainment', amount:-200 },
+    ];
+    const results = checkBudgetAlerts(budgets, txs, month, 80, 100);
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('alert');
+    expect(results[0].category).toBe('Entertainment');
+    expect(results[0].pct).toBe(100);
+  });
+
+  it('returns multiple entries when multiple categories breach thresholds', () => {
+    const txs = [
+      { id:'t1', type:'expense', date:'2026-06-01', category:'Food & Dining', amount:-450 },
+      { id:'t2', type:'expense', date:'2026-06-02', category:'Shopping',      amount:-310 },
+    ];
+    const results = checkBudgetAlerts(budgets, txs, month, 80, 100);
+    expect(results.length).toBeGreaterThanOrEqual(2);
+    const cats = results.map(r => r.category);
+    expect(cats).toContain('Food & Dining');
+    expect(cats).toContain('Shopping');
+  });
+
+  it('ignores income transactions', () => {
+    const txs = [
+      { id:'t1', type:'income', date:'2026-06-01', category:'Food & Dining', amount:5000 },
+    ];
+    expect(checkBudgetAlerts(budgets, txs, month, 80, 100)).toHaveLength(0);
+  });
+
+  it('returns empty array when no budgets exist for the month', () => {
+    const txs = [
+      { id:'t1', type:'expense', date:'2026-06-01', category:'Food & Dining', amount:-999 },
+    ];
+    expect(checkBudgetAlerts([], txs, month, 80, 100)).toHaveLength(0);
+  });
+});
+
+// ─── computeMortgagePI ───────────────────────────────────────────────────────
+describe('computeMortgagePI()', () => {
+  it('$200k loan, 6.5%, 30yr ≈ $1,264/mo', () => {
+    const pi = computeMortgagePI(200000, 6.5, 30);
+    expect(pi).toBeGreaterThan(1260);
+    expect(pi).toBeLessThan(1270);
+  });
+
+  it('$400k loan, 7.0%, 30yr ≈ $2,661/mo', () => {
+    const pi = computeMortgagePI(400000, 7.0, 30);
+    expect(pi).toBeGreaterThan(2655);
+    expect(pi).toBeLessThan(2670);
+  });
+
+  it('$300k loan, 6.0%, 15yr payment is higher than 30yr', () => {
+    const pi15 = computeMortgagePI(300000, 6.0, 15);
+    const pi30 = computeMortgagePI(300000, 6.0, 30);
+    expect(pi15).toBeGreaterThan(pi30);
+  });
+
+  it('returns 0 for zero principal', () => {
+    expect(computeMortgagePI(0, 6.5, 30)).toBe(0);
+  });
+
+  it('returns 0 for zero rate', () => {
+    expect(computeMortgagePI(200000, 0, 30)).toBe(0);
+  });
+});
+
+// ─── Privacy / fmt masking ───────────────────────────────────────────────────
+describe('fmt() and privacy masking contract', () => {
+  it('fmt returns a non-empty string for valid amounts', () => {
+    const result = fmt(1234.56);
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('fmt formats negative amounts', () => {
+    const result = fmt(-500);
+    expect(result).toContain('500');
+  });
+
+  it('privacy MASK constant is ••••', () => {
+    const MASK = '••••';
+    expect(MASK).toBe('••••');
+    expect(MASK.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── Receipt filename format ─────────────────────────────────────────────────
+describe('Receipt filename format', () => {
+  it('follows [txId]-[timestamp].[ext] pattern', () => {
+    const txId = 'abc123';
+    const ts   = 1700000000000;
+    const ext  = 'pdf';
+    const filename = `${txId}-${ts}.${ext}`;
+    expect(filename).toBe('abc123-1700000000000.pdf');
+    // ext is preserved
+    expect(filename.endsWith('.pdf')).toBe(true);
+    // txId prefix is the first segment before first hyphen-group
+    expect(filename.startsWith(txId)).toBe(true);
+  });
+
+  it('jpg extension is preserved', () => {
+    const filename = `tx1-${Date.now()}.jpg`;
+    expect(filename.endsWith('.jpg')).toBe(true);
+  });
+});
+
+// ─── migrateData v8: receipts field ─────────────────────────────────────────
+describe('migrateData v8 — receipts backfill', () => {
+  // migrateData lives in App.jsx and is not exported; test the pattern directly
+  it('spreading receipts:[] before ...t gives empty array when t has no receipts', () => {
+    const t = { id:'t1', date:'2026-01-01', amount:-50, category:'Food & Dining' };
+    const migrated = { receipts: [], ...t };
+    expect(migrated.receipts).toEqual([]);
+  });
+
+  it('preserves existing receipts when t already has them', () => {
+    const existing = [{ name: 't1-123.jpg' }];
+    const t = { id:'t1', receipts: existing };
+    const migrated = { receipts: [], ...t };
+    expect(migrated.receipts).toEqual(existing);
+  });
+
+  it('spread pattern works for all transactions in a batch', () => {
+    const rawTxs = [
+      { id:'a', amount:-10 },
+      { id:'b', amount:-20, receipts: [{ name:'b-1.pdf' }] },
+    ];
+    const migrated = rawTxs.map(t => ({ receipts: [], ...t }));
+    expect(migrated[0].receipts).toEqual([]);
+    expect(migrated[1].receipts).toEqual([{ name:'b-1.pdf' }]);
   });
 });

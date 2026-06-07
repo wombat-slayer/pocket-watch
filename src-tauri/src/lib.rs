@@ -57,6 +57,62 @@ fn get_default_data_path(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
+// ── Receipt file storage ─────────────────────────────────────────────────────
+//
+// Receipts live in a `receipts/` folder next to the data file.
+// Filenames are [txId]-[timestamp].[ext], validated against path traversal.
+
+fn validate_receipt_filename(filename: &str) -> Result<(), String> {
+    if filename.is_empty() {
+        return Err("Filename must not be empty".to_string());
+    }
+    if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
+        return Err("Invalid receipt filename".to_string());
+    }
+    Ok(())
+}
+
+fn receipts_dir(data_path: &str) -> Result<PathBuf, String> {
+    let p = PathBuf::from(data_path);
+    if !p.is_absolute() {
+        return Err("Data path must be absolute".to_string());
+    }
+    let parent = p.parent().ok_or_else(|| "Data path has no parent directory".to_string())?;
+    Ok(parent.join("receipts"))
+}
+
+#[tauri::command]
+fn save_receipt(data_path: String, filename: String, bytes: Vec<u8>) -> Result<String, String> {
+    validate_receipt_filename(&filename)?;
+    let dir = receipts_dir(&data_path)?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    fs::write(dir.join(&filename), &bytes).map_err(|e| e.to_string())?;
+    Ok(filename)
+}
+
+#[tauri::command]
+fn delete_receipt(data_path: String, filename: String) -> Result<(), String> {
+    validate_receipt_filename(&filename)?;
+    let path = receipts_dir(&data_path)?.join(&filename);
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn open_receipt(data_path: String, filename: String, app: tauri::AppHandle) -> Result<(), String> {
+    validate_receipt_filename(&filename)?;
+    let path = receipts_dir(&data_path)?.join(&filename);
+    if !path.exists() {
+        return Err(format!("Receipt file not found: {}", filename));
+    }
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_path(path.to_str().ok_or_else(|| "Invalid path encoding".to_string())?, None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 // ── OS credential manager (encrypted secret storage) ────────────────────────
 //
 // Secrets (Plaid client_id/secret, per-item access tokens) live in the OS
@@ -417,6 +473,9 @@ pub fn run() {
             secret_set,
             secret_get,
             secret_delete,
+            save_receipt,
+            delete_receipt,
+            open_receipt,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

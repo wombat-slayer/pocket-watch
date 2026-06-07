@@ -265,6 +265,31 @@ export const DEFAULT_COMPENSATION_PROFILE = {
 
 // ── Budget suggestions from spending history ──────────────────────────────────
 
+/**
+ * Check budget alert thresholds for the given month.
+ * Returns an array of { category, pct, type ('warn'|'alert'), spent, budget } objects.
+ */
+export function checkBudgetAlerts(budgets, transactions, month, warnAt = 80, alertAt = 100) {
+  const monthBudgets = budgets.filter(b => b.month === month);
+  if (!monthBudgets.length) return [];
+  const spend = {};
+  transactions
+    .filter(t => t.type === 'expense' && t.date.startsWith(month))
+    .forEach(t => { spend[t.category] = (spend[t.category] || 0) + Math.abs(t.amount); });
+  const results = [];
+  for (const b of monthBudgets) {
+    if (!b.amount || b.amount <= 0) continue;
+    const spent = spend[b.category] || 0;
+    const pct   = (spent / b.amount) * 100;
+    if (pct >= alertAt) {
+      results.push({ category: b.category, pct: Math.round(pct), type: 'alert', spent, budget: b.amount });
+    } else if (pct >= warnAt) {
+      results.push({ category: b.category, pct: Math.round(pct), type: 'warn', spent, budget: b.amount });
+    }
+  }
+  return results;
+}
+
 export function computeUnvestedRSUValue(accounts) {
   return accounts.reduce((sum, a) => sum + (a.unvestedRSUValue || 0), 0);
 }
@@ -284,4 +309,12 @@ export function suggestBudgetsFromActuals(transactions, referenceMonths) {
       suggested: Math.round((total / referenceMonths.length) / 5) * 5,
     }))
     .sort((a, b) => b.suggested - a.suggested);
+}
+
+// Monthly P&I payment: P * [r(1+r)^n] / [(1+r)^n - 1]
+export function computeMortgagePI(principal, annualRatePct, years) {
+  if (principal <= 0 || annualRatePct <= 0 || years <= 0) return 0;
+  const r = annualRatePct / 100 / 12;
+  const n = years * 12;
+  return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }

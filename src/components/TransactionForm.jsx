@@ -1,21 +1,57 @@
 import { useState, useEffect, useRef } from 'react';
 import { CATEGORIES, getAllCategories, today, uid, parseAmount } from '../constants.js';
+import { invoke } from '@tauri-apps/api/core';
 
-export default function TransactionForm({ initial, accounts, onSave, onClose, userCategories, existingTransactions }) {
-  const [form, setForm] = useState(() => initial ?? {
-    date: today(), description: '', amount: '', category: 'Food & Dining',
-    account: accounts[0]?.id ?? '', type: 'expense', notes: '', tags: [], taxDeductible: false,
+export default function TransactionForm({ initial, accounts, onSave, onClose, userCategories, existingTransactions, dataPath }) {
+  const [form, setForm] = useState(() => {
+    const base = initial ?? {
+      date: today(), description: '', amount: '', category: 'Food & Dining',
+      account: accounts[0]?.id ?? '', type: 'expense', notes: '', tags: [], taxDeductible: false,
+    };
+    return { receipts: [], ...base, id: base.id ?? uid() };
   });
   const [splitMode, setSplitMode] = useState(() => !!(initial?.splits?.length));
   const [splits, setSplits] = useState(() => initial?.splits ?? [
     { id: uid(), category: 'Food & Dining', amount: '', notes: '' },
     { id: uid(), category: 'Other',         amount: '', notes: '' },
   ]);
-  const [tagInput, setTagInput] = useState('');
-  const descRef = useRef(null);
+  const [tagInput,  setTagInput]  = useState('');
+  const [dragOver,  setDragOver]  = useState(false);
+  const descRef        = useRef(null);
+  const receiptFileRef = useRef(null);
 
-  // Feature 12: auto-focus description on mount
+  // Auto-focus description on mount
   useEffect(() => { descRef.current?.focus(); }, []);
+
+  const handleReceiptFile = async (file) => {
+    if (!dataPath) return;
+    try {
+      const ext      = (file.name.split('.').pop() || 'bin').toLowerCase();
+      const filename = `${form.id}-${Date.now()}.${ext}`;
+      const buf      = await file.arrayBuffer();
+      const bytes    = Array.from(new Uint8Array(buf));
+      await invoke('save_receipt', { dataPath, filename, bytes });
+      set('receipts', [...(form.receipts ?? []), { name: filename }]);
+    } catch (e) { console.error('Receipt save failed:', e); }
+  };
+
+  const handleReceiptDrop = async (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    for (const file of Array.from(e.dataTransfer.files)) await handleReceiptFile(file);
+  };
+
+  const handleReceiptSelect = async (e) => {
+    for (const file of Array.from(e.target.files)) await handleReceiptFile(file);
+    e.target.value = '';
+  };
+
+  const handleDeleteReceipt = async (name) => {
+    if (dataPath) {
+      try { await invoke('delete_receipt', { dataPath, filename: name }); } catch (_) {}
+    }
+    set('receipts', (form.receipts ?? []).filter(r => r.name !== name));
+  };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -196,6 +232,39 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
         <label className="form-label">Notes (optional)</label>
         <input type="text" placeholder="Any notes..." value={form.notes} onChange={e => set('notes', e.target.value)} />
       </div>
+
+      {/* Receipt attachments */}
+      {dataPath && (
+        <div className="form-group">
+          <label className="form-label">Receipts (optional)</label>
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleReceiptDrop}
+            onClick={() => receiptFileRef.current?.click()}
+            style={{ border: `2px dashed ${dragOver ? '#7fa88b' : '#334155'}`, borderRadius: 8, padding: '8px 14px', cursor: 'pointer', background: dragOver ? '#7fa88b11' : 'transparent', transition: 'border-color 0.15s', textAlign: 'center' }}
+          >
+            <input ref={receiptFileRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleReceiptSelect} multiple />
+            <span style={{ fontSize: 12, color: '#64748b' }}>📎 Drop file or click to attach</span>
+          </div>
+          {(form.receipts ?? []).length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+              {(form.receipts).map(r => {
+                const label = r.name.split('-').slice(2).join('-') || r.name;
+                return (
+                  <span key={r.name}
+                    style={{ fontSize: 11, background: '#1e2736', color: '#94a3b8', padding: '3px 10px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                    onClick={e => { e.stopPropagation(); invoke('open_receipt', { dataPath, filename: r.name }).catch(() => {}); }}>
+                    📄 {label}
+                    <button type="button" style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, fontSize: 12 }}
+                      onClick={e => { e.stopPropagation(); handleDeleteReceipt(r.name); }}>✕</button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tags */}
       <div className="form-group">

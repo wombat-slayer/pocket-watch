@@ -2,7 +2,7 @@ import { useRef, useState, useMemo } from 'react';
 import { catColor, catIcon, fmt, thisMonth, isDebtType } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 
-export default function Reports({ transactions, accounts = [], netWorthHistory = [], onCategoryDrillDown }) {
+export default function Reports({ transactions, accounts = [], netWorthHistory = [], budgets = [], onCategoryDrillDown, initialTab }) {
   const canvasCat       = useRef(null);
   const canvasTrend     = useRef(null);
   const canvasYoY       = useRef(null);
@@ -11,7 +11,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
 
   // months: number = last N months, null = all time
   const [months,    setMonths]    = useState(6);
-  const [tab,       setTab]       = useState('trend');
+  const [tab,       setTab]       = useState(initialTab ?? 'trend');
   const [tagFilter, setTagFilter] = useState('All');
   const [taxYear,   setTaxYear]   = useState(() => new Date().getFullYear());
 
@@ -190,6 +190,46 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     const grandTotal = deductible.reduce((s, t) => s + Math.abs(t.amount), 0);
     return { deductible, rows, grandTotal };
   }, [transactions, taxYear]);
+
+  // ── This Week ──────────────────────────────────────────────────────────────
+  const weekRange = useMemo(() => {
+    const now = new Date();
+    const sun = new Date(now); sun.setDate(now.getDate() - now.getDay()); sun.setHours(0,0,0,0);
+    const sat = new Date(sun); sat.setDate(sun.getDate() + 6);
+    const toISO = d => d.toISOString().slice(0, 10);
+    return {
+      start: toISO(sun),
+      end:   toISO(sat),
+      label: `${sun.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${sat.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`,
+    };
+  }, []);
+
+  const weekExpenses = useMemo(() =>
+    transactions.filter(t => t.type === 'expense' && t.date >= weekRange.start && t.date <= weekRange.end)
+  , [transactions, weekRange]);
+
+  const weekTotal = useMemo(() => weekExpenses.reduce((s,t) => s + Math.abs(t.amount), 0), [weekExpenses]);
+
+  const weekCatBreakdown = useMemo(() => {
+    const map = {};
+    weekExpenses.forEach(t => { map[t.category] = (map[t.category] || 0) + Math.abs(t.amount); });
+    return Object.entries(map).sort((a,b) => b[1]-a[1]);
+  }, [weekExpenses]);
+
+  const weekLargestCat = weekCatBreakdown[0];
+
+  const weekBudgetContext = useMemo(() => {
+    const m = weekRange.start.slice(0, 7);
+    const monthBudgets = budgets.filter(b => b.month === m);
+    return weekCatBreakdown.map(([cat, spent]) => {
+      const bud = monthBudgets.find(b => b.category === cat);
+      // month-to-date spend for this category (for budget pct)
+      const mtdSpent = transactions
+        .filter(t => t.type === 'expense' && t.date.startsWith(m) && t.category === cat)
+        .reduce((s,t) => s + Math.abs(t.amount), 0);
+      return { cat, weekSpent: spent, mtdSpent, budget: bud?.amount ?? null };
+    });
+  }, [weekCatBreakdown, weekRange, transactions, budgets]);
 
   // ── Color palette for category trend lines ─────────────────────────────────
   const LINE_COLORS = ['#7fa88b', '#c2735a', '#60a5fa', '#f59e0b', '#a78bfa'];
@@ -424,6 +464,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       </div>
 
       <div className="tab-group" style={{ marginBottom: 16 }}>
+        <div className={`tab${tab === 'week'      ? ' active' : ''}`} onClick={() => setTab('week')}>📅 This Week</div>
         <div className={`tab${tab === 'trend'     ? ' active' : ''}`} onClick={() => setTab('trend')}>📈 Income vs Spending</div>
         <div className={`tab${tab === 'cat'       ? ' active' : ''}`} onClick={() => setTab('cat')}>📊 By Category</div>
         <div className={`tab${tab === 'cat-trend' ? ' active' : ''}`} onClick={() => setTab('cat-trend')}>📉 Category Trends</div>
@@ -431,6 +472,86 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
         <div className={`tab${tab === 'nw-hist'   ? ' active' : ''}`} onClick={() => setTab('nw-hist')}>🏦 Net Worth History</div>
         <div className={`tab${tab === 'tax'       ? ' active' : ''}`} onClick={() => setTab('tax')}>🧾 Tax Summary</div>
       </div>
+
+      {tab === 'week' && (
+        <div>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>Week of {weekRange.label}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+            <div className="stat-card">
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Spent</div>
+              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: '#c2735a' }}>{fmt(weekTotal)}</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Largest Category</div>
+              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: '#94a3b8' }}>
+                {weekLargestCat ? `${catIcon(weekLargestCat[0])} ${weekLargestCat[0]}` : '—'}
+              </div>
+              {weekLargestCat && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{fmt(weekLargestCat[1])}</div>}
+            </div>
+            <div className="stat-card">
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Transactions</div>
+              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: '#94a3b8' }}>{weekExpenses.length}</div>
+            </div>
+          </div>
+
+          {weekCatBreakdown.length === 0 ? (
+            <div className="card">
+              <div className="empty-state"><div className="empty-icon">📅</div><p>No expenses recorded this week</p></div>
+            </div>
+          ) : (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Spending by Category</div>
+              {weekBudgetContext.map(({ cat, weekSpent, mtdSpent, budget }) => {
+                const pct = budget ? Math.min(100, (mtdSpent / budget) * 100) : null;
+                const barColor = pct == null ? '#7fa88b' : pct >= 100 ? '#c2735a' : pct >= 80 ? '#f59e0b' : '#4ade80';
+                return (
+                  <div key={cat} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, color: '#94a3b8' }}>{catIcon(cat)} {cat}</span>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{fmt(weekSpent)}</span>
+                        {budget && <span style={{ fontSize: 11, color: '#64748b', marginLeft: 8 }}>MTD {fmt(mtdSpent)} / {fmt(budget)}</span>}
+                      </div>
+                    </div>
+                    {budget && (
+                      <div style={{ height: 4, background: '#1e2736', borderRadius: 2 }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 2, transition: 'width 0.3s' }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {weekExpenses.length > 0 && (
+            <div className="card">
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Transactions This Week</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #1e2736' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Description</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Category</th>
+                    <th style={{ textAlign: 'right', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekExpenses.slice().sort((a,b) => b.date.localeCompare(a.date)).map(t => (
+                    <tr key={t.id} style={{ borderBottom: '1px solid #0d1117', cursor: 'pointer' }}
+                      onClick={() => onCategoryDrillDown?.(t.category)}>
+                      <td style={{ padding: '6px 8px', color: '#64748b', whiteSpace: 'nowrap' }}>{t.date}</td>
+                      <td style={{ padding: '6px 8px', color: '#94a3b8' }}>{t.description}</td>
+                      <td style={{ padding: '6px 8px', color: '#64748b' }}>{catIcon(t.category)} {t.category}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right', color: '#c2735a', fontWeight: 600 }}>{fmt(Math.abs(t.amount))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {tab === 'trend' && (
         <div className="card">

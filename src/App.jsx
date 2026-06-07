@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './App.css';
 
-import { isDebtType, today, uid, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE } from './constants.js';
+import { isDebtType, today, uid, fmt, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE, checkBudgetAlerts } from './constants.js';
+import { PrivacyContext } from './context/PrivacyContext.jsx';
 import { seedTransactions, seedAccounts, seedBudgets, seedGoals } from './seed.js';
 import {
   getDataPath, setDataPath, getDefaultDataPath,
@@ -83,7 +84,11 @@ export default function App() {
   const [showMonthClose,  setShowMonthClose]  = useState(false);
   const [toasts,          setToasts]          = useState([]);
   const [lastSyncResult,  setLastSyncResult]  = useState(null); // { count, uncategorized } after a Plaid sync
+  const [reportsInitialTab, setReportsInitialTab] = useState('trend');
   const [compensationProfile, setCompensationProfile] = useState(DEFAULT_COMPENSATION_PROFILE);
+  const [budgetAlerts, setBudgetAlerts] = useState({ enabled: true, warnAt: 80, alertAt: 100 });
+  const [privacyMode,  setPrivacyMode]  = useState(() => localStorage.getItem('pw_privacy') === '1');
+  const notifiedThresholds = useRef(new Set());
 
   // ── Data loading status ────────────────────────────────────────────────────
   const [dataPath,        setDataPathState]   = useState(null);
@@ -160,6 +165,7 @@ export default function App() {
       transferDirection: undefined,
       type: t.amount >= 0 ? 'income' : 'expense',
       cleared: false,
+      receipts: [],
       ...t,
     }));
     // Backfill budget fields
@@ -175,7 +181,8 @@ export default function App() {
     return {
       ...data, accounts, transactions, budgets, goals,
       compensationProfile: data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE,
-      version: 7,
+      budgetAlerts: data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 },
+      version: 8,
     };
   };
 
@@ -205,6 +212,7 @@ export default function App() {
         setArchivedTransactions(data.archivedTransactions ?? []);
         setApiKeys(data.apiKeys             ?? { finnhub: '' });
         setCompensationProfile(data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE);
+        setBudgetAlerts(data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 });
         setOnboardingDone(data.onboardingComplete !== false);
       } else {
         // New file location — seed demo data
@@ -276,15 +284,15 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 7 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 8 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
-  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingDone, dataPath, appStatus]);
+  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingDone, dataPath, appStatus]);
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, onboardingComplete: onboardingDone, version: 7 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 8 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -568,6 +576,30 @@ export default function App() {
     setNetWorthHistory(data.netWorthHistory ?? []);
   };
 
+  // ── Budget notifications ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (appStatus !== 'ready' || !budgetAlerts.enabled) return;
+    const m = today().slice(0, 7);
+    const alerts = checkBudgetAlerts(budgets, transactions, m, budgetAlerts.warnAt, budgetAlerts.alertAt);
+    alerts.forEach(a => {
+      const key = `${m}:${a.category}:${a.type}`;
+      if (notifiedThresholds.current.has(key)) return;
+      notifiedThresholds.current.add(key);
+      const title = a.type === 'alert' ? `Budget Exceeded: ${a.category}` : `Budget Warning: ${a.category}`;
+      const body  = `${a.category} is at ${a.pct}% of its ${fmt(a.budget)} budget this month.`;
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        new Notification(title, { body });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(perm => {
+          if (perm === 'granted') new Notification(title, { body });
+        });
+      }
+    });
+  }, [transactions, budgets, budgetAlerts.enabled, budgetAlerts.warnAt, budgetAlerts.alertAt, appStatus]); // eslint-disable-line
+
+  const handleSaveBudgetAlerts = (patch) => setBudgetAlerts(prev => ({ ...prev, ...patch }));
+
   // ── Budget alerts ────────────────────────────────────────────────────────────
   const overBudgetCount = useMemo(() => {
     const m = today().slice(0, 7);
@@ -610,6 +642,7 @@ export default function App() {
 
   // ── Render: Main app ─────────────────────────────────────────────────────────
   return (
+    <PrivacyContext.Provider value={privacyMode}>
     <div className="layout">
       {/* Sidebar */}
       <div className={`sidebar${sidebarCollapsed?' collapsed':''}`}>
@@ -649,18 +682,25 @@ export default function App() {
 
       {/* Main content */}
       <div className="main">
-        {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} onAddGoal={addGoal} onEditGoal={editGoal} onDeleteGoal={deleteGoal} onDeposit={depositGoal} onGoToBudgets={()=>setPage('budgets')} compensationProfile={compensationProfile} onCategoryClick={cat=>{ setTxCatFilter(cat); setPage('transactions'); }} />}
-        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} recurrences={recurrences} lastSyncResult={lastSyncResult} onDismissSyncResult={()=>setLastSyncResult(null)} />}
+        <div style={{ position:'sticky', top:0, zIndex:10, display:'flex', justifyContent:'flex-end', padding:'5px 16px', background:'#0d1117', borderBottom:'1px solid #1e273640' }}>
+          <button className="btn btn-ghost btn-sm" style={{ fontSize:11, opacity:0.75 }}
+            title={privacyMode ? 'Show amounts' : 'Hide amounts'}
+            onClick={() => { const n = !privacyMode; setPrivacyMode(n); localStorage.setItem('pw_privacy', n ? '1' : '0'); }}>
+            {privacyMode ? '👁‍🗨 Show' : '👁 Hide'}
+          </button>
+        </div>
+        {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} onAddGoal={addGoal} onEditGoal={editGoal} onDeleteGoal={deleteGoal} onDeposit={depositGoal} onGoToBudgets={()=>setPage('budgets')} compensationProfile={compensationProfile} onCategoryClick={cat=>{ setTxCatFilter(cat); setPage('transactions'); }} onGoToReports={(tab) => { setReportsInitialTab(tab ?? 'trend'); setPage('reports'); }} />}
+        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} recurrences={recurrences} lastSyncResult={lastSyncResult} onDismissSyncResult={()=>setLastSyncResult(null)} dataPath={dataPath} />}
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} onCloseMonth={()=>setShowMonthClose(true)} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
-        {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} />}
+        {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} budgets={budgets} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} initialTab={reportsInitialTab} />}
         {page==='business'     && <Business     accounts={accounts} transactions={transactions} onUpdateTransaction={editTx} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} budgetAlerts={budgetAlerts} onSaveBudgetAlerts={handleSaveBudgetAlerts} />}
       </div>
 
       {showAdd && (
         <Modal title="Add Transaction" onClose={()=>setShowAdd(false)}>
-          <TransactionForm accounts={accounts} existingTransactions={transactions} onSave={tx=>{ addTx(tx); setShowAdd(false); }} onClose={()=>setShowAdd(false)} userCategories={userCategories} />
+          <TransactionForm accounts={accounts} existingTransactions={transactions} onSave={tx=>{ addTx(tx); setShowAdd(false); }} onClose={()=>setShowAdd(false)} userCategories={userCategories} dataPath={dataPath} />
         </Modal>
       )}
       {showTransfer && (
@@ -750,5 +790,6 @@ export default function App() {
         ))}
       </div>
     </div>
+    </PrivacyContext.Provider>
   );
 }

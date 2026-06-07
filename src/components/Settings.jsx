@@ -6,7 +6,7 @@ import Recurring from './Recurring.jsx';
 import Equity from './Equity.jsx';
 import PayStubImportModal from './PayStubImportModal.jsx';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile, budgetAlerts = { enabled: true, warnAt: 80, alertAt: 100 }, onSaveBudgetAlerts }) {
   const [confirmReset,     setConfirmReset]     = useState(false);
   const [confirmDemo,      setConfirmDemo]      = useState(false);
   const [showPayStubModal, setShowPayStubModal] = useState(false);
@@ -561,6 +561,40 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
             />
           </div>
         )}
+      </div>
+
+      {/* Notifications */}
+      <div className="settings-section">
+        <div className="settings-section-title">🔔 Budget Notifications</div>
+        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+          Get OS notifications when spending approaches or exceeds your monthly budget limits.
+        </p>
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+            <input type="checkbox" checked={budgetAlerts.enabled}
+              onChange={e => onSaveBudgetAlerts?.({ enabled: e.target.checked })}
+              style={{ width:15, height:15, accentColor:'#7fa88b', cursor:'pointer' }} />
+            <span style={{ fontSize:14, color:'#e2e8f0' }}>Enable budget notifications</span>
+          </label>
+          {budgetAlerts.enabled && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, maxWidth:400 }}>
+              <div className="form-group" style={{ margin:0 }}>
+                <label className="form-label">Warning threshold (%)</label>
+                <input type="number" min={1} max={99} value={budgetAlerts.warnAt}
+                  onChange={e => onSaveBudgetAlerts?.({ warnAt: Math.max(1, Math.min(99, Number(e.target.value))) })}
+                  style={{ fontSize:13 }} />
+                <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>Notify at this % of budget (e.g. 80)</div>
+              </div>
+              <div className="form-group" style={{ margin:0 }}>
+                <label className="form-label">Alert threshold (%)</label>
+                <input type="number" min={1} max={200} value={budgetAlerts.alertAt}
+                  onChange={e => onSaveBudgetAlerts?.({ alertAt: Math.max(1, Number(e.target.value)) })}
+                  style={{ fontSize:13 }} />
+                <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>Notify at this % (e.g. 100 = exceeded)</div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Full reset */}
