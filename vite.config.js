@@ -28,4 +28,14 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  optimizeDeps: {
+    include: ['pdfjs-dist'],
+  },
+
+  build: {
+    commonjsOptions: {
+      include: [/pdfjs-dist/, /node_modules/],
+    },
+  },
 }));

@@ -124,6 +124,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   }, [transactions, accounts, budgets]);
 
   return (
+    <>
     <div className="fade-in" style={{ padding:'24px 28px' }}>
       <div className="section-header">
         <div><div className="section-title">Settings</div><div className="section-sub">Data management and preferences</div></div>
@@ -585,5 +586,6 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         onClose={() => setShowPayStubModal(false)}
       />
     )}
+    </>
   );
 }
