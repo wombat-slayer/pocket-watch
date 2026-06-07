@@ -4,10 +4,12 @@ import { promptNewDataFile } from '../dataLayer.js';
 import PlaidSync from './PlaidSync.jsx';
 import Recurring from './Recurring.jsx';
 import Equity from './Equity.jsx';
+import PayStubImportModal from './PayStubImportModal.jsx';
 
 export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile }) {
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmDemo,  setConfirmDemo]  = useState(false);
+  const [confirmReset,     setConfirmReset]     = useState(false);
+  const [confirmDemo,      setConfirmDemo]      = useState(false);
+  const [showPayStubModal, setShowPayStubModal] = useState(false);
   const [importError,  setImportError]  = useState('');
   const [importOk,     setImportOk]     = useState(false);
   const [newCatName,  setNewCatName]  = useState('');
@@ -169,7 +171,16 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Compensation Profile */}
       {compensationProfile !== undefined && onSetCompensationProfile && (
         <div className="settings-section">
-          <div className="settings-section-title">💼 Compensation Profile</div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <div className="settings-section-title" style={{ marginBottom:0 }}>💼 Compensation Profile</div>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize:12 }}
+              onClick={() => setShowPayStubModal(true)}
+            >
+              📄 Import from Pay Stub
+            </button>
+          </div>
           <p style={{ fontSize:13, color:'#94a3b8', marginBottom:14 }}>
             Used to calculate your True Savings Rate on the Dashboard. All values stay local — never uploaded.
           </p>
@@ -566,5 +577,13 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       </div>
 
     </div>
+
+    {showPayStubModal && (
+      <PayStubImportModal
+        compensationProfile={compensationProfile}
+        onSetCompensationProfile={onSetCompensationProfile}
+        onClose={() => setShowPayStubModal(false)}
+      />
+    )}
   );
 }

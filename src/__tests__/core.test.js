@@ -32,6 +32,8 @@ import {
   suggestBudgetsFromActuals,
 } from '../constants.js';
 
+import { parsePayStub, toMonthly, calcEffectiveTaxRate } from '../utils/parsePayStub.js';
+
 // ─── uid ──────────────────────────────────────────────────────────────────────
 describe('uid()', () => {
   it('returns a non-empty string', () => {
@@ -417,5 +419,87 @@ describe('suggestBudgetsFromActuals()', () => {
 
   it('returns empty array for empty transaction list', () => {
     expect(suggestBudgetsFromActuals([], ['2025-01'])).toEqual([]);
+  });
+});
+
+// ─── parsePayStub ─────────────────────────────────────────────────────────────
+const mockAdpText = `
+  Regular 4,807.69 28,846.14
+  Total Gross 4,807.69 28,846.14
+  401(k) 288.46 1,730.76
+  HSA 100.00 600.00
+  Federal Income Tax 812.34 4,874.04
+  State Income Tax 165.23 991.38
+  Net Pay 3,200.00 19,200.00
+`;
+
+describe('parsePayStub()', () => {
+  it('extracts all fields from mock ADP text', () => {
+    const result = parsePayStub(mockAdpText);
+    expect(result.grossPerPeriod).toBeCloseTo(4807.69);
+    expect(result.retirement401k).toBeCloseTo(288.46);
+    expect(result.hsa).toBeCloseTo(100.00);
+    expect(result.federalTax).toBeCloseTo(812.34);
+    expect(result.stateTax).toBeCloseTo(165.23);
+    expect(result.netPay).toBeCloseTo(3200.00);
+  });
+
+  it('returns null for fields not present in text', () => {
+    const result = parsePayStub('nothing relevant here');
+    expect(result.grossPerPeriod).toBeNull();
+    expect(result.retirement401k).toBeNull();
+    expect(result.hsa).toBeNull();
+    expect(result.federalTax).toBeNull();
+    expect(result.stateTax).toBeNull();
+    expect(result.netPay).toBeNull();
+  });
+
+  it('returns null for all fields on empty string', () => {
+    const result = parsePayStub('');
+    expect(Object.values(result).every(v => v === null)).toBe(true);
+  });
+});
+
+// ─── toMonthly ────────────────────────────────────────────────────────────────
+describe('toMonthly()', () => {
+  it('biweekly: amount × 26 / 12', () => {
+    expect(toMonthly(1000, 'biweekly')).toBeCloseTo(1000 * 26 / 12);
+  });
+
+  it('semimonthly: amount × 2', () => {
+    expect(toMonthly(2000, 'semimonthly')).toBe(4000);
+  });
+
+  it('weekly: amount × 52 / 12', () => {
+    expect(toMonthly(500, 'weekly')).toBeCloseTo(500 * 52 / 12);
+  });
+
+  it('monthly: unchanged', () => {
+    expect(toMonthly(3000, 'monthly')).toBe(3000);
+  });
+
+  it('returns 0 for null/undefined amount', () => {
+    expect(toMonthly(null, 'biweekly')).toBe(0);
+    expect(toMonthly(undefined, 'monthly')).toBe(0);
+  });
+});
+
+// ─── calcEffectiveTaxRate ─────────────────────────────────────────────────────
+describe('calcEffectiveTaxRate()', () => {
+  it('computes (federal + state) / gross × 100 rounded to 1 decimal', () => {
+    // (812.34 + 165.23) / 4807.69 * 100 ≈ 20.3
+    expect(calcEffectiveTaxRate(812.34, 165.23, 4807.69)).toBeCloseTo(20.3, 0);
+  });
+
+  it('handles null state tax (federal only)', () => {
+    expect(calcEffectiveTaxRate(500, null, 2500)).toBeCloseTo(20.0, 1);
+  });
+
+  it('returns 0 when gross is 0', () => {
+    expect(calcEffectiveTaxRate(500, 100, 0)).toBe(0);
+  });
+
+  it('returns 0 when gross is null', () => {
+    expect(calcEffectiveTaxRate(500, 100, null)).toBe(0);
   });
 });
