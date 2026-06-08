@@ -120,11 +120,12 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
   const oauthUnlisten = useRef(null); // unsubscribe fn for the oauth://url event
 
   // ── Sync state ─────────────────────────────────────────────────────────────
-  const [syncStatus, setSyncStatus] = useState({}); // { [itemId]: 'idle'|'syncing'|'done'|'error' }
-  const [syncMsg,    setSyncMsg]    = useState({}); // { [itemId]: string }
-  const [syncingAll, setSyncingAll] = useState(false);
-  const [syncAllMsg, setSyncAllMsg] = useState('');
-  const warnedUnmatched = useRef(new Set());        // itemIds already warned about unmatched accounts
+  const [syncStatus,    setSyncStatus]    = useState({}); // { [itemId]: 'idle'|'syncing'|'done'|'error' }
+  const [syncMsg,       setSyncMsg]       = useState({}); // { [itemId]: string }
+  const [syncingAll,    setSyncingAll]    = useState(false);
+  const [syncAllMsg,    setSyncAllMsg]    = useState('');
+  const [syncTimeframe, setSyncTimeframe] = useState({}); // { [itemId]: 'cursor'|'30d'|'90d'|'180d'|'1y' }
+  const warnedUnmatched = useRef(new Set());              // itemIds already warned about unmatched accounts
 
   // Category memory: user's explicit past categorization choices per merchant.
   // Used in handleSync to override Plaid's suggested categories.
@@ -496,6 +497,98 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
     }
   };
 
+  // ── Fetch by date range using /transactions/get ────────────────────────────
+  const handleFetchRange = async (item, timeframe) => {
+    setSyncStatus(s => ({ ...s, [item.itemId]: 'syncing' }));
+    setSyncMsg(s => ({ ...s, [item.itemId]: '' }));
+
+    try {
+      const endDate   = today();
+      const msPerDay  = 86400 * 1000;
+      const daysMap   = { '30d': 30, '90d': 90, '180d': 180, '1y': 365 };
+      const days      = daysMap[timeframe] ?? 30;
+      const startDate = new Date(Date.now() - days * msPerDay).toISOString().slice(0, 10);
+
+      let plaidAccounts = [];
+      try {
+        const rawAccounts = await invoke('plaid_fetch_accounts', {
+          clientId:    creds.clientId,
+          secret:      creds.secret,
+          env:         creds.env,
+          accessToken: item.accessToken,
+        });
+        plaidAccounts = JSON.parse(rawAccounts).accounts ?? [];
+      } catch (e) {
+        console.warn('Plaid accounts fetch failed:', e);
+      }
+
+      const { balanceUpdates, plaidIdMap } = extractBalanceUpdates(plaidAccounts, accounts, item.institutionName);
+      const accountMap = {};
+      for (const pa of item.accounts) {
+        accountMap[pa.id] = plaidIdMap[pa.id] ?? pa.id;
+      }
+
+      const raw   = await invoke('plaid_fetch_transactions', {
+        clientId:    creds.clientId,
+        secret:      creds.secret,
+        env:         creds.env,
+        accessToken: item.accessToken,
+        startDate,
+        endDate,
+      });
+      const fetched = JSON.parse(raw).transactions ?? [];
+
+      const existingFitids = new Set(existingTxs.map(t => t.fitid).filter(Boolean));
+      const existingIds    = new Set(existingTxs.map(t => t.id));
+
+      const newTxs = fetched
+        .map(pt => mapPlaidTransaction(pt, accountMap))
+        .filter(t => t !== null)
+        .filter(t => !existingFitids.has(t.fitid) && !existingIds.has(t.id))
+        .map(t => {
+          const memorized = suggestCategory(t.description);
+          if (memorized) return { ...t, category: memorized };
+          if (t.category !== 'Other') return t;
+          const rawPt  = fetched.find(p => p.transaction_id === t.id);
+          const cat0   = rawPt?.category?.[0];
+          if (cat0 === 'Transfer' || cat0 === 'Payment') return { ...t, category: 'Transfer' };
+          if (TRANSFER_PATTERNS.some(re => re.test(t.description))) return { ...t, category: 'Transfer' };
+          const destAcct = accounts.find(a => a.id === accountMap[rawPt?.account_id]);
+          if (destAcct?.isBusiness) return { ...t, category: autoCategoryBusiness(t.description) };
+          return t;
+        });
+
+      const combined     = detectAndMarkTransferPairs([...existingTxs, ...newTxs]);
+      const newIds       = new Set(newTxs.map(t => t.id));
+      const markedNewTxs = combined.filter(t => newIds.has(t.id));
+
+      if (markedNewTxs.length > 0) onImport(markedNewTxs);
+      onSyncComplete?.(markedNewTxs.length, markedNewTxs.filter(t => t.category === 'Other').length);
+      if (balanceUpdates.length > 0) onUpdateBalances?.(balanceUpdates);
+
+      const now = today();
+      await updateLinkedItem(item.itemId, { lastSync: now });
+      setItems(prev => prev.map(i => i.itemId === item.itemId ? { ...i, lastSync: now } : i));
+
+      setSyncStatus(s => ({ ...s, [item.itemId]: 'done' }));
+      const balNote = balanceUpdates.length > 0
+        ? ` ${balanceUpdates.length} balance${balanceUpdates.length !== 1 ? 's' : ''} updated.`
+        : '';
+      setSyncMsg(s => ({
+        ...s,
+        [item.itemId]: (markedNewTxs.length > 0
+          ? `✅ Imported ${markedNewTxs.length} new transaction${markedNewTxs.length !== 1 ? 's' : ''}.`
+          : '✅ All up to date — no new transactions.') + balNote,
+      }));
+
+      return true;
+    } catch (e) {
+      setSyncStatus(s => ({ ...s, [item.itemId]: 'error' }));
+      setSyncMsg(s => ({ ...s, [item.itemId]: '❌ ' + String(e) }));
+      return false;
+    }
+  };
+
   // ── Sync all institutions in sequence ─────────────────────────────────────
   const handleSyncAll = async () => {
     if (syncingAll || !items.length) return;
@@ -723,10 +816,30 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={syncTimeframe[item.itemId] ?? 'cursor'}
+                    disabled={status === 'syncing' || syncingAll}
+                    onChange={e => setSyncTimeframe(s => ({ ...s, [item.itemId]: e.target.value }))}
+                    style={{
+                      background: 'var(--bg-raised)', color: 'var(--text-primary)',
+                      border: '1px solid var(--border-default)', borderRadius: 6,
+                      padding: '4px 8px', fontSize: 12, cursor: 'pointer',
+                    }}
+                  >
+                    <option value="cursor">New only</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                    <option value="180d">Last 6 months</option>
+                    <option value="1y">Last 1 year</option>
+                  </select>
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={status === 'syncing' || syncingAll}
-                    onClick={() => handleSync(item)}
+                    onClick={() => {
+                      const tf = syncTimeframe[item.itemId] ?? 'cursor';
+                      if (tf === 'cursor') handleSync(item);
+                      else handleFetchRange(item, tf);
+                    }}
                   >
                     {status === 'syncing' ? '⏳ Syncing…' : '↻ Sync'}
                   </button>
