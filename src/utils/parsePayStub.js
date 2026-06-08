@@ -36,6 +36,19 @@ export function parsePayStub(text) {
       /net\s+pay\s+[\$]?([\d,]+\.?\d*)/i,
       /total\s+net\s+[\$]?([\d,]+\.?\d*)/i,
     ]),
+    medical: findAmount([
+      /medical\s+(?:premium|insurance|deduction)\s+[\$]?([\d,]+\.?\d*)/i,
+      /med(?:ical)?\s+[\$]?([\d,]+\.?\d*)/i,
+      /health\s+(?:premium|insurance)\s+[\$]?([\d,]+\.?\d*)/i,
+    ]),
+    dental: findAmount([
+      /dental\s+(?:premium|insurance|deduction)\s+[\$]?([\d,]+\.?\d*)/i,
+      /dental\s+[\$]?([\d,]+\.?\d*)/i,
+    ]),
+    vision: findAmount([
+      /vision\s+(?:premium|insurance|deduction)\s+[\$]?([\d,]+\.?\d*)/i,
+      /vision\s+[\$]?([\d,]+\.?\d*)/i,
+    ]),
   };
 }
 

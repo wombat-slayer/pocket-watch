@@ -86,7 +86,11 @@ export default function Dashboard({
     const gross = compensationProfile?.grossMonthlySalary ?? 0;
     if (gross <= 0) return null;
     const preTax = (compensationProfile.retirement401kPct / 100) * gross
-                 + (compensationProfile.hsaMonthly ?? 0);
+                 + (compensationProfile.hsaMonthly ?? 0)
+                 + (compensationProfile.medicalMonthly ?? 0)
+                 + (compensationProfile.dentalMonthly ?? 0)
+                 + (compensationProfile.visionMonthly ?? 0)
+                 + (compensationProfile.otherBenefitsMonthly ?? 0);
     const takehome = gross * (1 - (compensationProfile.effectiveTaxRate / 100)) - preTax;
     const rate = takehome > 0
       ? Math.min(100, Math.max(0, ((takehome - monthSpend + preTax) / gross) * 100))
@@ -233,7 +237,7 @@ export default function Dashboard({
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?ccfmt(ctx.raw):'—'}`}} },
+      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?cfmt(ctx.raw):'—'}`}} },
       scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:fmtK}} },
     },
   }), [JSON.stringify(forecastData), cfmt]);
@@ -253,7 +257,7 @@ export default function Dashboard({
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?ccfmt(ctx.raw):'—'}`}} },
+      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?cfmt(ctx.raw):'—'}`}} },
       scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:fmtK}} },
     },
   }), [JSON.stringify(nwTrajectoryData), JSON.stringify(goals), cfmt]);

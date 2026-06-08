@@ -185,9 +185,9 @@ export default function App() {
     }));
     return {
       ...data, accounts, transactions, budgets, goals,
-      compensationProfile: data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE,
+      compensationProfile: { ...DEFAULT_COMPENSATION_PROFILE, ...(data.compensationProfile ?? {}) },
       budgetAlerts: data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 },
-      version: 8,
+      version: 9,
     };
   };
 
@@ -289,7 +289,7 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 8 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 9 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
@@ -297,7 +297,7 @@ export default function App() {
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 8 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 9 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };

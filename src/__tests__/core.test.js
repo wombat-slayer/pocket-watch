@@ -32,6 +32,7 @@ import {
   sanitizeText,
   detectAndMarkTransferPairs,
   DEFAULT_COMPENSATION_PROFILE,
+  detectHeaderRow,
   suggestBudgetsFromActuals,
   checkBudgetAlerts,
   computeMortgagePI,
@@ -384,6 +385,91 @@ describe('DEFAULT_COMPENSATION_PROFILE', () => {
     const copy = { ...DEFAULT_COMPENSATION_PROFILE, grossMonthlySalary: 5000 };
     expect(copy.grossMonthlySalary).toBe(5000);
     expect(DEFAULT_COMPENSATION_PROFILE.grossMonthlySalary).toBe(0);
+  });
+
+  it('includes all benefit deduction fields defaulting to 0', () => {
+    expect(DEFAULT_COMPENSATION_PROFILE).toMatchObject({
+      medicalMonthly: 0,
+      dentalMonthly: 0,
+      visionMonthly: 0,
+      otherBenefitsMonthly: 0,
+    });
+  });
+});
+
+// ─── compensation profile migration backfill ─────────────────────────────────
+describe('compensation profile migration backfill', () => {
+  it('backfills new benefit fields to 0 on an existing profile missing them', () => {
+    const oldProfile = {
+      grossMonthlySalary: 5000,
+      retirement401kPct: 6,
+      hsaMonthly: 100,
+      effectiveTaxRate: 22,
+      notes: 'base salary',
+    };
+    const migrated = { ...DEFAULT_COMPENSATION_PROFILE, ...oldProfile };
+    expect(migrated.medicalMonthly).toBe(0);
+    expect(migrated.dentalMonthly).toBe(0);
+    expect(migrated.visionMonthly).toBe(0);
+    expect(migrated.otherBenefitsMonthly).toBe(0);
+    expect(migrated.grossMonthlySalary).toBe(5000);
+    expect(migrated.retirement401kPct).toBe(6);
+    expect(migrated.notes).toBe('base salary');
+  });
+
+  it('preserves non-zero benefit fields already in the profile', () => {
+    const profile = { ...DEFAULT_COMPENSATION_PROFILE, medicalMonthly: 250, dentalMonthly: 30 };
+    const migrated = { ...DEFAULT_COMPENSATION_PROFILE, ...profile };
+    expect(migrated.medicalMonthly).toBe(250);
+    expect(migrated.dentalMonthly).toBe(30);
+    expect(migrated.visionMonthly).toBe(0);
+  });
+});
+
+// ─── detectHeaderRow ─────────────────────────────────────────────────────────
+describe('detectHeaderRow()', () => {
+  it('returns 0 for a normal CSV with header on row 0', () => {
+    const rows = [
+      ['Date', 'Description', 'Amount'],
+      ['01/15/2025', 'GROCERY STORE', '-50.25'],
+      ['01/16/2025', 'GAS STATION', '-40.00'],
+    ];
+    expect(detectHeaderRow(rows)).toBe(0);
+  });
+
+  it('returns the correct index for AMEX-style metadata rows above the header', () => {
+    const rows = [
+      ['Prepared for Platinum Card Member', '', '', '', ''],
+      ['Jul 21 2025 to Dec 31 2025', '', '', '', ''],
+      ['', '', '', '', ''],
+      ['Date', 'Description', 'Amount', 'Extended Details', 'Category'],
+      ['12/15/2025', 'WHOLE FOODS MARKET', '54.87', 'PURCHASE', 'Merchandise'],
+      ['12/16/2025', 'AMAZON.COM', '29.99', 'PURCHASE', 'Shopping'],
+    ];
+    expect(detectHeaderRow(rows)).toBe(3);
+  });
+
+  it('handles empty rows before the real header', () => {
+    const rows = [
+      ['', '', ''],
+      ['', '', ''],
+      ['Date', 'Description', 'Amount'],
+      ['01/15/2025', 'AMAZON', '-29.99'],
+    ];
+    expect(detectHeaderRow(rows)).toBe(2);
+  });
+
+  it('returns 0 when only one row is present', () => {
+    const rows = [['Date', 'Amount']];
+    expect(detectHeaderRow(rows)).toBe(0);
+  });
+
+  it('returns 0 for a plain CSV with no metadata (confidence check)', () => {
+    const rows = [
+      ['Transaction Date', 'Description', 'Amount'],
+      ['2025-01-10', 'TARGET', '-85.50'],
+    ];
+    expect(detectHeaderRow(rows)).toBe(0);
   });
 });
 

@@ -18,6 +18,9 @@ function buildDraft(parsed, frequency) {
       : null,
     hsaMonthly:          +toMonthly(parsed.hsa, frequency).toFixed(2),
     effectiveTaxRate:    calcEffectiveTaxRate(parsed.federalTax, parsed.stateTax, gross),
+    medicalMonthly:      parsed.medical != null ? +toMonthly(parsed.medical, frequency).toFixed(2) : null,
+    dentalMonthly:       parsed.dental  != null ? +toMonthly(parsed.dental,  frequency).toFixed(2) : null,
+    visionMonthly:       parsed.vision  != null ? +toMonthly(parsed.vision,  frequency).toFixed(2) : null,
   };
 }
 
@@ -86,10 +89,13 @@ export default function PayStubImportModal({ compensationProfile = {}, onSetComp
   const handleApply = () => {
     const next = {
       ...compensationProfile,
-      grossMonthlySalary:  draft.grossMonthlySalary  ?? compensationProfile.grossMonthlySalary  ?? 0,
-      retirement401kPct:   draft.retirement401kPct   ?? compensationProfile.retirement401kPct   ?? 0,
-      hsaMonthly:          draft.hsaMonthly          ?? compensationProfile.hsaMonthly          ?? 0,
-      effectiveTaxRate:    draft.effectiveTaxRate     ?? compensationProfile.effectiveTaxRate    ?? 0,
+      grossMonthlySalary:    draft.grossMonthlySalary    ?? compensationProfile.grossMonthlySalary    ?? 0,
+      retirement401kPct:     draft.retirement401kPct     ?? compensationProfile.retirement401kPct     ?? 0,
+      hsaMonthly:            draft.hsaMonthly            ?? compensationProfile.hsaMonthly            ?? 0,
+      effectiveTaxRate:      draft.effectiveTaxRate       ?? compensationProfile.effectiveTaxRate      ?? 0,
+      medicalMonthly:        draft.medicalMonthly         ?? compensationProfile.medicalMonthly        ?? 0,
+      dentalMonthly:         draft.dentalMonthly          ?? compensationProfile.dentalMonthly         ?? 0,
+      visionMonthly:         draft.visionMonthly          ?? compensationProfile.visionMonthly         ?? 0,
     };
     onSetCompensationProfile(next);
     onClose();
@@ -217,6 +223,24 @@ export default function PayStubImportModal({ compensationProfile = {}, onSetComp
                 onChange={v => setDraftField('effectiveTaxRate', v)}
                 step="0.1"
                 suffix="%"
+              />
+              <Field
+                label="Medical Premium ($/period)"
+                value={draft.medicalMonthly}
+                onChange={v => setDraftField('medicalMonthly', v)}
+                step="1"
+              />
+              <Field
+                label="Dental Premium ($/period)"
+                value={draft.dentalMonthly}
+                onChange={v => setDraftField('dentalMonthly', v)}
+                step="1"
+              />
+              <Field
+                label="Vision Premium ($/period)"
+                value={draft.visionMonthly}
+                onChange={v => setDraftField('visionMonthly', v)}
+                step="1"
               />
             </div>
 

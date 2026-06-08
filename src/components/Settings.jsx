@@ -223,6 +223,47 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
               />
             </div>
           </div>
+          <div style={{ marginTop:12, marginBottom:4, maxWidth:520 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)', letterSpacing:'0.05em', textTransform:'uppercase' }}>Benefits (monthly, pre-tax)</div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, maxWidth:520 }}>
+            <div className="form-group">
+              <label className="form-label">Medical Premium ($)</label>
+              <input
+                type="number" min="0" step="10"
+                placeholder="0"
+                value={compensationProfile.medicalMonthly || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, medicalMonthly: +e.target.value || 0 })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Dental Premium ($)</label>
+              <input
+                type="number" min="0" step="1"
+                placeholder="0"
+                value={compensationProfile.dentalMonthly || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, dentalMonthly: +e.target.value || 0 })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Vision Premium ($)</label>
+              <input
+                type="number" min="0" step="1"
+                placeholder="0"
+                value={compensationProfile.visionMonthly || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, visionMonthly: +e.target.value || 0 })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Other Benefits ($)</label>
+              <input
+                type="number" min="0" step="1"
+                placeholder="0"
+                value={compensationProfile.otherBenefitsMonthly || ''}
+                onChange={e => onSetCompensationProfile({ ...compensationProfile, otherBenefitsMonthly: +e.target.value || 0 })}
+              />
+            </div>
+          </div>
           <div className="form-group" style={{ marginTop:6, maxWidth:520 }}>
             <label className="form-label">Notes</label>
             <input

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory } from '../constants.js';
+import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory, detectHeaderRow } from '../constants.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 
 const CSV_PRESETS = {
@@ -142,9 +142,10 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
   const [dragOver,   setDragOver]   = useState(false);
   const [fileType,   setFileType]   = useState('csv');
   const [importAcct, setImportAcct] = useState(accounts[0]?.id ?? '');
-  const [csvHeaders,  setCsvHeaders]  = useState([]);
-  const [csvRawLines, setCsvRawLines] = useState([]);
-  const [colMap,      setColMap]      = useState({ date: '', description: '', amount: '', debit: '', credit: '' });
+  const [csvHeaders,      setCsvHeaders]      = useState([]);
+  const [csvRawLines,     setCsvRawLines]     = useState([]);
+  const [csvHeaderRowIdx, setCsvHeaderRowIdx] = useState(0);
+  const [colMap,          setColMap]          = useState({ date: '', description: '', amount: '', debit: '', credit: '' });
   const [amtMode,     setAmtMode]     = useState('single');
   const [flipSign,    setFlipSign]    = useState(false);
 
@@ -153,9 +154,15 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
   const uncatRows = rows.filter(r => r.category === 'Other');
 
   const processCSV = (text, preset, accountId) => {
-    const lines      = text.trim().split(/\r?\n/);
+    const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
-    const rawHeaders = parseCSVLine(lines[0]);
+
+    // Detect which row is the real header (handles AMEX-style metadata rows above the header)
+    const scanRows = lines.slice(0, 15).map(l => parseCSVLine(l));
+    const hIdx = detectHeaderRow(scanRows);
+    const effectiveLines = hIdx > 0 ? lines.slice(hIdx) : lines;
+
+    const rawHeaders = parseCSVLine(effectiveLines[0]);
     const headers    = rawHeaders.map(h => h.toLowerCase().trim());
     let dateIdx, descIdx, amtIdx, creditIdx, debitIdx, flip;
 
@@ -188,7 +195,8 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
     if (dateIdx < 0 || descIdx < 0 || !hasAmount) {
       const p = preset && preset !== 'auto' ? CSV_PRESETS[preset] : null;
       setCsvHeaders(rawHeaders);
-      setCsvRawLines(lines);
+      setCsvRawLines(lines);        // store ALL lines so header selector can show every row
+      setCsvHeaderRowIdx(hIdx);
       setColMap({
         date:        p && p.dateCol   ? (rawHeaders.find(h => h.toLowerCase() === p.dateCol.toLowerCase())   || '') : '',
         description: p && p.descCol   ? (rawHeaders.find(h => h.toLowerCase() === p.descCol.toLowerCase())   || '') : '',
@@ -201,20 +209,27 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
       setStep('col-map');
       return null;
     }
-    return buildCSVRows(lines, rawHeaders, dateIdx, descIdx, amtIdx, creditIdx, debitIdx, flip, accountId, suggest);
+    return buildCSVRows(effectiveLines, rawHeaders, dateIdx, descIdx, amtIdx, creditIdx, debitIdx, flip, accountId, suggest);
   };
 
   const applyColMap = () => {
-    const idx       = (h) => csvHeaders.findIndex(x => x === h);
-    const dateIdx   = idx(colMap.date);
-    const descIdx   = idx(colMap.description);
-    const amtIdx    = amtMode === 'single'      ? idx(colMap.amount) : -1;
-    const creditIdx = amtMode === 'debitcredit' ? idx(colMap.credit) : -1;
-    const debitIdx  = amtMode === 'debitcredit' ? idx(colMap.debit)  : -1;
-    const result    = buildCSVRows(csvRawLines, csvHeaders, dateIdx, descIdx, amtIdx, creditIdx, debitIdx, flipSign, importAcct, suggest);
+    const idx           = (h) => csvHeaders.findIndex(x => x === h);
+    const dateIdx       = idx(colMap.date);
+    const descIdx       = idx(colMap.description);
+    const amtIdx        = amtMode === 'single'      ? idx(colMap.amount) : -1;
+    const creditIdx     = amtMode === 'debitcredit' ? idx(colMap.credit) : -1;
+    const debitIdx      = amtMode === 'debitcredit' ? idx(colMap.debit)  : -1;
+    const effectiveLines = csvRawLines.slice(csvHeaderRowIdx);
+    const result        = buildCSVRows(effectiveLines, csvHeaders, dateIdx, descIdx, amtIdx, creditIdx, debitIdx, flipSign, importAcct, suggest);
     if (!result.length) { setError('No valid rows found with these column mappings.'); return; }
     setRows(findDuplicates(result, existingTxs || [], false));
     setStep('review-all');
+  };
+
+  const changeHeaderRow = (newIdx) => {
+    setCsvHeaderRowIdx(newIdx);
+    setCsvHeaders(parseCSVLine(csvRawLines[newIdx] || ''));
+    setColMap({ date: '', description: '', amount: '', debit: '', credit: '' });
   };
 
   const handleFile = (file) => {
@@ -345,13 +360,27 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
   );
 
   if (step === 'col-map') {
-    const sampleCols = csvRawLines.length > 1 ? parseCSVLine(csvRawLines[1]) : [];
+    const sampleCols = csvRawLines.length > csvHeaderRowIdx + 1 ? parseCSVLine(csvRawLines[csvHeaderRowIdx + 1]) : [];
     const mappedSet  = new Set(Object.values(colMap).filter(Boolean));
+    const maxHeaderScan = Math.min(15, csvRawLines.length);
     return (
       <div>
         <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b33', borderRadius:8, padding:'9px 13px', marginBottom:16, fontSize:13, color:'var(--amber)' }}>
           Could not auto-detect columns. Map them manually below.
         </div>
+
+        {/* Header row selector — lets user fix AMEX-style files with metadata rows above the header */}
+        {csvRawLines.length > 2 && (
+          <div style={{ marginBottom:14 }}>
+            <label style={{ fontSize:12, color:'var(--text-secondary)', display:'block', marginBottom:4 }}>Header row</label>
+            <select value={csvHeaderRowIdx} onChange={e => changeHeaderRow(+e.target.value)} style={{ width:'100%' }}>
+              {Array.from({ length: maxHeaderScan }, (_, i) => {
+                const preview = parseCSVLine(csvRawLines[i] || '').slice(0, 4).join(', ');
+                return <option key={i} value={i}>Row {i + 1}: {preview}</option>;
+              })}
+            </select>
+          </div>
+        )}
 
         {[['Date column', 'date'], ['Description column', 'description']].map(([label, key]) => (
           <div key={key} style={{ marginBottom:12 }}>
@@ -405,7 +434,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
 
         {sampleCols.length > 0 && (
           <div style={{ background:'var(--bg-page)', borderRadius:6, padding:'8px 12px', marginBottom:14, fontSize:12 }}>
-            <div style={{ color:'var(--text-muted)', marginBottom:4 }}>Sample (row 1):</div>
+            <div style={{ color:'var(--text-muted)', marginBottom:4 }}>Sample (row {csvHeaderRowIdx + 2}):</div>
             {csvHeaders.map((h, i) => (
               <div key={h} style={{ color: mappedSet.has(h) ? 'var(--accent-2)' : 'var(--text-secondary)' }}>
                 <span style={{ color:'var(--text-muted)' }}>{h}:</span> {sampleCols[i] || ''}

@@ -272,8 +272,55 @@ export const DEFAULT_COMPENSATION_PROFILE = {
   retirement401kPct: 0,
   hsaMonthly: 0,
   effectiveTaxRate: 0,
+  medicalMonthly: 0,
+  dentalMonthly: 0,
+  visionMonthly: 0,
+  otherBenefitsMonthly: 0,
   notes: '',
 };
+
+// ── XLSX / CSV header-row detection ──────────────────────────────────────────
+
+const _HEADER_TOKENS = [
+  /^date$/i, /^posted$/i, /^trans[\s.]?date$/i, /settlement/i,
+  /^desc(ription)?$/i, /^merchant$/i, /^payee$/i, /^memo$/i, /^details?$/i, /^narrative$/i,
+  /^amount$/i, /^amt$/i, /^transaction\s?amount$/i,
+  /^debit$/i, /^withdrawal$/i, /^charge$/i,
+  /^credit$/i, /^deposit$/i,
+];
+const _DATE_LIKE = /^\d{1,4}[/\-]\d{1,2}[/\-]\d{1,4}$|^[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}$/;
+const _NUM_LIKE  = /^-?[\d,]+(\.\d+)?$/;
+
+/**
+ * Given a 2-D array of strings (rows × cols), return the index of the row most
+ * likely to be the CSV header. Scans up to maxScan rows.
+ * Returns 0 if the first row already looks like the header, or if confidence is low.
+ */
+export function detectHeaderRow(rows2d, maxScan = 15) {
+  const scan = rows2d.slice(0, maxScan);
+  let bestScore = -1;
+  let bestIdx   = 0;
+
+  for (let i = 0; i < scan.length; i++) {
+    const row = scan[i].map(c => String(c ?? '').trim());
+    let score = 0;
+    for (const cell of row) {
+      for (const tok of _HEADER_TOKENS) {
+        if (tok.test(cell)) { score++; break; }
+      }
+    }
+    if (score === 0) continue;
+    // Bonus: the row after this one has date-like and number-like values (confirms it's a data row)
+    if (i + 1 < rows2d.length) {
+      const nextRaw = rows2d[i + 1].map(c => String(c ?? '').trim());
+      if (nextRaw.some(c => _DATE_LIKE.test(c))) score += 2;
+      if (nextRaw.map(c => c.replace(/[$,\s]/g, '')).some(c => c.length > 0 && _NUM_LIKE.test(c))) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; bestIdx = i; }
+  }
+
+  return bestScore >= 3 ? bestIdx : 0;
+}
 
 // ── Budget suggestions from spending history ──────────────────────────────────
 
