@@ -4,8 +4,8 @@
  *
  * Secrets live in the OS credential manager (Windows Credential Manager /
  * macOS Keychain / Linux Secret Service) via the `secret_*` Tauri commands:
- *   plaid-credentials      – JSON { clientId, secret, env }
- *   plaid-token-<itemId>   – Plaid access_token for one linked item
+ *   plaid:client           – JSON { clientId, secret, env }
+ *   plaid:item:<itemId>    – Plaid access_token for one linked item
  *
  * Non-secret metadata stays in tauri-plugin-store (plaid.json):
  *   items – Array of { itemId, institutionName, accounts: [{id, name, mask, type, subtype}], lastSync }
@@ -19,8 +19,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { load } from '@tauri-apps/plugin-store';
 
 const STORE_FILE = 'plaid.json';
-const CREDS_KEY  = 'plaid-credentials';
-const tokenKey   = (itemId) => `plaid-token-${itemId}`;
+const CREDS_KEY  = 'plaid:client';
+const tokenKey   = (itemId) => `plaid:item:${itemId}`;
 
 const EMPTY_CREDS = { clientId: '', secret: '', env: 'sandbox' };
 
@@ -42,7 +42,7 @@ async function doMigrate() {
   const store = await getStore();
   let dirty = false;
 
-  // Legacy credentials (client_id / secret / env as plaintext store keys)
+  // Phase 1: Legacy plaintext credentials (client_id / secret / env store keys)
   const legacyClientId = await store.get('client_id');
   const legacySecret   = await store.get('secret');
   if (legacyClientId || legacySecret) {
@@ -60,8 +60,27 @@ async function doMigrate() {
     dirty = true;
   }
 
-  // Legacy items with embedded plaintext access tokens
   const items = (await store.get('items')) ?? [];
+
+  // Phase 2: Rename old keyring keys to namespaced forms (one-time migration).
+  // secret_get / secret_delete allow legacy key names for this purpose;
+  // secret_set only accepts the new names.
+  const oldCreds = await invoke('secret_get', { key: 'plaid-credentials' });
+  if (oldCreds) {
+    await invoke('secret_set', { key: CREDS_KEY, value: oldCreds });
+    await invoke('secret_delete', { key: 'plaid-credentials' });
+    dirty = true;
+  }
+  for (const item of items) {
+    const oldToken = await invoke('secret_get', { key: `plaid-token-${item.itemId}` });
+    if (oldToken) {
+      await invoke('secret_set', { key: tokenKey(item.itemId), value: oldToken });
+      await invoke('secret_delete', { key: `plaid-token-${item.itemId}` });
+      dirty = true;
+    }
+  }
+
+  // Phase 3: Legacy items with embedded plaintext access tokens in the store
   if (items.some(i => i.accessToken)) {
     for (const item of items) {
       if (item.accessToken) {

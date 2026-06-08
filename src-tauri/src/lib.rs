@@ -241,12 +241,46 @@ async fn open_receipt(data_path: String, filename: String, app: tauri::AppHandle
 
 // ── OS credential manager (encrypted secret storage) ────────────────────────
 //
-// Secrets (Plaid client_id/secret, per-item access tokens) live in the OS
-// keychain — Windows Credential Manager, macOS Keychain, or Linux Secret
-// Service — never in plaintext files. Keys are namespaced by the frontend
-// (see src/plaidLayer.js).
+// Secrets (Plaid client_id/secret, per-item access tokens, Finnhub API key)
+// live in the OS keychain — Windows Credential Manager, macOS Keychain, or
+// Linux Secret Service — never in plaintext files.
+//
+// All entries use service "Pocket Watch" and a strict key allowlist:
+//   plaid:client         – JSON { clientId, secret, env }
+//   plaid:item:<itemId>  – Plaid access_token for one linked item
+//   finnhub:apikey       – Finnhub API key for stock-price fetching
+//
+// Legacy keys (plaid-credentials, plaid-token-*) are accepted for
+// secret_get / secret_delete ONLY so that plaidLayer.js can read and
+// delete them during the one-time key-rename migration.
 
 const KEYRING_SERVICE: &str = "Pocket Watch";
+
+fn validate_secret_key(key: &str, allow_legacy: bool) -> Result<(), String> {
+    if matches!(key, "plaid:client" | "finnhub:apikey") {
+        return Ok(());
+    }
+    if key.starts_with("plaid:item:") {
+        let id = &key["plaid:item:".len()..];
+        if !id.is_empty() && id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            return Ok(());
+        }
+    }
+    // Legacy names accepted for reads and deletes during migration only.
+    // Can be removed once all deployed installs have run the key-rename migration.
+    if allow_legacy {
+        if key == "plaid-credentials" {
+            return Ok(());
+        }
+        if key.starts_with("plaid-token-") {
+            let suffix = &key["plaid-token-".len()..];
+            if !suffix.is_empty() && suffix.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+                return Ok(());
+            }
+        }
+    }
+    Err("invalid keyring key".to_string())
+}
 
 fn keyring_entry(key: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, key).map_err(|e| e.to_string())
@@ -254,6 +288,7 @@ fn keyring_entry(key: &str) -> Result<keyring::Entry, String> {
 
 #[tauri::command]
 fn secret_set(key: String, value: String) -> Result<(), String> {
+    validate_secret_key(&key, false)?;
     keyring_entry(&key)?
         .set_password(&value)
         .map_err(|e| e.to_string())
@@ -261,6 +296,7 @@ fn secret_set(key: String, value: String) -> Result<(), String> {
 
 #[tauri::command]
 fn secret_get(key: String) -> Result<Option<String>, String> {
+    validate_secret_key(&key, true)?;
     match keyring_entry(&key)?.get_password() {
         Ok(v) => Ok(Some(v)),
         Err(keyring::Error::NoEntry) => Ok(None),
@@ -270,6 +306,7 @@ fn secret_get(key: String) -> Result<Option<String>, String> {
 
 #[tauri::command]
 fn secret_delete(key: String) -> Result<(), String> {
+    validate_secret_key(&key, true)?;
     match keyring_entry(&key)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
@@ -669,6 +706,31 @@ mod tests {
         // We can't call the command directly without State<>, but we can test the
         // sub-validation that is the same as validate_data_path.
         assert!("has\0null".contains('\0'));
+    }
+
+    #[test]
+    fn secret_key_accepts_canonical_keys() {
+        assert!(validate_secret_key("plaid:client", false).is_ok());
+        assert!(validate_secret_key("finnhub:apikey", false).is_ok());
+        assert!(validate_secret_key("plaid:item:abc123", false).is_ok());
+        assert!(validate_secret_key("plaid:item:item-123_xyz", false).is_ok());
+    }
+
+    #[test]
+    fn secret_key_rejects_arbitrary_keys() {
+        assert!(validate_secret_key("arbitrary-key", false).is_err());
+        assert!(validate_secret_key("plaid-credentials", false).is_err()); // legacy, write-blocked
+        assert!(validate_secret_key("plaid:item:", false).is_err());       // empty id
+        assert!(validate_secret_key("plaid:item:has space", false).is_err());
+        assert!(validate_secret_key("", false).is_err());
+    }
+
+    #[test]
+    fn secret_key_allows_legacy_for_reads() {
+        assert!(validate_secret_key("plaid-credentials", true).is_ok());
+        assert!(validate_secret_key("plaid-token-abc123", true).is_ok());
+        assert!(validate_secret_key("plaid-token-", true).is_err()); // empty suffix
+        assert!(validate_secret_key("arbitrary", true).is_err());     // unknown key, still rejected
     }
 
     #[test]
