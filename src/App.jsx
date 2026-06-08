@@ -6,7 +6,7 @@ import { PrivacyContext } from './context/PrivacyContext.jsx';
 import { seedTransactions, seedAccounts, seedBudgets, seedGoals } from './seed.js';
 import {
   getDataPath, setDataPath, getDefaultDataPath,
-  loadAppData, saveAppData, dataFileExists,
+  loadAppData, saveAppData, dataFileExists, setAllowedDataDir,
   promptNewDataFile, promptOpenDataFile,
 } from './dataLayer.js';
 import { invoke } from '@tauri-apps/api/core';
@@ -194,6 +194,9 @@ export default function App() {
 
   const initFromPath = async (path) => {
     setDataPathState(path);
+    // Register the allowed directory before any I/O, including the direct invoke
+    // calls for the pre-migration backup below.
+    await setAllowedDataDir(path);
     try {
       const exists = await dataFileExists(path);
       if (exists) {

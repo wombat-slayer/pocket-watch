@@ -29,18 +29,33 @@ export const setDataPath = async (path) => {
   const store = await getStore();
   await store.set('dataPath', path);
   await store.save();
+  await setAllowedDataDir(path);
 };
 
 // ─── Default path ─────────────────────────────────────────────────────────────
 export const getDefaultDataPath = () => invoke('get_default_data_path');
 
+// ─── Allowed data directory ───────────────────────────────────────────────────
+// Extracts the parent directory from a file path (cross-platform).
+const parentDir = (path) => {
+  const i = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return i > 0 ? path.slice(0, i) : path;
+};
+
+// Registers the allowed directory for data-file I/O with the Rust layer.
+// Must be called before load_data / save_data when the data path changes.
+export const setAllowedDataDir = (path) =>
+  invoke('set_allowed_data_dir', { dir: parentDir(path) });
+
 // ─── File I/O ─────────────────────────────────────────────────────────────────
 export const loadAppData = async (path) => {
+  await setAllowedDataDir(path);
   const raw = await invoke('load_data', { path });
   return JSON.parse(raw);
 };
 
 export const saveAppData = async (path, data) => {
+  await setAllowedDataDir(path);
   await invoke('save_data', { path, data: JSON.stringify(data, null, 2) });
 };
 

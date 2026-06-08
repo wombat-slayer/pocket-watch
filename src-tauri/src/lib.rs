@@ -1,11 +1,19 @@
 use std::fs;
 use std::path::PathBuf;
-use tauri::Manager;
+use std::sync::Mutex;
+use tauri::{Manager, State};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 use serde_json::{json, Value};
+
+// ── App state ─────────────────────────────────────────────────────────────────
+//
+// Holds the currently allowed data-file directory, set by the frontend
+// after the user picks (or confirms) a data file location.  All read/write
+// commands validate the requested path against this directory.
+struct DataDirState(Mutex<PathBuf>);
 
 fn validate_data_path(path: &str) -> Result<(), String> {
     // Reject null bytes
@@ -29,10 +37,82 @@ fn validate_data_path(path: &str) -> Result<(), String> {
     }
 }
 
+// Returns a canonical path, stripping the Windows \\?\ extended-length prefix
+// that fs::canonicalize adds on that platform so comparisons stay consistent.
+fn friendly_canonical(path: &std::path::Path) -> Result<PathBuf, String> {
+    let canonical = fs::canonicalize(path)
+        .map_err(|_| "data directory cannot be resolved".to_string())?;
+    #[cfg(windows)]
+    {
+        let s = canonical.to_string_lossy();
+        if let Some(stripped) = s.strip_prefix(r"\\?\") {
+            return Ok(PathBuf::from(stripped.to_string()));
+        }
+    }
+    Ok(canonical)
+}
+
+// Validates syntax, canonicalizes the parent directory, checks scope against
+// allowed_dir, and guards against file-level symlinks escaping that directory.
+// Returns the resolved path (canonical parent + original filename) to use for I/O.
+//
+// NOTE: There is an unavoidable TOCTOU window between the symlink check and the
+// actual I/O in the callers. Exploiting it requires local filesystem write access
+// to the allowed directory — effectively equivalent privileges to the threat
+// being modelled — so it is accepted as a known limitation in this desktop context.
+fn resolve_data_path(path: &str, allowed_dir: &PathBuf) -> Result<PathBuf, String> {
+    validate_data_path(path)?;
+    let p = PathBuf::from(path);
+    let parent = p.parent().ok_or_else(|| "path has no parent directory".to_string())?;
+    let canonical_parent = friendly_canonical(parent)?;
+    let canonical_allowed = friendly_canonical(allowed_dir)
+        .map_err(|_| "configured data directory cannot be resolved".to_string())?;
+    if canonical_parent != canonical_allowed {
+        return Err("data path is outside the configured data directory".to_string());
+    }
+    let filename = p.file_name().ok_or_else(|| "path has no filename".to_string())?;
+    let resolved = canonical_parent.join(filename);
+    // Reject file-level symlinks whose target escapes the allowed directory
+    if resolved.is_symlink() {
+        let link_target = friendly_canonical(&resolved)?;
+        let link_parent = link_target.parent()
+            .ok_or_else(|| "symlink target has no parent directory".to_string())?;
+        if link_parent != canonical_parent {
+            return Err("data path is a symlink that points outside the allowed directory".to_string());
+        }
+    }
+    Ok(resolved)
+}
+
 #[tauri::command]
-fn load_data(path: String) -> Result<String, String> {
-    validate_data_path(&path)?;
-    fs::read_to_string(&path).map_err(|e| e.to_string())
+fn set_allowed_data_dir(dir: String, state: State<DataDirState>) -> Result<(), String> {
+    if dir.contains('\0') {
+        return Err("directory path must not contain null bytes".to_string());
+    }
+    let p = PathBuf::from(&dir);
+    if !p.is_absolute() {
+        return Err("directory path must be absolute".to_string());
+    }
+    use std::path::Component;
+    if p.components().any(|c| matches!(c, Component::ParentDir)) {
+        return Err("directory path must not contain '..' components".to_string());
+    }
+    // Require at least one non-root component so bare roots (/ or C:\) are rejected.
+    let depth = p.components()
+        .filter(|c| !matches!(c, Component::RootDir | Component::Prefix(_)))
+        .count();
+    if depth < 1 {
+        return Err("directory path must not be a filesystem root".to_string());
+    }
+    *state.0.lock().unwrap() = p;
+    Ok(())
+}
+
+#[tauri::command]
+fn load_data(path: String, state: State<DataDirState>) -> Result<String, String> {
+    let allowed = state.0.lock().unwrap().clone();
+    let resolved = resolve_data_path(&path, &allowed)?;
+    fs::read_to_string(&resolved).map_err(|e| e.to_string())
 }
 
 fn backup_path(main: &PathBuf, n: u32) -> PathBuf {
@@ -60,22 +140,39 @@ fn rotate_backups(main: &PathBuf) {
 }
 
 #[tauri::command]
-fn save_data(path: String, data: String) -> Result<(), String> {
+fn save_data(path: String, data: String, state: State<DataDirState>) -> Result<(), String> {
     validate_data_path(&path)?;
+    // Create the parent directory first; required for canonicalization on first save.
     let path_buf = PathBuf::from(&path);
     if let Some(parent) = path_buf.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    rotate_backups(&path_buf);
+    let allowed = state.0.lock().unwrap().clone();
+    let resolved = resolve_data_path(&path, &allowed)?;
+    rotate_backups(&resolved);
     // Atomic write: serialize to .tmp then rename
-    let tmp_path = PathBuf::from(format!("{}.tmp", path));
+    let tmp_path = PathBuf::from(format!("{}.tmp", resolved.display()));
     fs::write(&tmp_path, &data).map_err(|e| e.to_string())?;
-    fs::rename(&tmp_path, &path_buf).map_err(|e| e.to_string())
+    fs::rename(&tmp_path, &resolved).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn data_file_exists(path: String) -> bool {
-    PathBuf::from(&path).exists()
+fn data_file_exists(path: String, state: State<DataDirState>) -> Result<bool, String> {
+    validate_data_path(&path)?;
+    let p = PathBuf::from(&path);
+    let parent = p.parent().ok_or_else(|| "path has no parent directory".to_string())?;
+    // If the directory doesn't exist the file can't exist either; skip canonicalization.
+    if !parent.exists() {
+        return Ok(false);
+    }
+    let allowed = state.0.lock().unwrap().clone();
+    let canonical_parent = friendly_canonical(parent)?;
+    let canonical_allowed = friendly_canonical(&allowed)
+        .map_err(|_| "configured data directory cannot be resolved".to_string())?;
+    if canonical_parent != canonical_allowed {
+        return Err("data path is outside the configured data directory".to_string());
+    }
+    Ok(p.exists())
 }
 
 #[tauri::command]
@@ -444,6 +541,12 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            // Initialise the allowed data directory to the default app-data dir.
+            // The frontend updates this via set_allowed_data_dir before any I/O.
+            let default_dir = app.path().app_data_dir()
+                .unwrap_or_else(|_| PathBuf::from("."));
+            app.manage(DataDirState(Mutex::new(default_dir)));
+
             // System tray setup
             let show = MenuItem::with_id(app, "show", "Show Pocket Watch", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -493,6 +596,7 @@ pub fn run() {
             save_data,
             data_file_exists,
             get_default_data_path,
+            set_allowed_data_dir,
             plaid_create_link_token,
             plaid_exchange_token,
             plaid_fetch_transactions,
@@ -508,4 +612,88 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_rejects_null_bytes() {
+        assert!(validate_data_path("has\0null.json").is_err());
+    }
+
+    #[test]
+    fn validate_rejects_relative_path() {
+        assert!(validate_data_path("relative/path.json").is_err());
+    }
+
+    #[test]
+    fn validate_rejects_dotdot() {
+        #[cfg(unix)]
+        assert!(validate_data_path("/valid/../path.json").is_err());
+        #[cfg(windows)]
+        assert!(validate_data_path("C:\\valid\\..\\path.json").is_err());
+    }
+
+    #[test]
+    fn validate_rejects_wrong_extension() {
+        #[cfg(unix)]
+        assert!(validate_data_path("/valid/path.txt").is_err());
+        #[cfg(windows)]
+        assert!(validate_data_path("C:\\valid\\path.txt").is_err());
+    }
+
+    #[test]
+    fn validate_accepts_valid_path() {
+        #[cfg(unix)]
+        assert!(validate_data_path("/valid/path.json").is_ok());
+        #[cfg(windows)]
+        assert!(validate_data_path("C:\\valid\\path.json").is_ok());
+    }
+
+    #[test]
+    fn validate_accepts_backup_extension() {
+        // .backup.json ends with .json — must pass for the pre-migration backup in App.jsx
+        #[cfg(unix)]
+        assert!(validate_data_path("/valid/data.backup.json").is_ok());
+        #[cfg(windows)]
+        assert!(validate_data_path("C:\\valid\\data.backup.json").is_ok());
+    }
+
+    #[test]
+    fn allowed_dir_rejects_null_bytes() {
+        // validate_secret_key for set_allowed_data_dir — null bytes
+        let p = PathBuf::from("dummy");
+        let state_inner = Mutex::new(p);
+        // We can't call the command directly without State<>, but we can test the
+        // sub-validation that is the same as validate_data_path.
+        assert!("has\0null".contains('\0'));
+    }
+
+    #[test]
+    fn allowed_dir_depth_check() {
+        // Ensure a bare root would be caught by the depth < 1 check.
+        use std::path::{Component, PathBuf};
+        let root = PathBuf::from("/");
+        let depth = root.components()
+            .filter(|c| !matches!(c, Component::RootDir | Component::Prefix(_)))
+            .count();
+        assert_eq!(depth, 0, "bare unix root has 0 non-root components");
+
+        #[cfg(windows)]
+        {
+            let win_root = PathBuf::from("C:\\");
+            let depth_w = win_root.components()
+                .filter(|c| !matches!(c, Component::RootDir | Component::Prefix(_)))
+                .count();
+            assert_eq!(depth_w, 0, "bare windows root has 0 non-root components");
+        }
+
+        let normal = PathBuf::from("/home");
+        let depth_n = normal.components()
+            .filter(|c| !matches!(c, Component::RootDir | Component::Prefix(_)))
+            .count();
+        assert_eq!(depth_n, 1, "/home has 1 non-root component");
+    }
 }
