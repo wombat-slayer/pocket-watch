@@ -18,7 +18,7 @@ function saveFilters(patch) {
   } catch {}
 }
 
-export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive, recurrences = [], lastSyncResult, onDismissSyncResult, dataPath }) {
+export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive, recurrences = [], lastSyncResult, onDismissSyncResult, dataPath, importKey = 0 }) {
   const cfmt = useCurrency();
   const saved = loadFilters();
   const [search,      setSearch]      = useState(saved.search      ?? '');
@@ -51,6 +51,9 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
       setCatFilter(initialCatFilter);
     }
   }, [initialCatFilter]);
+
+  // Reset to page 1 after any import so newly imported transactions are visible
+  useEffect(() => { setPage(0); }, [importKey]);
 
   const [showCSV,     setShowCSV]     = useState(false);
   const [showAdd,     setShowAdd]     = useState(false);

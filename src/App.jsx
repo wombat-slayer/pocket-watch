@@ -77,6 +77,7 @@ export default function App() {
   const [showHelp,        setShowHelp]        = useState(false);
   const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
   const [txCatFilter,     setTxCatFilter]     = useState('All');
+  const [txImportKey,     setTxImportKey]     = useState(0);
   const [budgetTemplates,       setBudgetTemplates]       = useState([]);
   const [archivedTransactions, setArchivedTransactions] = useState([]);
   const [apiKeys,         setApiKeys]         = useState({ finnhub: '' });
@@ -442,7 +443,7 @@ export default function App() {
     showToast('Transaction deleted', 'info');
   };
   const bulkDelete = (ids) => { pushUndo(); const s=new Set(ids); setTransactions(ts=>ts.filter(t=>!s.has(t.id))); showToast(`${ids.length} transactions deleted`, 'info'); };
-  const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); showToast(`${rows.length} transaction${rows.length!==1?'s':''} imported`); };
+  const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); setTxImportKey(k => k + 1); showToast(`${rows.length} transaction${rows.length!==1?'s':''} imported`); };
   const plaidModifyTxs = (updates) => {
     if (!updates?.length) return;
     setTransactions(ts => ts.map(t => {
@@ -743,7 +744,7 @@ export default function App() {
           </button>
         </div>
         {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} onAddGoal={addGoal} onEditGoal={editGoal} onDeleteGoal={deleteGoal} onDeposit={depositGoal} onGoToBudgets={()=>setPage('budgets')} compensationProfile={compensationProfile} onCategoryClick={cat=>{ setTxCatFilter(cat); setPage('transactions'); }} onGoToReports={(tab) => { setReportsInitialTab(tab ?? 'trend'); setPage('reports'); }} />}
-        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} recurrences={recurrences} lastSyncResult={lastSyncResult} onDismissSyncResult={()=>setLastSyncResult(null)} dataPath={dataPath} />}
+        {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} recurrences={recurrences} lastSyncResult={lastSyncResult} onDismissSyncResult={()=>setLastSyncResult(null)} dataPath={dataPath} importKey={txImportKey} />}
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} onCloseMonth={()=>setShowMonthClose(true)} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} budgets={budgets} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} initialTab={reportsInitialTab} />}
