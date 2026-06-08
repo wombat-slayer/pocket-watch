@@ -552,6 +552,12 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
               {selectedCount > 0 && (
                 <div className="bulk-bar">
                   <span className="bulk-bar-count">{selectedCount} transaction{selectedCount>1?'s':''} selected</span>
+                  {selectedCount < filtered.length && (
+                    <button className="btn btn-ghost btn-sm" style={{ color:'var(--bg-page)' }}
+                      onClick={() => setSelected(new Set(filtered.map(t => t.id)))}>
+                      Select all {filtered.length} transactions
+                    </button>
+                  )}
                   <button className="btn btn-ghost btn-sm" style={{ color:'var(--bg-page)' }} onClick={clearSel}>Clear selection</button>
                   <button className="btn btn-sm" style={{ background:'#7f1d1d',color:'#fca5a5',border:'none' }} onClick={handleBulkDelete}>
                     🗑 Delete {selectedCount} selected
