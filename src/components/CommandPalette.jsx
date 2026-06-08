@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { acctEmoji, acctLabel, catIcon, fmt, fmtDate } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 
 export default function CommandPalette({ transactions, accounts, goals, onClose, onNavigate, onCloseMonth }) {
+  const cfmt = useCurrency();
   const [query,  setQuery]  = useState('');
   const [selIdx, setSelIdx] = useState(0);
   const inputRef = useRef(null);
@@ -71,9 +73,9 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
                       <span style={{ fontSize:18,width:24,textAlign:'center' }}>{item.icon ?? '📄'}</span>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:14,color:'var(--text-primary)',fontWeight:500 }}>{item.label}</div>
-                        {item.type==='account' && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{acctLabel(item.acctType??item.type)} · {fmt(item.balance)}</div>}
-                        {item.type==='tx'      && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{fmtDate(item.date)} · <span style={{ color:item.amount>=0?'var(--green)':'var(--red)' }}>{fmt(item.amount)}</span></div>}
-                        {item.type==='goal'    && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{fmt(item.current)} / {fmt(item.target)}</div>}
+                        {item.type==='account' && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{acctLabel(item.acctType??item.type)} · {cfmt(item.balance)}</div>}
+                        {item.type==='tx'      && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{fmtDate(item.date)} · <span style={{ color:item.amount>=0?'var(--green)':'var(--red)' }}>{cfmt(item.amount)}</span></div>}
+                        {item.type==='goal'    && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{cfmt(item.current)} / {cfmt(item.target)}</div>}
                       </div>
                       {item.type==='page' && <span style={{ fontSize:11,color:'var(--text-muted)' }}>Go to ↵</span>}
                     </div>

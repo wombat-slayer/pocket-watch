@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { today, parseAmount, fmt } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 
 export default function AdjustmentForm({ accounts, onSave, onClose }) {
+  const cfmt = useCurrency();
   const [acctId,     setAcctId]     = useState(accounts[0]?.id ?? '');
   const [newBalance, setNewBalance] = useState('');
   const [date,       setDate]       = useState(today());
@@ -26,7 +28,7 @@ export default function AdjustmentForm({ accounts, onSave, onClose }) {
         <label className="form-label">Account</label>
         <select value={acctId} onChange={e => setAcctId(e.target.value)}>
           {accounts.map(a => (
-            <option key={a.id} value={a.id}>{a.name} (current: {fmt(a.balance)})</option>
+            <option key={a.id} value={a.id}>{a.name} (current: {cfmt(a.balance)})</option>
           ))}
         </select>
       </div>
@@ -44,7 +46,7 @@ export default function AdjustmentForm({ accounts, onSave, onClose }) {
       {delta !== null && (
         <div style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-raised)',
           color: delta >= 0 ? 'var(--green)' : 'var(--red)' }}>
-          {delta >= 0 ? '▲' : '▼'} Change: {delta >= 0 ? '+' : ''}{fmt(delta)} from current {fmt(acct?.balance ?? 0)}
+          {delta >= 0 ? '▲' : '▼'} Change: {delta >= 0 ? '+' : ''}{cfmt(delta)} from current {cfmt(acct?.balance ?? 0)}
         </div>
       )}
       <div className="form-group">

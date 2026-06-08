@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fmt, thisMonth, getAllCategories } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 
 export default function MonthClose({ transactions, accounts, budgets, netWorthHistory, userCategories, onEditTx, onAdjustBalance, onClose }) {
+  const cfmt = useCurrency();
   const [step, setStep] = useState(1);
   const [catEdits, setCatEdits] = useState({}); // txId → newCategory
   const [balanceEdits, setBalanceEdits] = useState({}); // acctId → newBalance
@@ -99,7 +101,7 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
                 <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--bg-raised)', fontSize: 13 }}>
                   <div style={{ flex: 1, color: 'var(--text-primary)' }}>{tx.description}</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{tx.date}</div>
-                  <div style={{ color: 'var(--red)' }}>{fmt(tx.amount)}</div>
+                  <div style={{ color: 'var(--red)' }}>{cfmt(tx.amount)}</div>
                   <select
                     value={catEdits[tx.id] || 'Other'}
                     onChange={e => setCatEdits(p => ({ ...p, [tx.id]: e.target.value }))}
@@ -134,7 +136,7 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
                     <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--bg-raised)', fontSize: 13 }}>
                       <div style={{ flex: 1, color: 'var(--text-primary)' }}>{b.category}</div>
                       <div style={{ color }}>
-                        {fmt(spent)} / {fmt(b.amount)}
+                        {cfmt(spent)} / {cfmt(b.amount)}
                         <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>{(pct * 100).toFixed(0)}%</span>
                       </div>
                       {pct >= 1 && (
@@ -163,7 +165,7 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
             {accounts.filter(a => ['investment', 'asset'].includes(a.type)).map(a => (
               <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--bg-raised)', fontSize: 13 }}>
                 <div style={{ flex: 1, color: 'var(--text-primary)' }}>{a.name}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Current: {fmt(a.balance)}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Current: {cfmt(a.balance)}</div>
                 <input
                   type="number"
                   step="0.01"
@@ -192,16 +194,16 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
               <div className="stat-card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Income</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--green)' }}>{fmt(monthIncome)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--green)' }}>{cfmt(monthIncome)}</div>
               </div>
               <div className="stat-card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Spending</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--red)' }}>{fmt(monthSpend)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--red)' }}>{cfmt(monthSpend)}</div>
               </div>
               <div className="stat-card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Net</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: monthIncome - monthSpend >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  {monthIncome - monthSpend >= 0 ? '+' : ''}{fmt(monthIncome - monthSpend)}
+                  {monthIncome - monthSpend >= 0 ? '+' : ''}{cfmt(monthIncome - monthSpend)}
                 </div>
               </div>
             </div>
@@ -209,7 +211,7 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
               <div className="stat-card" style={{ marginBottom: 16, textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Net Worth Change vs Last Month</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: nwDelta >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  {nwDelta >= 0 ? '+' : ''}{fmt(nwDelta)}
+                  {nwDelta >= 0 ? '+' : ''}{cfmt(nwDelta)}
                 </div>
               </div>
             )}

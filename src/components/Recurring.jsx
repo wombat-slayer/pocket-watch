@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { monthlyEquivalent, getAllCategories, FREQUENCIES, catIcon, fmt, fmtDate, today, uid, parseAmount, getNextRecurDate, freqLabel } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 import Modal from './Modal.jsx';
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
@@ -115,6 +116,7 @@ function NextDueBadge({ recurrence }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDelete, onToggle, userCategories, transactions, embedded = false }) {
+  const cfmt = useCurrency();
   const [showAdd, setShowAdd] = useState(false);
   const [editRec, setEditRec] = useState(null);
   const [suggestionPrefill, setSuggestionPrefill] = useState(null);
@@ -204,7 +206,7 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
                 <span style={{ color: 'var(--text-primary)' }}>{s.description}</span>
                 <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>{s.frequency} · {s.occurrences}× seen</span>
               </div>
-              <span style={{ color: 'var(--red)' }}>~${Math.abs(s.amount).toFixed(2)}</span>
+              <span style={{ color: 'var(--red)' }}>~{cfmt(Math.abs(s.amount))}</span>
               <button className="btn btn-sm btn-secondary" onClick={() => {
                 setShowAdd(true);
                 setSuggestionPrefill(s);
@@ -232,12 +234,12 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
           </div>
           <div className="stat-card">
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Monthly Expenses</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--red)' }}>{fmt(expenses)}</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--red)' }}>{cfmt(expenses)}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>estimated / month</div>
           </div>
           <div className="stat-card">
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Monthly Income</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--green)' }}>{fmt(income)}</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--green)' }}>{cfmt(income)}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>estimated / month</div>
           </div>
         </div>
@@ -293,7 +295,7 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
               color: r.amount >= 0 ? 'var(--green)' : 'var(--red)',
               whiteSpace: 'nowrap', marginRight: 8,
             }}>
-              {r.amount >= 0 ? '+' : ''}{fmt(r.amount)}
+              {r.amount >= 0 ? '+' : ''}{cfmt(r.amount)}
             </div>
 
             {/* Controls */}

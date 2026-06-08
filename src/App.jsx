@@ -591,7 +591,7 @@ export default function App() {
       if (notifiedThresholds.current.has(key)) return;
       notifiedThresholds.current.add(key);
       const title = a.type === 'alert' ? `Budget Exceeded: ${a.category}` : `Budget Warning: ${a.category}`;
-      const body  = `${a.category} is at ${a.pct}% of its ${fmt(a.budget)} budget this month.`;
+      const body  = `${a.category} is at ${a.pct}% of its ${privacyMode ? '••••' : fmt(a.budget)} budget this month.`;
       if (!('Notification' in window)) return;
       if (Notification.permission === 'granted') {
         new Notification(title, { body });

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { fmt, fmtDate, download, SCHEDULE_C_LINES } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ function escapeCsv(v) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Business({ accounts, transactions, onUpdateTransaction }) {
+  const cfmt = useCurrency();
   const [period,  setPeriod]  = useState('month');
   const [offset,  setOffset]  = useState(0);
 
@@ -145,7 +147,7 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background:'var(--bg-card)', border:'1px solid var(--bg-raised)', borderRadius:12, padding:'18px 20px' }}>
             <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:6 }}>{label}</div>
-            <div style={{ fontSize:22, fontWeight:700, color }}>{fmt(value)}</div>
+            <div style={{ fontSize:22, fontWeight:700, color }}>{cfmt(value)}</div>
           </div>
         ))}
       </div>
@@ -177,8 +179,8 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
                       </td>
                       <td style={{ padding:'7px 6px', color:'var(--text-secondary)', textAlign:'center' }}>Ln {line}</td>
                       <td style={{ padding:'7px 0', color:'var(--text-primary)', textAlign:'right', fontWeight:500 }}>
-                        {fmt(total)}
-                        {isMeals && <div style={{ fontSize:10, color:'var(--text-secondary)' }}>{fmt(total * 0.5)} ded.</div>}
+                        {cfmt(total)}
+                        {isMeals && <div style={{ fontSize:10, color:'var(--text-secondary)' }}>{cfmt(total * 0.5)} ded.</div>}
                       </td>
                     </tr>
                   );
@@ -202,7 +204,7 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
                     <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{fmtDate(t.date)} · {t.category ?? '—'}</div>
                   </div>
                   <div style={{ fontSize:13, fontWeight:600, color: t.amount >= 0 ? 'var(--green)' : 'var(--red)', whiteSpace:'nowrap' }}>
-                    {t.amount >= 0 ? '+' : ''}{fmt(t.amount)}
+                    {t.amount >= 0 ? '+' : ''}{cfmt(t.amount)}
                   </div>
                 </div>
               ))}

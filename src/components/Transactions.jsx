@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { getAllCategories, catIcon, fmt, fmtDate, parseAmount, download } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 import * as XLSX from 'xlsx';
 import Modal from './Modal.jsx';
 import TransactionForm from './TransactionForm.jsx';
@@ -18,6 +19,7 @@ function saveFilters(patch) {
 }
 
 export default function Transactions({ transactions, accounts, onAdd, onEdit, onDelete, onBulkDelete, onCSVImport, existingTxs, initialCatFilter, onClearCatFilter, userCategories, archivedTransactions = [], onRestoreArchive, recurrences = [], lastSyncResult, onDismissSyncResult, dataPath }) {
+  const cfmt = useCurrency();
   const saved = loadFilters();
   const [search,      setSearch]      = useState(saved.search      ?? '');
   const [catFilter,   setCatFilter]   = useState(() => initialCatFilter && initialCatFilter !== 'All' ? initialCatFilter : (saved.catFilter ?? 'All'));
@@ -491,12 +493,12 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                     onKeyDown={e=>{if(e.key==='Enter')commitCell(t);if(e.key==='Escape')cancelCell();}}
                                     onClick={e=>e.stopPropagation()} style={{ width:100,textAlign:'right' }} />
                                 : <span style={{ fontWeight:700,color:t.amount>=0?'var(--green)':'var(--red)',whiteSpace:'nowrap' }}>
-                                    {t.amount>=0?'+':''}{fmt(t.amount)}
+                                    {t.amount>=0?'+':''}{cfmt(t.amount)}
                                   </span>}
                             </td>
                             {runningBalances && (
                               <td style={{ textAlign:'right',color:'var(--text-secondary)',fontSize:13,whiteSpace:'nowrap' }}>
-                                {runningBalances[t.id] !== undefined ? fmt(runningBalances[t.id]) : '—'}
+                                {runningBalances[t.id] !== undefined ? cfmt(runningBalances[t.id]) : '—'}
                               </td>
                             )}
                             <td style={{ whiteSpace:'nowrap' }} onClick={e=>e.stopPropagation()}>
@@ -528,7 +530,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                               </td>
                               <td />
                               <td style={{ textAlign:'right', fontSize:13, color:'var(--red)', fontWeight:600 }}>
-                                -{fmt(sp.amount)}
+                                -{cfmt(sp.amount)}
                               </td>
                               {runningBalances && <td />}
                               <td />

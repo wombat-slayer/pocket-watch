@@ -1,6 +1,8 @@
 import { useRef, useState, useMemo } from 'react';
 import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeUnvestedRSUValue, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
+import { useCurrency } from '../hooks/useCurrency.js';
+import { usePrivacy } from '../context/PrivacyContext.jsx';
 import Goals from './Goals.jsx';
 
 export default function Dashboard({
@@ -9,6 +11,9 @@ export default function Dashboard({
   onAddGoal, onEditGoal, onDeleteGoal, onDeposit, onGoToBudgets,
   compensationProfile, onCategoryClick, onGoToReports,
 }) {
+  const cfmt = useCurrency();
+  const privacy = usePrivacy();
+  const fmtK = v => privacy ? '••••' : '$' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v);
   const canvasForecast     = useRef(null);
   const canvasNWTrajectory = useRef(null);
   const [selMonth, setSelMonth] = useState(thisMonth());
@@ -228,10 +233,10 @@ export default function Dashboard({
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?'$'+(ctx.raw>=1000?(ctx.raw/1000).toFixed(1)+'k':ctx.raw.toFixed(0)):'—'}`}} },
-      scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}} },
+      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?ccfmt(ctx.raw):'—'}`}} },
+      scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:fmtK}} },
     },
-  }), [JSON.stringify(forecastData)]);
+  }), [JSON.stringify(forecastData), cfmt]);
 
   useChart(canvasNWTrajectory, () => ({
     type: 'line',
@@ -248,10 +253,10 @@ export default function Dashboard({
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: $${ctx.raw!=null?(ctx.raw>=1000?(ctx.raw/1000).toFixed(1)+'k':ctx.raw.toFixed(0)):'—'}`}} },
-      scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:v=>'$'+(v>=1000?(v/1000).toFixed(1)+'k':v)}} },
+      plugins:{ legend:{labels:{color:CHART.gridLabel}}, tooltip:{callbacks:{label:(ctx)=>` ${ctx.dataset.label}: ${ctx.raw!=null?ccfmt(ctx.raw):'—'}`}} },
+      scales:{ x:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel}}, y:{grid:{color:CHART.gridLine},ticks:{color:CHART.gridLabel,callback:fmtK}} },
     },
-  }), [JSON.stringify(nwTrajectoryData), JSON.stringify(goals)]);
+  }), [JSON.stringify(nwTrajectoryData), JSON.stringify(goals), cfmt]);
 
   const isNewUser = accounts.length === 0 && transactions.length === 0;
 
@@ -310,15 +315,15 @@ export default function Dashboard({
                     style={{ fontSize:12, color:'var(--text-muted)', cursor:'help' }}
                   >ⓘ</span>
                 </div>
-                <div style={{ fontSize:30, fontWeight:700, color: vestedNetWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(vestedNetWorth)}</div>
+                <div style={{ fontSize:30, fontWeight:700, color: vestedNetWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{cfmt(vestedNetWorth)}</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>
-                  + {fmt(unvestedRSU)} <span style={{ color:'var(--text-muted)' }}>locked (unvested RSUs)</span>
+                  + {cfmt(unvestedRSU)} <span style={{ color:'var(--text-muted)' }}>locked (unvested RSUs)</span>
                 </div>
               </>
             ) : (
               <>
                 <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
-                <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(netWorth)}</div>
+                <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{cfmt(netWorth)}</div>
               </>
             )}
           </div>
@@ -326,7 +331,7 @@ export default function Dashboard({
             <div style={{ textAlign:'right' }}>
               <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:2 }}>vs last month</div>
               <div style={{ fontSize:16, fontWeight:700, color: nwDelta >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                {nwDelta >= 0 ? '+' : ''}{fmt(nwDelta)}
+                {nwDelta >= 0 ? '+' : ''}{cfmt(nwDelta)}
               </div>
             </div>
           )}
@@ -335,31 +340,31 @@ export default function Dashboard({
           {checkingBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Checking </span>
-              <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{fmt(checkingBal)}</span>
+              <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{cfmt(checkingBal)}</span>
             </div>
           )}
           {savingsBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Savings </span>
-              <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{fmt(savingsBal)}</span>
+              <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{cfmt(savingsBal)}</span>
             </div>
           )}
           {investBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Investments </span>
-              <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{fmt(investBal)}</span>
+              <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{cfmt(investBal)}</span>
             </div>
           )}
           {equityValue > 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Equity </span>
-              <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{fmt(equityValue)}</span>
+              <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{cfmt(equityValue)}</span>
             </div>
           )}
           {creditBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Credit </span>
-              <span style={{ color:'var(--red)', fontWeight:600 }}>{fmt(creditBal)}</span>
+              <span style={{ color:'var(--red)', fontWeight:600 }}>{cfmt(creditBal)}</span>
             </div>
           )}
         </div>
@@ -369,7 +374,7 @@ export default function Dashboard({
       {weekStats.count > 0 && (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--bg-raised)', borderRadius:8, padding:'8px 16px', marginBottom:16, fontSize:13 }}>
           <span style={{ color:'var(--text-secondary)' }}>
-            This week: <span style={{ color:'var(--red)', fontWeight:600 }}>{fmt(weekStats.total)}</span> spent across <span style={{ fontWeight:600 }}>{weekStats.cats}</span> categor{weekStats.cats===1?'y':'ies'}
+            This week: <span style={{ color:'var(--red)', fontWeight:600 }}>{cfmt(weekStats.total)}</span> spent across <span style={{ fontWeight:600 }}>{weekStats.cats}</span> categor{weekStats.cats===1?'y':'ies'}
           </span>
           {onGoToReports && (
             <button className="btn btn-ghost btn-sm" style={{ fontSize:12 }} onClick={() => onGoToReports('week')}>
@@ -388,7 +393,7 @@ export default function Dashboard({
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
           <div style={{ background:'var(--bg-page)', borderRadius:10, padding:'14px 16px' }}>
             <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Income</div>
-            <div style={{ fontSize:22, fontWeight:700, color:'var(--green)' }}>{fmt(effectiveIncome)}</div>
+            <div style={{ fontSize:22, fontWeight:700, color:'var(--green)' }}>{cfmt(effectiveIncome)}</div>
             {incomeDelta && (
               <div style={{ fontSize:11, marginTop:4, color: incomeDelta.up ? 'var(--green)' : 'var(--red)' }}>
                 {incomeDelta.up ? '▲' : '▼'} {incomeDelta.pct}% vs prev
@@ -397,7 +402,7 @@ export default function Dashboard({
           </div>
           <div style={{ background:'var(--bg-page)', borderRadius:10, padding:'14px 16px' }}>
             <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Spent</div>
-            <div style={{ fontSize:22, fontWeight:700, color:'var(--red)' }}>{fmt(monthSpend)}</div>
+            <div style={{ fontSize:22, fontWeight:700, color:'var(--red)' }}>{cfmt(monthSpend)}</div>
             {spendDelta && (
               <div style={{ fontSize:11, marginTop:4, color: spendDelta.up ? 'var(--red)' : 'var(--green)' }}>
                 {spendDelta.up ? '▲' : '▼'} {spendDelta.pct}% vs prev
@@ -407,7 +412,7 @@ export default function Dashboard({
           <div style={{ background:'var(--bg-page)', borderRadius:10, padding:'14px 16px' }}>
             <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Surplus</div>
             <div style={{ fontSize:22, fontWeight:700, color: monthSurplus >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              {monthSurplus >= 0 ? '+' : ''}{fmt(monthSurplus)}
+              {monthSurplus >= 0 ? '+' : ''}{cfmt(monthSurplus)}
             </div>
             {surplusDelta && (
               <div style={{ fontSize:11, marginTop:4, color: surplusDelta.up ? 'var(--green)' : 'var(--red)' }}>
@@ -446,7 +451,7 @@ export default function Dashboard({
                   >
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
                       <span style={{ fontSize:13, color:'var(--text-primary)' }}>{catIcon(cat)} {cat}</span>
-                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{fmt(amt)}</span>
+                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{cfmt(amt)}</span>
                     </div>
                     <div style={{ background:'var(--bg-raised)', borderRadius:4, height:5, overflow:'hidden' }}>
                       <div style={{ height:'100%', borderRadius:4, width:`${pct}%`, background: catColor(cat), transition:'width 0.4s ease' }} />
@@ -479,7 +484,7 @@ export default function Dashboard({
                     <span style={{ fontSize:13, color:'var(--text-primary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                       {catIcon(b.category)} {b.category}
                     </span>
-                    <span style={{ fontSize:11, color:'var(--text-secondary)', flexShrink:0, marginLeft:8 }}>{fmt(b.spent)} / {fmt(b.amount)}</span>
+                    <span style={{ fontSize:11, color:'var(--text-secondary)', flexShrink:0, marginLeft:8 }}>{cfmt(b.spent)} / {cfmt(b.amount)}</span>
                   </div>
                   <div style={{ background:'var(--bg-raised)', borderRadius:4, height:6, overflow:'hidden' }}>
                     <div style={{ height:'100%', borderRadius:4, width:`${Math.min(100, b.pct)}%`, background:barColor(b.pct), transition:'width 0.4s ease' }} />
@@ -523,7 +528,7 @@ export default function Dashboard({
                   </td>
                   <td><span className="tag">{catIcon(t.category)} {t.category}</span></td>
                   <td style={{ textAlign:'right', fontWeight:700, color:t.amount>=0?'var(--green)':'var(--red)' }}>
-                    {t.amount>=0?'+':''}{fmt(t.amount)}
+                    {t.amount>=0?'+':''}{cfmt(t.amount)}
                   </td>
                 </tr>
               ))}
@@ -543,7 +548,7 @@ export default function Dashboard({
                 <strong style={{ color:'var(--text-primary)' }}>{catIcon(cat)} {cat}</strong>
                 {' '}is{' '}
                 <strong style={{ color: dir==='up'?'var(--red)':'var(--green)' }}>{pct.toFixed(0)}% {dir==='up'?'above':'below'}</strong>
-                {' '}your 3-month average ({fmt(spent)} vs {fmt(avg)} avg)
+                {' '}your 3-month average ({cfmt(spent)} vs {cfmt(avg)} avg)
               </span>
             </div>
           ))}
@@ -574,13 +579,13 @@ export default function Dashboard({
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
                   <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'12px 14px' }}>
                     <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>FIRE Number</div>
-                    <div style={{ fontSize:18, fontWeight:700, color:'var(--text-secondary)' }}>{fmt(fireData.fireNumber)}</div>
+                    <div style={{ fontSize:18, fontWeight:700, color:'var(--text-secondary)' }}>{cfmt(fireData.fireNumber)}</div>
                     <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>25× annual expenses</div>
                   </div>
                   <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'12px 14px' }}>
                     <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Monthly Savings</div>
                     <div style={{ fontSize:18, fontWeight:700, color: fireData.monthlySavings > 0 ? 'var(--green)' : 'var(--red)' }}>
-                      {fireData.monthlySavings >= 0 ? '+' : ''}{fmt(fireData.monthlySavings)}
+                      {fireData.monthlySavings >= 0 ? '+' : ''}{cfmt(fireData.monthlySavings)}
                     </div>
                     <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>3-month avg</div>
                   </div>
@@ -608,7 +613,7 @@ export default function Dashboard({
                   }} />
                 </div>
                 <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
-                  {fmt(netWorth)} saved of {fmt(fireData.fireNumber)} target · {fmt(Math.max(0, fireData.gap))} remaining
+                  {cfmt(netWorth)} saved of {cfmt(fireData.fireNumber)} target · {cfmt(Math.max(0, fireData.gap))} remaining
                 </div>
               </div>
             )}

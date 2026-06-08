@@ -1,8 +1,13 @@
 import { useRef, useState, useMemo } from 'react';
 import { catColor, catIcon, fmt, thisMonth, isDebtType, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
+import { useCurrency } from '../hooks/useCurrency.js';
+import { usePrivacy } from '../context/PrivacyContext.jsx';
 
 export default function Reports({ transactions, accounts = [], netWorthHistory = [], budgets = [], onCategoryDrillDown, initialTab }) {
+  const cfmt = useCurrency();
+  const privacy = usePrivacy();
+  const fmtK = v => privacy ? '••••' : '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v);
   const canvasCat       = useRef(null);
   const canvasTrend     = useRef(null);
   const canvasYoY       = useRef(null);
@@ -252,13 +257,13 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
         const cat = catTotals.slice(0, 8)[elements[0].index]?.[0];
         if (cat) onCategoryDrillDown(cat);
       },
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${cfmt(ctx.raw)}` } } },
       scales: {
-        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: fmtK } },
         y: { grid: { display: false }, ticks: { color: CHART.gridLabel } },
       },
     },
-  }), [JSON.stringify(catTotals), months]);
+  }), [JSON.stringify(catTotals), months, cfmt]);
 
   useChart(canvasTrend, () => ({
     type: 'line',
@@ -272,13 +277,13 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${cfmt(ctx.raw)}` } } },
       scales: {
         x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: months === null ? 16 : 12 } },
-        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: fmtK } },
       },
     },
-  }), [JSON.stringify(trendData), months]);
+  }), [JSON.stringify(trendData), months, cfmt]);
 
   useChart(canvasYoY, () => ({
     type: 'bar',
@@ -293,13 +298,13 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${cfmt(ctx.raw)}` } } },
       scales: {
         x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel } },
-        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: fmtK } },
       },
     },
-  }), [JSON.stringify(yoyData)]);
+  }), [JSON.stringify(yoyData), cfmt]);
 
   useChart(canvasCatTrend, () => ({
     type: 'line',
@@ -319,13 +324,13 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { labels: { color: CHART.gridLabel } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${cfmt(ctx.raw)}` } } },
       scales: {
         x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: 16 } },
-        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) }, min: 0 },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: fmtK }, min: 0 },
       },
     },
-  }), [JSON.stringify(catTrendData)]);
+  }), [JSON.stringify(catTrendData), cfmt]);
 
   useChart(canvasNWHist, () => ({
     type: 'line',
@@ -359,14 +364,14 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { labels: { color: CHART.gridLabel } },
-        tooltip: { callbacks: { label: (ctx) => ` Net Worth: ${fmt(ctx.raw)}` } },
+        tooltip: { callbacks: { label: (ctx) => ` Net Worth: ${cfmt(ctx.raw)}` } },
       },
       scales: {
         x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: 16 } },
-        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v) } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: fmtK } },
       },
     },
-  }), [JSON.stringify(nwHistoryData)]);
+  }), [JSON.stringify(nwHistoryData), cfmt]);
 
   // ── PDF export ─────────────────────────────────────────────────────────────
   const exportPDF = () => {
@@ -451,15 +456,15 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
         <div className="stat-card">
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Monthly Spend</div>
-          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: 'var(--red)' }}>{fmt(avgSpend)}</div>
+          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: 'var(--red)' }}>{cfmt(avgSpend)}</div>
         </div>
         <div className="stat-card">
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Monthly Income</div>
-          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: 'var(--green)' }}>{fmt(avgIncome)}</div>
+          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: 'var(--green)' }}>{cfmt(avgIncome)}</div>
         </div>
         <div className="stat-card">
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Net / Month</div>
-          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: avgSavings >= 0 ? 'var(--green)' : 'var(--red)' }}>{avgSavings >= 0 ? '+' : ''}{fmt(avgSavings)}</div>
+          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: avgSavings >= 0 ? 'var(--green)' : 'var(--red)' }}>{avgSavings >= 0 ? '+' : ''}{cfmt(avgSavings)}</div>
         </div>
       </div>
 
@@ -479,14 +484,14 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
             <div className="stat-card">
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Spent</div>
-              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: 'var(--red)' }}>{fmt(weekTotal)}</div>
+              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: 'var(--red)' }}>{cfmt(weekTotal)}</div>
             </div>
             <div className="stat-card">
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Largest Category</div>
               <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: 'var(--text-secondary)' }}>
                 {weekLargestCat ? `${catIcon(weekLargestCat[0])} ${weekLargestCat[0]}` : '—'}
               </div>
-              {weekLargestCat && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{fmt(weekLargestCat[1])}</div>}
+              {weekLargestCat && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{cfmt(weekLargestCat[1])}</div>}
             </div>
             <div className="stat-card">
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Transactions</div>
@@ -509,8 +514,8 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                       <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{catIcon(cat)} {cat}</span>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(weekSpent)}</span>
-                        {budget && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>MTD {fmt(mtdSpent)} / {fmt(budget)}</span>}
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{cfmt(weekSpent)}</span>
+                        {budget && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>MTD {cfmt(mtdSpent)} / {cfmt(budget)}</span>}
                       </div>
                     </div>
                     {budget && (
@@ -543,7 +548,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                       <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t.date}</td>
                       <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}>{t.description}</td>
                       <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}>{catIcon(t.category)} {t.category}</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--red)', fontWeight: 600 }}>{fmt(Math.abs(t.amount))}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--red)', fontWeight: 600 }}>{cfmt(Math.abs(t.amount))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -625,7 +630,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
                 <div className="stat-card">
                   <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Total Deductible</div>
-                  <div style={{ fontSize:22, fontWeight:700, color:'var(--green)' }}>{fmt(taxData.grandTotal)}</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'var(--green)' }}>{cfmt(taxData.grandTotal)}</div>
                 </div>
                 <div className="stat-card">
                   <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Transactions</div>
@@ -651,12 +656,12 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                     <tr key={cat} style={{ borderBottom:'1px solid var(--bg-raised)' }}>
                       <td style={{ padding:'8px 10px', color:'var(--text-secondary)' }}>{catIcon(cat)} {cat}</td>
                       <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--text-secondary)' }}>{data.txs.length}</td>
-                      <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--green)', fontWeight:600 }}>{fmt(data.total)}</td>
+                      <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--green)', fontWeight:600 }}>{cfmt(data.total)}</td>
                     </tr>
                   ))}
                   <tr style={{ borderTop:'2px solid var(--text-muted)' }}>
                     <td colSpan={2} style={{ padding:'10px 10px', fontWeight:700, color:'var(--text-secondary)' }}>Total</td>
-                    <td style={{ padding:'10px 10px', textAlign:'right', fontWeight:700, color:'var(--green)', fontSize:16 }}>{fmt(taxData.grandTotal)}</td>
+                    <td style={{ padding:'10px 10px', textAlign:'right', fontWeight:700, color:'var(--green)', fontSize:16 }}>{cfmt(taxData.grandTotal)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -679,7 +684,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                         <td style={{ padding:'6px 10px', color:'var(--text-secondary)', whiteSpace:'nowrap' }}>{t.date}</td>
                         <td style={{ padding:'6px 10px', color:'var(--text-secondary)' }}>{t.description}</td>
                         <td style={{ padding:'6px 10px', color:'var(--text-secondary)' }}>{catIcon(t.category)} {t.category}</td>
-                        <td style={{ padding:'6px 10px', textAlign:'right', color:'var(--green)' }}>{fmt(Math.abs(t.amount))}</td>
+                        <td style={{ padding:'6px 10px', textAlign:'right', color:'var(--green)' }}>{cfmt(Math.abs(t.amount))}</td>
                       </tr>
                     ))
                   }

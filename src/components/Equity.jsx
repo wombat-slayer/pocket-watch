@@ -3,9 +3,12 @@ import { fmt, fmtDate, today, uid, CHART } from '../constants.js';
 import Modal from './Modal.jsx';
 import { useMarketData, isCryptoTicker } from '../hooks/useMarketData.js';
 import { useChart } from '../hooks/useChart.js';
+import { useCurrency } from '../hooks/useCurrency.js';
+import { usePrivacy } from '../context/PrivacyContext.jsx';
 
 // --- Holdings Ledger ---------------------------------------------------------
 function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPriceChange, onPriceCommit }) {
+  const cfmt = useCurrency();
   const totalPortfolioValue = grants.reduce((s, g) => {
     const vested = computeGrantVestedShares(g);
     const price  = g.currentPrice || g.grantPrice || 0;
@@ -73,15 +76,15 @@ function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPric
                       title="Click to edit price"
                       onClick={() => onPriceClick(g.id, price)}
                       style={{ cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px dashed var(--text-muted)', paddingBottom: 1 }}>
-                      {fmt(price)}
+                      {cfmt(price)}
                     </span>
                   )}
                 </td>
                 <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--green)', fontWeight: 700 }}>
-                  {fmt(value)}
+                  {cfmt(value)}
                   {g.grantPrice > 0 && (
                     <div style={{ fontSize: 11, color: gainPos ? 'var(--green)' : 'var(--red)', fontWeight: 400, marginTop: 2 }}>
-                      {gainPos ? '+' : ''}{fmt(gain)} gain
+                      {gainPos ? '+' : ''}{cfmt(gain)} gain
                     </div>
                   )}
                 </td>
@@ -103,7 +106,7 @@ function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPric
                 Portfolio Total
               </td>
               <td style={{ padding: '10px 10px', textAlign: 'right' }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)' }}>{fmt(totalPortfolioValue)}</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)' }}>{cfmt(totalPortfolioValue)}</span>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>vested shares at current price</div>
               </td>
               <td />
@@ -129,18 +132,19 @@ function computeGrantVestedShares(grant) {
 
 // --- Vest Account Selector Modal ---------------------------------------------
 function VestAccountModal({ vestLabel, vestValue, investmentAccounts, onConfirm, onSkip, onClose }) {
+  const cfmt = useCurrency();
   const [selectedId, setSelectedId] = useState(investmentAccounts[0]?.id ?? '');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
         Recording <strong style={{ color: 'var(--text-primary)' }}>{vestLabel}</strong> worth{' '}
-        <strong style={{ color: 'var(--green)' }}>{fmt(vestValue)}</strong>
+        <strong style={{ color: 'var(--green)' }}>{cfmt(vestValue)}</strong>
       </div>
       <div className="form-group">
         <label className="form-label">Credit to investment account</label>
         <select value={selectedId} onChange={e => setSelectedId(e.target.value)}>
           {investmentAccounts.map(a => (
-            <option key={a.id} value={a.id}>{a.name} ({fmt(a.balance)})</option>
+            <option key={a.id} value={a.id}>{a.name} ({cfmt(a.balance)})</option>
           ))}
         </select>
       </div>
@@ -275,6 +279,7 @@ function GrantForm({ initial, onSave, onClose }) {
 
 // --- Grant Card --------------------------------------------------------------
 function GrantCard({ grant, onEdit, onDelete }) {
+  const cfmt = useCurrency();
   const [showEvents, setShowEvents] = useState(false);
   const events       = useMemo(() => computeVestEvents(grant), [grant]);
   const vestedEvt    = events.filter(e => e.vested);
@@ -326,7 +331,7 @@ function GrantCard({ grant, onEdit, onDelete }) {
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
           <span>{vestedPct.toFixed(0)}% vested ({vestedShares.toLocaleString()} of {grant.totalShares.toLocaleString()} shares)</span>
-          <span>Vested value: <strong style={{ color: 'var(--green)' }}>{fmt(vestedValue)}</strong></span>
+          <span>Vested value: <strong style={{ color: 'var(--green)' }}>{cfmt(vestedValue)}</strong></span>
         </div>
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${Math.min(100, vestedPct)}%`, background: 'var(--accent-2)' }} />
@@ -334,10 +339,10 @@ function GrantCard({ grant, onEdit, onDelete }) {
       </div>
 
       <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-        <span>Grant @ {fmt(grant.grantPrice)}/sh</span>
-        <span>Current @ {fmt(grant.currentPrice || grant.grantPrice)}/sh</span>
+        <span>Grant @ {cfmt(grant.grantPrice)}/sh</span>
+        <span>Current @ {cfmt(grant.currentPrice || grant.grantPrice)}/sh</span>
         {nextVest && <span style={{ color: 'var(--amber)' }}>Next vest: {fmtDate(nextVest.date)} ({nextVest.shares.toLocaleString()} shares)</span>}
-        <span>Unvested: <strong style={{ color: 'var(--text-secondary)' }}>{fmt(unvestedValue)}</strong></span>
+        <span>Unvested: <strong style={{ color: 'var(--text-secondary)' }}>{cfmt(unvestedValue)}</strong></span>
       </div>
 
       <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}
@@ -364,8 +369,8 @@ function GrantCard({ grant, onEdit, onDelete }) {
                   <td style={{ padding: '3px 8px', textAlign: 'right', color: 'var(--text-primary)' }}>
                     {e.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '3px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmt(e.costBasis)}</td>
-                  <td style={{ padding: '3px 8px', textAlign: 'right', color: e.vested ? 'var(--green)' : 'var(--text-secondary)' }}>{fmt(e.mktValue)}</td>
+                  <td style={{ padding: '3px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{cfmt(e.costBasis)}</td>
+                  <td style={{ padding: '3px 8px', textAlign: 'right', color: e.vested ? 'var(--green)' : 'var(--text-secondary)' }}>{cfmt(e.mktValue)}</td>
                   <td style={{ padding: '3px 8px', textAlign: 'right' }}>
                     {e.vested
                       ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>Vested</span>
@@ -383,6 +388,7 @@ function GrantCard({ grant, onEdit, onDelete }) {
 
 // --- Portfolio Allocation Chart ----------------------------------------------
 function PortfolioChart({ grants, quotes }) {
+  const cfmt = useCurrency();
   const canvasRef = useRef(null);
   const COLORS = ['#7fa88b','#8b5cf6','#60a5fa','#f59e0b','#c2735a','#4ade80','#a78bfa','#fb923c'];
 
@@ -408,17 +414,19 @@ function PortfolioChart({ grants, quotes }) {
         responsive: true, maintainAspectRatio: false, cutout: '65%',
         plugins: {
           legend: { labels: { color: CHART.gridLabel, font: { size: 11 } } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${cfmt(ctx.raw)}` } },
         },
       },
     };
-  }, [JSON.stringify(grants.map(g => g.id + (g.currentPrice ?? 0))), JSON.stringify(quotes)]); // eslint-disable-line
+  }, [JSON.stringify(grants.map(g => g.id + (g.currentPrice ?? 0))), JSON.stringify(quotes), cfmt]); // eslint-disable-line
 
   return <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />;
 }
 
 // --- Main Equity Component ---------------------------------------------------
 export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVestToAccount, onUpdateGrantPrice, investmentAccounts, finnhubKey, embedded = false }) {
+  const cfmt = useCurrency();
+  const privacy = usePrivacy();
   const [expandedGrant, setExpandedGrant] = useState(null);
   const [editingPrice,  setEditingPrice]  = useState(null);
   const [priceInput,    setPriceInput]    = useState('');
@@ -471,7 +479,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
     const price = grant.currentPrice || grant.grantPrice || 0;
     const value = event.shares * price;
     if (!window.confirm(
-      `Record ${event.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares vesting at $${price.toFixed(2)}/share = ${fmt(value)}?\n\nThis creates an income transaction.`
+      `Record ${event.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares vesting at ${privacy ? '••••' : '$' + price.toFixed(2)}/share = ${cfmt(value)}?\n\nThis creates an income transaction.`
     )) return;
     const tx = {
       id:          uid(),
@@ -550,12 +558,12 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
           </div>
           <div className="stat-card">
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Vested Value</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--green)' }}>{fmt(totalVestedValue)}</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--green)' }}>{cfmt(totalVestedValue)}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>at current price</div>
           </div>
           <div className="stat-card">
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Unvested Value</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--accent-2)' }}>{fmt(totalUnvestedValue)}</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--accent-2)' }}>{cfmt(totalUnvestedValue)}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>at current price</div>
           </div>
         </div>
@@ -580,7 +588,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                   <div key={g.id} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12 }}>
                     <div style={{ width:10, height:10, borderRadius:3, background: COLORS[i % COLORS.length], flexShrink:0 }} />
                     <span style={{ color:'var(--text-secondary)', flex:1 }}>{g.ticker || g.name}</span>
-                    <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{fmt(value)}</span>
+                    <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{cfmt(value)}</span>
                   </div>
                 );
               })}
@@ -685,13 +693,13 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                         ) : (
                           <span title={liveQuote ? 'Live price — click to override' : 'Click to edit price'}
                             style={{ cursor: 'pointer', color: liveQuote ? 'var(--green)' : 'var(--text-primary)', borderBottom: '1px dashed var(--text-muted)', paddingBottom: 1 }}>
-                            {fmt(price)}
+                            {cfmt(price)}
                             {liveQuote && fmtChg(liveQuote.changePct)}
                           </span>
                         )}
                       </td>
                       <td style={tdStyle('right')}>
-                        <span style={{ color: 'var(--green)', fontWeight: 700 }}>{fmt(totalValue)}</span>
+                        <span style={{ color: 'var(--green)', fontWeight: 700 }}>{cfmt(totalValue)}</span>
                       </td>
                       <td style={tdStyle('left')}>
                         {nextVest
@@ -754,7 +762,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                                           : <span style={{ color: 'var(--amber)' }}>Upcoming</span>}
                                       </td>
                                       <td style={{ padding: '5px 8px', textAlign: 'right', color: e.vested ? 'var(--green)' : 'var(--text-secondary)' }}>
-                                        {fmt(evtValue)}
+                                        {cfmt(evtValue)}
                                       </td>
                                       <td style={{ padding: '5px 8px', textAlign: 'right' }}>
                                         {!e.vested && onAddTx && (
@@ -786,15 +794,15 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                   Portfolio Total
                 </td>
                 <td style={{ padding: '10px 10px', textAlign: 'right' }}>
-                  <span style={{ color: 'var(--green)', fontWeight: 700 }}>{fmt(totalVestedValue)}</span>
+                  <span style={{ color: 'var(--green)', fontWeight: 700 }}>{cfmt(totalVestedValue)}</span>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>vested</div>
                 </td>
                 <td style={{ padding: '10px 10px', textAlign: 'right' }}>
-                  <span style={{ color: 'var(--accent-2)', fontWeight: 700 }}>{fmt(totalUnvestedValue)}</span>
+                  <span style={{ color: 'var(--accent-2)', fontWeight: 700 }}>{cfmt(totalUnvestedValue)}</span>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>unvested</div>
                 </td>
                 <td colSpan={2} style={{ padding: '10px 10px', textAlign: 'right' }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(totalVestedValue + totalUnvestedValue)}</span>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{cfmt(totalVestedValue + totalUnvestedValue)}</span>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>portfolio total</div>
                 </td>
                 <td colSpan={2} />

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { extractPdfText } from '../utils/extractPdfText.js';
 import { parseRSUStatement } from '../utils/parseRSUStatement.js';
 import { fmt, fmtDate } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 
 function Field({ label, value, onChange, type = 'number', prefix, hint }) {
   return (
@@ -25,6 +26,7 @@ function Field({ label, value, onChange, type = 'number', prefix, hint }) {
 }
 
 export default function RSUImportModal({ onConfirm, onClose }) {
+  const cfmt = useCurrency();
   const [step,    setStep]    = useState('upload'); // 'upload' | 'review'
   const [parsed,  setParsed]  = useState(null);
   const [draft,   setDraft]   = useState(null);
@@ -187,7 +189,7 @@ export default function RSUImportModal({ onConfirm, onClose }) {
             <div style={{ background:'var(--bg-page)', border:'1px solid var(--bg-raised)', borderRadius:10, padding:'14px 16px', marginBottom:20 }}>
               <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:6 }}>Will apply to account:</div>
               <div style={{ fontSize:20, fontWeight:700, color:'var(--green)' }}>
-                {draft.unvestedValue != null ? fmt(draft.unvestedValue) : '—'} unvested RSU value
+                {draft.unvestedValue != null ? cfmt(draft.unvestedValue) : '—'} unvested RSU value
               </div>
               {draft.ticker && <div style={{ fontSize:12, color:'var(--text-secondary)', marginTop:4 }}>Ticker: {draft.ticker}</div>}
               {draft.nextVestDate && (

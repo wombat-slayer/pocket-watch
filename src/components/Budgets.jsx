@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { CATEGORIES, getAllCategories, catColor, catIcon, fmt, thisMonth, nextMonth, prevMonth, uid, parseAmount, suggestBudgetsFromActuals } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 import Modal from './Modal.jsx';
 
 function BudgetForm({ initial, defaultMonth, onSave, onClose, userCategories }) {
@@ -45,6 +46,7 @@ function BudgetForm({ initial, defaultMonth, onSave, onClose, userCategories }) 
 }
 
 export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete, userCategories, budgetTemplates = [], onSaveTemplate, onLoadTemplate, onBudgetAlert, onToggleTemplateAutoApply, onCloseMonth }) {
+  const cfmt = useCurrency();
   const [month,   setMonth]   = useState(thisMonth());
   const [showAdd, setShowAdd] = useState(false);
   const [editB,   setEditB]   = useState(null);
@@ -339,15 +341,15 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
           <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:20 }}>
             <div className="stat-card">
               <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Budgeted</div>
-              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:'var(--text-primary)' }}>{fmt(totalBudget)}</div>
+              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:'var(--text-primary)' }}>{cfmt(totalBudget)}</div>
             </div>
             <div className="stat-card">
               <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Spent</div>
-              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalSpend>totalBudget?'var(--red)':'var(--text-primary)' }}>{fmt(totalSpend)}</div>
+              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalSpend>totalBudget?'var(--red)':'var(--text-primary)' }}>{cfmt(totalSpend)}</div>
             </div>
             <div className="stat-card">
               <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Remaining</div>
-              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalBudget-totalSpend>=0?'var(--green)':'var(--red)' }}>{fmt(totalBudget-totalSpend)}</div>
+              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalBudget-totalSpend>=0?'var(--green)':'var(--red)' }}>{cfmt(totalBudget-totalSpend)}</div>
             </div>
           </div>
 
@@ -405,7 +407,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         {b.rollover && <div style={{ fontSize:11,color:'var(--text-secondary)' }}>Rollover enabled</div>}
                         {avg3 !== null && (
                           <div style={{ fontSize:11,color:'var(--text-secondary)',marginTop:2 }}>
-                            3-mo avg: <span style={{ color:'var(--text-secondary)' }}>{fmt(avg3)}/mo</span>
+                            3-mo avg: <span style={{ color:'var(--text-secondary)' }}>{cfmt(avg3)}/mo</span>
                             {trendPct !== null && (
                               <span style={{ marginLeft:8, color: Math.abs(trendPct) < 5 ? 'var(--text-secondary)' : trendPct > 0 ? 'var(--red)' : 'var(--green)', fontWeight:600 }}>
                                 {trendPct > 0 ? '▲' : '▼'} {Math.abs(trendPct).toFixed(0)}% vs avg
@@ -415,14 +417,14 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         )}
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <div style={{ fontSize:15,fontWeight:700,color:over?'var(--red)':'var(--text-primary)' }}>{fmt(spent)}</div>
-                        <div style={{ fontSize:12,color:'var(--text-secondary)' }}>of {fmt(effLimit)}</div>
+                        <div style={{ fontSize:15,fontWeight:700,color:over?'var(--red)':'var(--text-primary)' }}>{cfmt(spent)}</div>
+                        <div style={{ fontSize:12,color:'var(--text-secondary)' }}>of {cfmt(effLimit)}</div>
                         {avg3 !== null && b.amount > 0 && avg3 > b.amount * 1.1 && (
                           <div style={{ marginTop:4 }}>
                             <div style={{ fontSize:10,color:'var(--amber)',marginBottom:3 }} title="Your 3-month average spend exceeds this budget">⚠ avg &gt; budget</div>
                             <button className="btn btn-ghost btn-sm"
                               style={{ fontSize:10,color:'var(--green)',padding:'2px 6px',border:'1px solid #7fa88b44' }}
-                              title={`Set budget to match 3-month average of ${fmt(avg3)}`}
+                              title={`Set budget to match 3-month average of ${cfmt(avg3)}`}
                               onClick={() => onEdit({ ...b, amount: Math.round(avg3) })}>
                               Suggest ${Math.round(avg3)}
                             </button>
@@ -439,10 +441,10 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                     <div style={{ display:'flex',justifyContent:'space-between',marginTop:6,fontSize:12,color:'var(--text-muted)' }}>
                       <span>
                         {Math.round(pct)}% used
-                        {rolloverAmt > 0 && <span style={{ color:'var(--green)',marginLeft:6 }}>incl. {fmt(rolloverAmt)} rollover</span>}
+                        {rolloverAmt > 0 && <span style={{ color:'var(--green)',marginLeft:6 }}>incl. {cfmt(rolloverAmt)} rollover</span>}
                       </span>
                       <span style={{ color:over?'var(--red)':'var(--green)' }}>
-                        {over ? `${fmt(spent-effLimit)} over budget` : `${fmt(effLimit-spent)} remaining`}
+                        {over ? `${cfmt(spent-effLimit)} over budget` : `${cfmt(effLimit-spent)} remaining`}
                       </span>
                     </div>
                   </div>
@@ -482,8 +484,8 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                           <td key={m} style={{ textAlign:'right', padding:'10px 12px', background:color }}>
                             {limit > 0 ? (
                               <>
-                                <div style={{ fontSize:13, fontWeight:600, color: spent > limit ? 'var(--red)' : 'var(--text-primary)' }}>{fmt(spent)}</div>
-                                <div style={{ fontSize:10, color:'var(--text-muted)' }}>of {fmt(limit)}</div>
+                                <div style={{ fontSize:13, fontWeight:600, color: spent > limit ? 'var(--red)' : 'var(--text-primary)' }}>{cfmt(spent)}</div>
+                                <div style={{ fontSize:10, color:'var(--text-muted)' }}>of {cfmt(limit)}</div>
                               </>
                             ) : (
                               <span style={{ color:'var(--text-muted)', fontSize:12 }}>-</span>
@@ -530,8 +532,8 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                             <td key={cat} style={{ textAlign:'right', padding:'10px 10px', whiteSpace:'nowrap' }}>
                               {spent > 0 ? (
                                 <span style={{ color: over ? 'var(--red)' : 'var(--text-primary)', fontWeight: over ? 700 : 400 }}>
-                                  {fmt(spent)}
-                                  {budget > 0 && <span style={{ color:'var(--text-secondary)', fontSize:11, marginLeft:4 }}>/ {fmt(budget)}</span>}
+                                  {cfmt(spent)}
+                                  {budget > 0 && <span style={{ color:'var(--text-secondary)', fontSize:11, marginLeft:4 }}>/ {cfmt(budget)}</span>}
                                 </span>
                               ) : <span style={{ color:'var(--text-muted)', fontSize:12 }}>-</span>}
                             </td>

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { fmt, uid, sanitizeText, safeNum } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 import Modal from './Modal.jsx';
 import DatePicker from './DatePicker.jsx';
 import MortgageCalculator from './MortgageCalculator.jsx';
 
 function GoalForm({ goal, accounts, onSave, onClose }) {
+  const cfmt = useCurrency();
   const [form, setForm] = useState(goal ?? { name:'', emoji:'🎯', target:1000, current:0, targetDate:'', color:'#3b82f6', linkedAccountId:null });
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#c2735a','#06b6d4','#ec4899','#84cc16'];
@@ -64,6 +66,7 @@ function GoalForm({ goal, accounts, onSave, onClose }) {
 }
 
 export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDeposit, embedded = false }) {
+  const cfmt = useCurrency();
   const [showAdd,          setShowAdd]          = useState(false);
   const [editGoal,         setEditGoal]         = useState(null);
   const [depositGoal,      setDepositGoal]      = useState(null);
@@ -90,7 +93,7 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
     const amt = safeNum(depositAmt, 0);
     if (amt <= 0) return;
     if (sign < 0 && amt > goal.current) {
-      if (!confirm(`Withdrawing ${fmt(amt)} would reduce this goal below $0. The balance will be set to $0. Continue?`)) return;
+      if (!confirm(`Withdrawing ${cfmt(amt)} would reduce this goal below $0. The balance will be set to $0. Continue?`)) return;
     }
     onDeposit(goal.id, sign * amt);
     setDepositGoal(null);
@@ -112,10 +115,10 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
           <div style={{ flex:1 }}>
             <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
               <span style={{ fontSize:13,color:'var(--text-secondary)' }}>Overall progress across {goals.length} goal{goals.length!==1?'s':''}</span>
-              <span style={{ fontSize:13,fontWeight:600,color:'var(--text-primary)' }}>{fmt(totalSaved)} / {fmt(totalTarget)}</span>
+              <span style={{ fontSize:13,fontWeight:600,color:'var(--text-primary)' }}>{cfmt(totalSaved)} / {cfmt(totalTarget)}</span>
             </div>
             <div className="goal-progress"><div className="goal-fill" style={{ width:`${totalPct}%`,background:'linear-gradient(90deg,var(--accent),var(--accent-2))' }} /></div>
-            <div style={{ fontSize:12,color:'var(--text-secondary)',marginTop:4 }}>{totalPct.toFixed(0)}% funded · {fmt(totalTarget-totalSaved)} remaining</div>
+            <div style={{ fontSize:12,color:'var(--text-secondary)',marginTop:4 }}>{totalPct.toFixed(0)}% funded · {cfmt(totalTarget-totalSaved)} remaining</div>
           </div>
         </div>
       )}
@@ -165,8 +168,8 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
                   </div>
                   <div className="goal-progress"><div className="goal-fill" style={{ width:`${pct}%`,background:g.color }} /></div>
                   <div style={{ display:'flex',justifyContent:'space-between',fontSize:13 }}>
-                    <span style={{ color:'var(--text-secondary)' }}>{fmt(current)} saved</span>
-                    <span style={{ color:'var(--text-secondary)' }}>{pct.toFixed(0)}% of {fmt(g.target)}</span>
+                    <span style={{ color:'var(--text-secondary)' }}>{cfmt(current)} saved</span>
+                    <span style={{ color:'var(--text-secondary)' }}>{pct.toFixed(0)}% of {cfmt(g.target)}</span>
                   </div>
                   {!linked && (
                     <div style={{ marginTop:12,display:'flex',gap:6 }}>

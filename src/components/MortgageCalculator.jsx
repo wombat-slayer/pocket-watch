@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { fmt, computeMortgagePI } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 
 export default function MortgageCalculator({ goal }) {
+  const cfmt = useCurrency();
   const defaultDown = 20;
   // Pre-populate home price: if goal target looks like a down payment, back-compute
   const initPrice = goal?.target ? Math.round(goal.target / (defaultDown / 100) / 10000) * 10000 : 400000;
@@ -63,10 +65,10 @@ export default function MortgageCalculator({ goal }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 14 }}>
         {[
-          { label: 'Principal & Interest', value: fmt(pi),           color: 'var(--red)' },
-          { label: 'Total Monthly',        value: fmt(totalMonthly), color: 'var(--text-primary)' },
-          { label: 'Down Payment',         value: fmt(downAmount),   color: 'var(--text-secondary)' },
-          { label: 'Cash to Close (~3%)',  value: fmt(cashAtClose),  color: 'var(--text-secondary)' },
+          { label: 'Principal & Interest', value: cfmt(pi),           color: 'var(--red)' },
+          { label: 'Total Monthly',        value: cfmt(totalMonthly), color: 'var(--text-primary)' },
+          { label: 'Down Payment',         value: cfmt(downAmount),   color: 'var(--text-secondary)' },
+          { label: 'Cash to Close (~3%)',  value: cfmt(cashAtClose),  color: 'var(--text-secondary)' },
         ].map(r => (
           <div key={r.label} style={{ background: 'var(--bg-card)', borderRadius: 6, padding: '8px 12px' }}>
             <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{r.label}</div>
@@ -78,8 +80,8 @@ export default function MortgageCalculator({ goal }) {
       {goal && (
         <div style={{ fontSize: 12, color: stillNeeded > 0 ? 'var(--text-secondary)' : 'var(--green)', marginBottom: 12, background: 'var(--bg-raised)', borderRadius: 6, padding: '6px 10px' }}>
           {stillNeeded > 0
-            ? `Goal progress: ${fmt(currentSaved)} saved · ${fmt(stillNeeded)} still needed for cash-to-close`
-            : `✓ Goal covers cash-to-close (${fmt(currentSaved)} saved)`
+            ? `Goal progress: ${cfmt(currentSaved)} saved · ${cfmt(stillNeeded)} still needed for cash-to-close`
+            : `✓ Goal covers cash-to-close (${cfmt(currentSaved)} saved)`
           }
         </div>
       )}
@@ -99,9 +101,9 @@ export default function MortgageCalculator({ goal }) {
               <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: s.label === 'Current' ? 600 : 400 }}>{s.label}</td>
               <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.rate.toFixed(1)}%</td>
               <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.downPct}%</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--red)' }}>{fmt(s.mpi)}</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 600 }}>{fmt(s.total)}</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmt(s.cashAtClose)}</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--red)' }}>{cfmt(s.mpi)}</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 600 }}>{cfmt(s.total)}</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{cfmt(s.cashAtClose)}</td>
             </tr>
           ))}
         </tbody>

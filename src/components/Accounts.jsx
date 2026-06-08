@@ -1,12 +1,17 @@
 import { useRef, useState, useMemo } from 'react';
 import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent, sanitizeText, safeNum, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
+import { useCurrency } from '../hooks/useCurrency.js';
+import { usePrivacy } from '../context/PrivacyContext.jsx';
 import Modal from './Modal.jsx';
 import StatementImport from './StatementImport.jsx';
 import RSUImportModal from './RSUImportModal.jsx';
 
 // ─── Debt Payoff Calculator ──────────────────────────────────────────────────
 function DebtPayoffPanel({ debts }) {
+  const cfmt = useCurrency();
+  const privacy = usePrivacy();
+  const fmtK = v => privacy ? '••••' : '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v);
   const canvasPayoff = useRef(null);
   const [extra,  setExtra]  = useState(200);
   const [method, setMethod] = useState('avalanche'); // 'avalanche' | 'snowball'
@@ -122,13 +127,13 @@ function DebtPayoffPanel({ debts }) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Remaining: ${fmt(ctx.raw)}` } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Remaining: ${cfmt(ctx.raw)}` } } },
       scales: {
         x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: 12 } },
-        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) }, min: 0 },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: fmtK }, min: 0 },
       },
     },
-  }), [JSON.stringify(chartData)]);
+  }), [JSON.stringify(chartData), cfmt]);
 
   const yrs = Math.floor(simulation.payoffMonths / 12);
   const mos = simulation.payoffMonths % 12;
@@ -178,7 +183,7 @@ function DebtPayoffPanel({ debts }) {
             <div key={d.id} style={{ background:'var(--bg-card)', borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.name}</div>
-                <div style={{ fontSize:11, color:'var(--red)' }}>{fmt(d.balance)}</div>
+                <div style={{ fontSize:11, color:'var(--red)' }}>{cfmt(d.balance)}</div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:4 }}>
@@ -203,8 +208,8 @@ function DebtPayoffPanel({ debts }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
         <div style={{ background:'var(--bg-card)', borderRadius:8, padding:'12px 14px' }}>
           <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:4 }}>Monthly budget</div>
-          <div style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{fmt(budget)}</div>
-          <div style={{ fontSize:10, color:'var(--text-muted)' }}>Minimums {fmt(totalMin)} + extra {fmt(parseFloat(extra)||0)}</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{cfmt(budget)}</div>
+          <div style={{ fontSize:10, color:'var(--text-muted)' }}>Minimums {cfmt(totalMin)} + extra {cfmt(parseFloat(extra)||0)}</div>
         </div>
         <div style={{ background:'var(--bg-card)', borderRadius:8, padding:'12px 14px' }}>
           <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:4 }}>Payoff time</div>
@@ -213,8 +218,8 @@ function DebtPayoffPanel({ debts }) {
         </div>
         <div style={{ background:'var(--bg-card)', borderRadius:8, padding:'12px 14px' }}>
           <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:4 }}>Est. total interest</div>
-          <div style={{ fontSize:16, fontWeight:700, color:'var(--red)' }}>{fmt(simulation.totalInterest)}</div>
-          <div style={{ fontSize:10, color:'var(--text-muted)' }}>On {fmt(totalDebt)} of debt</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'var(--red)' }}>{cfmt(simulation.totalInterest)}</div>
+          <div style={{ fontSize:10, color:'var(--text-muted)' }}>On {cfmt(totalDebt)} of debt</div>
         </div>
       </div>
 
@@ -305,6 +310,7 @@ function AccountForm({ initial, onSave, onClose }) {
 
 // ─── Holdings form (investment accounts) ─────────────────────────────────────
 function HoldingsPanel({ account, onEdit }) {
+  const cfmt = useCurrency();
   const holdings = account.holdings ?? [];
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ticker:'', shares:'', costBasis:'', currentPrice:'' });
@@ -339,7 +345,7 @@ function HoldingsPanel({ account, onEdit }) {
           <span style={{ fontWeight:600, fontSize:13, color:'var(--text-primary)' }}>📈 Holdings</span>
           {holdings.length > 0 && (
             <span style={{ marginLeft:10, fontSize:12, color: totalGainLoss >= 0 ? 'var(--green)' : 'var(--red)', fontWeight:600 }}>
-              {totalGainLoss >= 0 ? '+' : ''}{fmt(totalGainLoss)} ({totalCost > 0 ? ((totalGainLoss/totalCost)*100).toFixed(1) : '0'}%)
+              {totalGainLoss >= 0 ? '+' : ''}{cfmt(totalGainLoss)} ({totalCost > 0 ? ((totalGainLoss/totalCost)*100).toFixed(1) : '0'}%)
             </span>
           )}
         </div>
@@ -371,7 +377,7 @@ function HoldingsPanel({ account, onEdit }) {
                 <tr key={h.id}>
                   <td style={{ padding:'6px 0', color:'var(--text-primary)', fontWeight:700 }}>{h.ticker}</td>
                   <td style={{ padding:'6px 0', color:'var(--text-secondary)' }}>{h.shares}</td>
-                  <td style={{ padding:'6px 0', color:'var(--text-secondary)' }}>{fmt(h.costBasis)}</td>
+                  <td style={{ padding:'6px 0', color:'var(--text-secondary)' }}>{cfmt(h.costBasis)}</td>
                   <td style={{ padding:'6px 0' }}>
                     <input
                       type="number" step="0.01" value={h.currentPrice}
@@ -379,9 +385,9 @@ function HoldingsPanel({ account, onEdit }) {
                       style={{ width:72, padding:'2px 6px', background:'var(--bg-card)', border:'1px solid var(--border-default)', borderRadius:5, color:'var(--text-primary)', fontSize:12 }}
                     />
                   </td>
-                  <td style={{ padding:'6px 0', color:'var(--text-primary)', fontWeight:600 }}>{fmt(val)}</td>
+                  <td style={{ padding:'6px 0', color:'var(--text-primary)', fontWeight:600 }}>{cfmt(val)}</td>
                   <td style={{ padding:'6px 0', fontWeight:600, color: gl >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                    {gl >= 0 ? '+' : ''}{fmt(gl)}
+                    {gl >= 0 ? '+' : ''}{cfmt(gl)}
                   </td>
                   <td style={{ padding:'6px 0', textAlign:'center' }}>
                     <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)', fontSize:11 }} onClick={() => removeHolding(h.id)}>🗑</button>
@@ -392,9 +398,9 @@ function HoldingsPanel({ account, onEdit }) {
             {holdings.length > 1 && (
               <tr style={{ borderTop:'1px solid var(--bg-raised)' }}>
                 <td colSpan={4} style={{ padding:'6px 0', color:'var(--text-secondary)', fontSize:11 }}>Total</td>
-                <td style={{ padding:'6px 0', fontWeight:700, color:'var(--text-primary)' }}>{fmt(totalValue)}</td>
+                <td style={{ padding:'6px 0', fontWeight:700, color:'var(--text-primary)' }}>{cfmt(totalValue)}</td>
                 <td style={{ padding:'6px 0', fontWeight:700, color: totalGainLoss >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  {totalGainLoss >= 0 ? '+' : ''}{fmt(totalGainLoss)}
+                  {totalGainLoss >= 0 ? '+' : ''}{cfmt(totalGainLoss)}
                 </td>
                 <td />
               </tr>
@@ -436,6 +442,9 @@ function HoldingsPanel({ account, onEdit }) {
 }
 
 export default function Accounts({ accounts, transactions, netWorthHistory, recurrences, onAdd, onEdit, onDelete, onToggleCleared, onReconcile, onUpdateStatementDate, onImportStatement }) {
+  const cfmt = useCurrency();
+  const privacy = usePrivacy();
+  const fmtK = v => privacy ? '••••' : '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v);
   const canvasNW       = useRef(null);
   const canvasForecast = useRef(null);
   const [showAdd,         setShowAdd]         = useState(false);
@@ -507,13 +516,13 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>` Net Worth: ${fmt(ctx.raw)}`}} },
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>` Net Worth: ${cfmt(ctx.raw)}`}} },
       scales:{
         x:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,maxTicksLimit:10} },
-        y:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v)} },
+        y:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,callback:fmtK} },
       },
     },
-  }), [JSON.stringify(historyData)]);
+  }), [JSON.stringify(historyData), cfmt]);
 
   useChart(canvasForecast, () => ({
     type: 'line',
@@ -531,13 +540,13 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>` Forecast: ${fmt(ctx.raw)}`}} },
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>` Forecast: ${cfmt(ctx.raw)}`}} },
       scales:{
         x:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel} },
-        y:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v)} },
+        y:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,callback:fmtK} },
       },
     },
-  }), [JSON.stringify(forecastData)]);
+  }), [JSON.stringify(forecastData), cfmt]);
 
   return (
     <div className="fade-in" style={{ padding:'24px 28px' }}>
@@ -559,17 +568,17 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24 }}>
         <div className="stat-card" style={{ borderColor:netWorth>=0?'#14532d44':'#7f1d1d44' }}>
           <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Net Worth</div>
-          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:netWorth>=0?'var(--green)':'var(--red)' }}>{fmt(netWorth)}</div>
+          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:netWorth>=0?'var(--green)':'var(--red)' }}>{cfmt(netWorth)}</div>
           <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:4 }}>Assets minus debts</div>
         </div>
         <div className="stat-card">
           <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Assets</div>
-          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'var(--green)' }}>{fmt(totAssets)}</div>
+          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'var(--green)' }}>{cfmt(totAssets)}</div>
           <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:4 }}>{assets.length} accounts</div>
         </div>
         <div className="stat-card">
           <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Debts</div>
-          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'var(--red)' }}>{fmt(totDebts)}</div>
+          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'var(--red)' }}>{cfmt(totDebts)}</div>
           <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:4 }}>{debts.length} accounts</div>
         </div>
       </div>
@@ -595,10 +604,10 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
           <div style={{ fontWeight:600,fontSize:14,marginBottom:4 }}>📈 12-Month Net Worth Forecast</div>
           <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:4 }}>
             Based on {activeRecs.length} active recurring rule{activeRecs.length!==1?'s':''} ·
-            Estimated monthly net flow: <span style={{ color: monthlyNetFlow>=0?'var(--green)':'var(--red)',fontWeight:600 }}>{monthlyNetFlow>=0?'+':''}{fmt(monthlyNetFlow)}/mo</span>
+            Estimated monthly net flow: <span style={{ color: monthlyNetFlow>=0?'var(--green)':'var(--red)',fontWeight:600 }}>{monthlyNetFlow>=0?'+':''}{cfmt(monthlyNetFlow)}/mo</span>
           </div>
           <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:12 }}>
-            Projected 12 months from now: <strong style={{ color: forecastData[12]?.value >= netWorth?'var(--green)':'var(--red)' }}>{fmt(forecastData[12]?.value ?? netWorth)}</strong>
+            Projected 12 months from now: <strong style={{ color: forecastData[12]?.value >= netWorth?'var(--green)':'var(--red)' }}>{cfmt(forecastData[12]?.value ?? netWorth)}</strong>
           </div>
           <div className="chart-container" style={{ height:180 }}><canvas ref={canvasForecast} /></div>
         </div>
@@ -624,10 +633,10 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                     <span style={{ fontSize:12, color:'var(--text-secondary)', marginLeft:8 }}>{acctLabel(acct.type)}</span>
                   </div>
                   <div style={{ textAlign:'right', fontSize:12, color:'var(--text-secondary)' }}>
-                    <div>Stored: <strong style={{ color:'var(--text-primary)' }}>{fmt(acct.balance)}</strong></div>
-                    <div>Computed: <strong style={{ color:'var(--text-primary)' }}>{fmt(computed)}</strong></div>
+                    <div>Stored: <strong style={{ color:'var(--text-primary)' }}>{cfmt(acct.balance)}</strong></div>
+                    <div>Computed: <strong style={{ color:'var(--text-primary)' }}>{cfmt(computed)}</strong></div>
                     {hasDiscrepancy
-                      ? <div style={{ color:'var(--amber)', fontWeight:600 }}>⚠ Discrepancy: {fmt(discrepancy)}</div>
+                      ? <div style={{ color:'var(--amber)', fontWeight:600 }}>⚠ Discrepancy: {cfmt(discrepancy)}</div>
                       : <div style={{ color:'var(--green)', fontWeight:600 }}>✅ Balanced</div>
                     }
                   </div>
@@ -640,7 +649,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                         <input type="checkbox" checked={t.cleared} onChange={()=>{ if(onToggleCleared) onToggleCleared(t.id); }} />
                         <span style={{ fontSize:12, color:'var(--text-secondary)', width:80, flexShrink:0 }}>{t.date}</span>
                         <span style={{ fontSize:12, color:'var(--text-primary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.description}</span>
-                        <span style={{ fontSize:12, fontWeight:600, color:t.amount>=0?'var(--green)':'var(--red)', flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
+                        <span style={{ fontSize:12, fontWeight:600, color:t.amount>=0?'var(--green)':'var(--red)', flexShrink:0 }}>{t.amount>=0?'+':''}{cfmt(t.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -691,7 +700,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             )}
                           </div>
                           <div style={{ textAlign:'right', marginRight:8 }}>
-                            <div style={{ fontSize:17,fontWeight:700,color:'var(--text-primary)' }}>{fmt(a.balance)}</div>
+                            <div style={{ fontSize:17,fontWeight:700,color:'var(--text-primary)' }}>{cfmt(a.balance)}</div>
                             {(() => {
                               const computed = computeBalance(a.id, transactions, a.type);
                               if (computed === null) return null;
@@ -699,7 +708,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                               if (diff < 0.01) return null;
                               return (
                                 <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'var(--amber)', marginTop:3, cursor:'help' }}>
-                                  ⚠ tx total: {fmt(computed)}
+                                  ⚠ tx total: {cfmt(computed)}
                                 </div>
                               );
                             })()}
@@ -737,15 +746,15 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                                       <input type="checkbox" checked={clearedIds.has(t.id)} onChange={()=>toggleClearedLocal(t.id)} />
                                       <span style={{ fontSize:12,color:'var(--text-secondary)',width:80,flexShrink:0 }}>{t.date}</span>
                                       <span style={{ fontSize:12,color:'var(--text-primary)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
-                                      <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'var(--green)':'var(--red)',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
+                                      <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'var(--green)':'var(--red)',flexShrink:0 }}>{t.amount>=0?'+':''}{cfmt(t.amount)}</span>
                                     </div>
                                   ))
                               }
                             </div>
                             <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:8,display:'flex',gap:20 }}>
-                              <span>Cleared sum: <strong style={{ color:'var(--text-primary)' }}>{fmt(clearedSum)}</strong></span>
+                              <span>Cleared sum: <strong style={{ color:'var(--text-primary)' }}>{cfmt(clearedSum)}</strong></span>
                               {stmtBalance !== '' && (
-                                <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'var(--green)':'var(--amber)' }}>{fmt(discrepancy)}</strong></span>
+                                <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'var(--green)':'var(--amber)' }}>{cfmt(discrepancy)}</strong></span>
                               )}
                             </div>
                             <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
@@ -795,7 +804,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                           )}
                         </div>
                         <div style={{ textAlign:'right', marginRight:8 }}>
-                          <div style={{ fontSize:17,fontWeight:700,color:'var(--red)' }}>{fmt(a.balance)}</div>
+                          <div style={{ fontSize:17,fontWeight:700,color:'var(--red)' }}>{cfmt(a.balance)}</div>
                           {(() => {
                             if (a.lastPlaidSync) {
                               const d = new Date(a.lastPlaidSync);
@@ -816,7 +825,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             if (diff < 0.01) return null;
                             return (
                               <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'var(--amber)', marginTop:3, cursor:'help' }}>
-                                ⚠ tx total: {fmt(computed)}
+                                ⚠ tx total: {cfmt(computed)}
                               </div>
                             );
                           })()}
@@ -846,15 +855,15 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                                     <input type="checkbox" checked={clearedIds.has(t.id)} onChange={()=>toggleClearedLocal(t.id)} />
                                     <span style={{ fontSize:12,color:'var(--text-secondary)',width:80,flexShrink:0 }}>{t.date}</span>
                                     <span style={{ fontSize:12,color:'var(--text-primary)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
-                                    <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'var(--green)':'var(--red)',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
+                                    <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'var(--green)':'var(--red)',flexShrink:0 }}>{t.amount>=0?'+':''}{cfmt(t.amount)}</span>
                                   </div>
                                 ))
                             }
                           </div>
                           <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:8,display:'flex',gap:20 }}>
-                            <span>Cleared sum: <strong style={{ color:'var(--text-primary)' }}>{fmt(clearedSum)}</strong></span>
+                            <span>Cleared sum: <strong style={{ color:'var(--text-primary)' }}>{cfmt(clearedSum)}</strong></span>
                             {stmtBalance !== '' && (
-                              <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'var(--green)':'var(--amber)' }}>{fmt(discrepancy)}</strong></span>
+                              <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'var(--green)':'var(--amber)' }}>{cfmt(discrepancy)}</strong></span>
                             )}
                           </div>
                           <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { CATEGORIES, getAllCategories, today, uid, parseAmount } from '../constants.js';
+import { useCurrency } from '../hooks/useCurrency.js';
 import { invoke } from '@tauri-apps/api/core';
 
 export default function TransactionForm({ initial, accounts, onSave, onClose, userCategories, existingTransactions, dataPath }) {
+  const cfmt = useCurrency();
   const [form, setForm] = useState(() => {
     const base = initial ?? {
       date: today(), description: '', amount: '', category: 'Food & Dining',
@@ -200,7 +202,7 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
             <span style={{ fontSize:13, fontWeight:600, color:'var(--text-secondary)' }}>Split Categories</span>
             <span style={{ fontSize:12, color: Math.abs(remaining) <= 0.01 ? 'var(--green)' : 'var(--red)' }}>
-              Remaining: ${remaining.toFixed(2)}
+              Remaining: {cfmt(remaining)}
             </span>
           </div>
           {splits.map((sp, i) => (
@@ -222,7 +224,7 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
           <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf:'flex-start', fontSize:12 }}
             onClick={addSplit}>+ Add Split</button>
           <div style={{ fontSize:12, color:'var(--text-secondary)', borderTop:'1px solid var(--bg-raised)', paddingTop:6, marginTop:2 }}>
-            Total: ${splitTotal.toFixed(2)} / ${Math.abs(totalAmount).toFixed(2)}
+            Total: {cfmt(splitTotal)} / {cfmt(Math.abs(totalAmount))}
             {Math.abs(remaining) <= 0.01 && <span style={{ color:'var(--green)', marginLeft:8 }}>✓ Balanced</span>}
           </div>
         </div>
@@ -297,7 +299,7 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" onClick={handleSave}
           disabled={splitMode && Math.abs(remaining) > 0.01}
-          title={splitMode && Math.abs(remaining) > 0.01 ? `Splits must sum to total (off by $${Math.abs(remaining).toFixed(2)})` : ''}>
+          title={splitMode && Math.abs(remaining) > 0.01 ? `Splits must sum to total (off by ${cfmt(Math.abs(remaining))})` : ''}>
           Save Transaction
         </button>
       </div>
