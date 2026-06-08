@@ -353,8 +353,11 @@ export function checkBudgetAlerts(budgets, transactions, month, warnAt = 80, ale
   return results;
 }
 
-export function computeUnvestedRSUValue(accounts) {
-  return accounts.reduce((sum, a) => sum + (a.unvestedRSUValue || 0), 0);
+export function computeUnvestedRSUValue(grants) {
+  return (grants || []).reduce((sum, g) => {
+    const unvested = Math.max(0, (g.totalShares || 0) - (g.vestedShares || 0));
+    return sum + unvested * (g.currentPrice || 0);
+  }, 0);
 }
 
 export function suggestBudgetsFromActuals(transactions, referenceMonths) {

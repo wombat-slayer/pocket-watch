@@ -813,33 +813,36 @@ describe('parseRSUStatement()', () => {
 
 // ─── computeUnvestedRSUValue ──────────────────────────────────────────────────
 describe('computeUnvestedRSUValue()', () => {
-  it('sums unvestedRSUValue across multiple accounts', () => {
-    const accounts = [
-      { id:'1', unvestedRSUValue: 50000 },
-      { id:'2', unvestedRSUValue: 74000 },
-      { id:'3', unvestedRSUValue: 0 },
-    ];
-    expect(computeUnvestedRSUValue(accounts)).toBe(124000);
+  it('computes unvested value from grants', () => {
+    expect(computeUnvestedRSUValue([{ totalShares: 100, vestedShares: 40, currentPrice: 50 }])).toBe(3000);
   });
 
-  it('ignores accounts with unvestedRSUValue: 0', () => {
-    const accounts = [
-      { id:'1', unvestedRSUValue: 0 },
-      { id:'2', unvestedRSUValue: 0 },
+  it('sums unvested value across multiple grants', () => {
+    const grants = [
+      { totalShares: 200, vestedShares: 100, currentPrice: 50 },
+      { totalShares: 400, vestedShares: 300, currentPrice: 100 },
     ];
-    expect(computeUnvestedRSUValue(accounts)).toBe(0);
+    expect(computeUnvestedRSUValue(grants)).toBe(15000);
   });
 
-  it('treats missing unvestedRSUValue as 0', () => {
-    const accounts = [
-      { id:'1', balance: 1000 },
-      { id:'2', unvestedRSUValue: 5000 },
-    ];
-    expect(computeUnvestedRSUValue(accounts)).toBe(5000);
+  it('returns 0 when all shares are vested', () => {
+    expect(computeUnvestedRSUValue([{ totalShares: 100, vestedShares: 100, currentPrice: 50 }])).toBe(0);
   });
 
-  it('returns 0 for an empty accounts array', () => {
+  it('clamps to 0 when vestedShares exceeds totalShares', () => {
+    expect(computeUnvestedRSUValue([{ totalShares: 100, vestedShares: 120, currentPrice: 50 }])).toBe(0);
+  });
+
+  it('treats missing fields as 0', () => {
+    expect(computeUnvestedRSUValue([{ totalShares: 100, currentPrice: 20 }])).toBe(2000);
+  });
+
+  it('returns 0 for an empty grants array', () => {
     expect(computeUnvestedRSUValue([])).toBe(0);
+  });
+
+  it('handles null/undefined input gracefully', () => {
+    expect(computeUnvestedRSUValue(null)).toBe(0);
   });
 });
 
@@ -869,24 +872,19 @@ describe('migrateData v7 — unvestedRSUValue backfill', () => {
 // ─── Dashboard net worth split ────────────────────────────────────────────────
 describe('Dashboard net worth split logic', () => {
   it('vestedNetWorth = total minus unvested when unvestedRSU > 0', () => {
-    const accounts = [
-      { id:'1', type:'checking',   balance: 10000, unvestedRSUValue: 0 },
-      { id:'2', type:'investment', balance: 124000, unvestedRSUValue: 83000 },
-    ];
-    const assets      = accounts.filter(a => !['credit','loan'].includes(a.type)).reduce((s,a) => s + a.balance, 0);
-    const netWorth    = assets; // no debts, no equity grants in this fixture
-    const unvestedRSU = computeUnvestedRSUValue(accounts);
+    const grants = [{ totalShares: 1000, vestedShares: 170, currentPrice: 100 }];
+    const netWorth    = 134000; // accounts total in this fixture
+    const unvestedRSU = computeUnvestedRSUValue(grants);
     const vestedNetWorth = netWorth - unvestedRSU;
     expect(unvestedRSU).toBe(83000);
     expect(vestedNetWorth).toBe(netWorth - 83000);
   });
 
-  it('shows no split UI when all unvestedRSUValue are 0', () => {
-    const accounts = [
-      { id:'1', type:'checking',   balance: 10000, unvestedRSUValue: 0 },
-      { id:'2', type:'investment', balance: 50000, unvestedRSUValue: 0 },
+  it('shows no split UI when all grants are fully vested', () => {
+    const grants = [
+      { totalShares: 100, vestedShares: 100, currentPrice: 50 },
     ];
-    const unvestedRSU = computeUnvestedRSUValue(accounts);
+    const unvestedRSU = computeUnvestedRSUValue(grants);
     expect(unvestedRSU).toBe(0);
     // UI condition: unvestedRSU > 0 → false → standard net worth label shown
     expect(unvestedRSU > 0).toBe(false);
