@@ -60,3 +60,12 @@ The app talks to the Plaid API directly from Rust — `plaid_create_link_token`,
 - The Ubuntu job needs `libdbus-1-dev` in its apt deps (keyring crate / Secret Service backend).
 - Auto-updater (`tauri-plugin-updater`) config lives in the `plugins` block of `src-tauri/tauri.conf.json` (Tauri 2.x requirement — not the `app` block); endpoint is the `latest.json` asset on the latest GitHub release. Signing key secrets: `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 - After pushing a tag, wait for **all** matrix jobs to finish, then publish the **tauri-action draft release** (has the installers + `latest.json`) — not the auto-generated source-only release GitHub creates for the tag.
+
+## Working conventions (multi-agent)
+
+For nontrivial tasks, work in three phases:
+1. **Discovery** — fan out parallel read-only subagents for searching, auditing, and locating call sites. Never edit during discovery.
+2. **Apply** — all edits and git operations happen sequentially in the main session. Never run parallel subagents that write: this working tree has been corrupted before by concurrent writers.
+3. **Verify** — before committing, run the `release-checker` agent on the diff (and `security-reviewer` when dependencies, Rust commands, or config changed; `color-token-checker` when styles changed).
+
+Only one Claude session (Code or otherwise) may write to this repo at a time.
