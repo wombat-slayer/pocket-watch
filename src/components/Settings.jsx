@@ -15,11 +15,8 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
   const [newCatName,  setNewCatName]  = useState('');
   const [newCatIcon,  setNewCatIcon]  = useState('📦');
   const [newCatColor, setNewCatColor] = useState('#94a3b8');
-  const [finnhubInput, setFinnhubInput] = useState(apiKeys.finnhub ?? '');
+  const [finnhubInput, setFinnhubInput] = useState('');
   const [apiKeySaved,  setApiKeySaved]  = useState(false);
-
-  // Keep the input in sync if apiKeys prop is updated externally
-  useEffect(() => { setFinnhubInput(apiKeys.finnhub ?? ''); }, [apiKeys.finnhub]);
   const [nwImportError,  setNwImportError]  = useState('');
   const [nwImportResult, setNwImportResult] = useState('');
   const [archiveBefore, setArchiveBefore] = useState(() => {
@@ -140,32 +137,49 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
             Get a free key at finnhub.io
           </a>{' '}(free tier: 60 req/min). Crypto prices via CoinGecko require no key.
         </p>
-        <div style={{ display:'flex', gap:8, alignItems:'center', maxWidth:500 }}>
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', maxWidth:500 }}>
+          {apiKeys.finnhub ? (
+            <span style={{ fontSize:12, color:'var(--green)', padding:'2px 10px', background:'var(--bg-raised)', borderRadius:20, whiteSpace:'nowrap' }}>
+              ● Key set
+            </span>
+          ) : (
+            <span style={{ fontSize:12, color:'var(--text-secondary)', padding:'2px 10px', background:'var(--bg-raised)', borderRadius:20, whiteSpace:'nowrap' }}>
+              ○ No key
+            </span>
+          )}
           <input
             type="password"
-            placeholder="Finnhub API key (sk_…)"
+            placeholder={apiKeys.finnhub ? 'Enter new key to replace…' : 'Finnhub API key (sk_…)'}
             value={finnhubInput}
             onChange={e => { setFinnhubInput(e.target.value); setApiKeySaved(false); }}
-            style={{ flex:1, fontFamily:'monospace', fontSize:13 }}
+            style={{ flex:1, fontFamily:'monospace', fontSize:13, minWidth:180 }}
             autoComplete="off"
           />
           <button
             className="btn btn-primary"
-            onClick={() => {
-              if (onSaveApiKeys) onSaveApiKeys({ finnhub: finnhubInput.trim() });
-              setApiKeySaved(true);
+            disabled={!finnhubInput.trim()}
+            onClick={async () => {
+              if (finnhubInput.trim() && onSaveApiKeys) {
+                try {
+                  await onSaveApiKeys({ finnhub: finnhubInput.trim() });
+                  setFinnhubInput('');
+                  setApiKeySaved(true);
+                } catch (err) {
+                  console.error('Failed to save Finnhub key:', err);
+                }
+              }
             }}>
             Save
           </button>
-          {finnhubInput.trim() && (
+          {apiKeys.finnhub && (
             <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }}
-              onClick={() => { setFinnhubInput(''); if (onSaveApiKeys) onSaveApiKeys({ finnhub: '' }); setApiKeySaved(false); }}>
+              onClick={async () => { setFinnhubInput(''); if (onSaveApiKeys) await onSaveApiKeys({ finnhub: '' }).catch(() => {}); setApiKeySaved(false); }}>
               Clear
             </button>
           )}
         </div>
         {apiKeySaved && <p style={{ color:'var(--green)', fontSize:12, marginTop:6 }}>✅ API key saved.</p>}
-        <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>Keys are stored locally in your data file — never uploaded or shared.</p>
+        <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>Key is stored in your OS keychain — never in the data file or uploaded.</p>
       </div>
 
 

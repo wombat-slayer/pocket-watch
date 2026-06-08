@@ -200,11 +200,17 @@ export default function App() {
     try {
       const exists = await dataFileExists(path);
       if (exists) {
-        // Backup before migration
+        // Backup before migration (scrub the Finnhub key — it moves to OS keyring)
         try {
           const rawStr = await invoke('load_data', { path });
           const bakPath = path.replace(/\.json$/, '') + '.backup.json';
-          await invoke('save_data', { path: bakPath, data: rawStr });
+          let bakStr = rawStr;
+          try {
+            const bakObj = JSON.parse(rawStr);
+            if (bakObj.apiKeys?.finnhub) bakObj.apiKeys.finnhub = '';
+            bakStr = JSON.stringify(bakObj, null, 2);
+          } catch { /* malformed JSON — use raw string */ }
+          await invoke('save_data', { path: bakPath, data: bakStr });
         } catch (_) { /* non-fatal — backup failure shouldn't block load */ }
 
         const raw = await loadAppData(path);
@@ -219,7 +225,17 @@ export default function App() {
         setUserCategories(data.userCategories ?? []);
         setBudgetTemplates(data.budgetTemplates ?? []);
         setArchivedTransactions(data.archivedTransactions ?? []);
-        setApiKeys(data.apiKeys             ?? { finnhub: '' });
+        // Load Finnhub key from OS keyring; defensive migration if old JSON has it.
+        // Validate the candidate before writing: non-empty, max 128 chars, no control chars.
+        let finnhubKey = await invoke('secret_get', { key: 'finnhub:apikey' }).catch(() => null) ?? '';
+        if (!finnhubKey && data.apiKeys?.finnhub) {
+          const candidate = String(data.apiKeys.finnhub).trim();
+          if (candidate && candidate.length <= 128 && !/[\x00-\x1f\x7f]/.test(candidate)) {
+            await invoke('secret_set', { key: 'finnhub:apikey', value: candidate }).catch(() => {});
+            finnhubKey = candidate;
+          }
+        }
+        setApiKeys({ finnhub: finnhubKey });
         setCompensationProfile(data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE);
         setBudgetAlerts(data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 });
         setOnboardingDone(data.onboardingComplete !== false);
@@ -301,15 +317,15 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
-  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingDone, dataPath, appStatus]);
+  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingDone, dataPath, appStatus]);
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -544,7 +560,19 @@ export default function App() {
   }, [archivedTransactions]);
 
   // ── API key handler ───────────────────────────────────────────────────────────
-  const handleSaveApiKeys = (keys) => setApiKeys(prev => ({ ...prev, ...keys }));
+  const handleSaveApiKeys = async (keys) => {
+    if (keys.finnhub !== undefined) {
+      const trimmed = keys.finnhub.trim();
+      if (trimmed) {
+        // Throws on failure so Settings.jsx can show an error (no optimistic Saved ✓)
+        await invoke('secret_set', { key: 'finnhub:apikey', value: trimmed });
+        setApiKeys(prev => ({ ...prev, finnhub: trimmed }));
+      } else {
+        await invoke('secret_delete', { key: 'finnhub:apikey' }).catch(() => {});
+        setApiKeys(prev => ({ ...prev, finnhub: '' }));
+      }
+    }
+  };
 
   // ── User category handlers ──────────────────────────────────────────────────
   const addUserCategory    = (c)    => setUserCategories(cs => [...cs, c]);
