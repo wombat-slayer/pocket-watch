@@ -35,13 +35,42 @@ fn load_data(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
+fn backup_path(main: &PathBuf, n: u32) -> PathBuf {
+    let stem   = main.file_stem().and_then(|s| s.to_str()).unwrap_or("data");
+    let parent = main.parent().unwrap_or_else(|| std::path::Path::new("."));
+    parent.join(format!("{}.backup.{}.json", stem, n))
+}
+
+fn rotate_backups(main: &PathBuf) {
+    // Drop generation 7, then shift 6→7, 5→6, …, 1→2, main→1
+    let _ = fs::remove_file(backup_path(main, 7));
+    for n in (1..=6).rev() {
+        let src = backup_path(main, n);
+        if src.exists() {
+            if let Err(e) = fs::rename(&src, backup_path(main, n + 1)) {
+                eprintln!("[pocket-watch] backup rotate {n}→{} failed: {e}", n + 1);
+            }
+        }
+    }
+    if main.exists() {
+        if let Err(e) = fs::copy(main, backup_path(main, 1)) {
+            eprintln!("[pocket-watch] backup copy to .backup.1.json failed: {e}");
+        }
+    }
+}
+
 #[tauri::command]
 fn save_data(path: String, data: String) -> Result<(), String> {
     validate_data_path(&path)?;
-    if let Some(parent) = PathBuf::from(&path).parent() {
+    let path_buf = PathBuf::from(&path);
+    if let Some(parent) = path_buf.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    fs::write(&path, data).map_err(|e| e.to_string())
+    rotate_backups(&path_buf);
+    // Atomic write: serialize to .tmp then rename
+    let tmp_path = PathBuf::from(format!("{}.tmp", path));
+    fs::write(&tmp_path, &data).map_err(|e| e.to_string())?;
+    fs::rename(&tmp_path, &path_buf).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
