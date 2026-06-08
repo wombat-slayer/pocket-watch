@@ -146,21 +146,21 @@ export const freqLabel = (v) => FREQUENCIES.find(f => f.value === v)?.label ?? v
 
 // Auto-categorize by merchant keyword matching
 export function autoCategory(desc, amount) {
-  const d = desc.toLowerCase();
+  const d = desc.replace(/^aplpay\s+/i, '').toLowerCase();
   if (amount > 0) return 'Income';
   if (/rent|mortgage|hoa|apartment|condo|lease/i.test(d))                              return 'Housing';
-  if (/grocery|safeway|whole foods|trader joe|kroger|publix|aldi|wegmans|instacart/i.test(d)) return 'Food & Dining';
+  if (/grocery|safeway|whole foods|trader joe|kroger|publix|aldi|wegmans|instacart|buc-ee|buc ee|365 market|five star food|canteen vend/i.test(d)) return 'Food & Dining';
   if (/restaurant|cafe|pizza|burger|sushi|taco|chipotle|mcdonald|starbucks|dunkin|doordash|grubhub|uber eats|chick-fil|panera|subway|domino/i.test(d)) return 'Food & Dining';
-  if (/shell|chevron|bp |exxon|mobil|sunoco|circle k|speedway|gas station/i.test(d))  return 'Transportation';
+  if (/shell|chevron|\bbp\b|exxon|mobil|sunoco|circle k|speedway|gas station/i.test(d)) return 'Transportation';
   if (/uber|lyft|parking|metro|transit|mta |bart |fare|toll|zipcar|enterprise rent/i.test(d)) return 'Transportation';
   if (/auto |car insurance|geico|state farm|allstate|progressive|jiffy lube|oil change/i.test(d)) return 'Transportation';
-  if (/netflix|hulu|disney|spotify|youtube premium|amazon prime|hbo|apple tv|peacock|paramount|crunchyroll/i.test(d)) return 'Subscriptions';
-  if (/amazon|target|walmart|costco|best buy|ebay|etsy|wayfair|home depot|lowe|ikea|marshalls|tj maxx/i.test(d)) return 'Shopping';
+  if (/netflix|hulu|disney|spotify|youtube premium|youtubepremi|amazon prime|hbo|apple tv|peacock|paramount|crunchyroll/i.test(d)) return 'Subscriptions';
+  if (/amazon|target|walmart|wal-mart|costco|best buy|ebay|etsy|wayfair|home depot|lowe|ikea|marshalls|tj maxx|gamestop/i.test(d)) return 'Shopping';
   if (/electric|water bill|internet|comcast|xfinity|at&t|verizon|t-mobile|utility|pg&e|con ed|spectrum/i.test(d)) return 'Utilities';
   if (/pharmacy|cvs|walgreens|rite aid|doctor|hospital|urgent care|health|dental|vision|optometrist|therapy/i.test(d)) return 'Healthcare';
   if (/liberty mutual|state farm|allstate|geico|progressive|safeco|nationwide|farmers|usaa|aaa insurance|travelers ins|aflac|metlife|cigna|aetna|humana|anthem|blue cross|blue shield|bwi aviation|skywatch/i.test(d)) return 'Insurance';
   if (/adobe|microsoft|apple\.com|google one|github|namecheap|godaddy|cloudflare|aws |amazon web|digitalocean|heroku|vercel|netlify|zoom |slack |notion|figma|1password|lastpass|dropbox|icloud|antivirus|norton|mcafee/i.test(d)) return 'Technology';
-  if (/gym|planet fitness|la fitness|24 hour|crossfit|peloton|movie|amc |regal |concert|ticketmaster|bar |club |bowling/i.test(d)) return 'Entertainment';
+  if (/gym|planet fitness|la fitness|24 hour|crossfit|peloton|movie|amc |regal |concert|ticketmaster|bar |club |bowling|ryman auditor|ryman auditorium/i.test(d)) return 'Entertainment';
   if (/hotel|airbnb|vrbo|flight|airline|united|delta|american air|southwest|spirit|expedia|booking.com|kayak/i.test(d)) return 'Travel';
   if (/payroll|direct deposit|salary|paycheck|employer|freelance|consulting|client payment/i.test(d)) return 'Income';
   if (/venmo|zelle|cashapp|paypal/i.test(d)) return amount > 0 ? 'Income' : 'Other';

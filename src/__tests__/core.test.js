@@ -128,6 +128,34 @@ describe('autoCategory()', () => {
   it('fallback → Other', () => {
     expect(autoCategory('Zz random vendor xyz', -10)).toBe('Other');
   });
+
+  it('AplPay BP# → Transportation', () => {
+    expect(autoCategory('AplPay BP#1880000ARLINDIANAPOLIS IN', -45)).toBe('Transportation');
+  });
+
+  it("AplPay BUC-EE'S → Food & Dining", () => {
+    expect(autoCategory("AplPay BUC-EE'S #005SMITH'S GROVE KY", -32)).toBe('Food & Dining');
+  });
+
+  it('AplPay Ryman Auditorium → Entertainment', () => {
+    expect(autoCategory('AplPay RYMAN AUDITOR NASHVILLE TN', -75)).toBe('Entertainment');
+  });
+
+  it('AplPay 365 Market → Food & Dining', () => {
+    expect(autoCategory('AplPay 365 MARKET 8TROY MI', -5)).toBe('Food & Dining');
+  });
+
+  it('AplPay GameStop → Shopping', () => {
+    expect(autoCategory('AplPay GAMESTOP INDIANAPOLIS IN', -45)).toBe('Shopping');
+  });
+
+  it('Google YouTubePremium → Subscriptions', () => {
+    expect(autoCategory('GOOGLE *YOUTUBEPREMI G.CO/HELPPAY# CA', -14)).toBe('Subscriptions');
+  });
+
+  it('Wal-Mart → Shopping', () => {
+    expect(autoCategory('WAL-MART SUPERCENTERINDIANAPOLIS IN', -89)).toBe('Shopping');
+  });
 });
 
 // ─── parseCSVLine ─────────────────────────────────────────────────────────────
