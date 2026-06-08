@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { CATEGORIES, getAllCategories, catColor, catIcon, fmt, thisMonth, nextMonth, prevMonth, uid, parseAmount, suggestBudgetsFromActuals } from '../constants.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import Modal from './Modal.jsx';
+import CategoryIcon from './CategoryIcon.jsx';
+import { AlertTriangle } from 'lucide-react';
 
 function BudgetForm({ initial, defaultMonth, onSave, onClose, userCategories }) {
   const [cat,      setCat]      = useState(initial?.category ?? 'Food & Dining');
@@ -401,7 +403,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                 return (
                   <div key={b.id} className="card-sm" style={{ marginBottom:10 }}>
                     <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
-                      <span style={{ fontSize:20 }}>{catIcon(b.category)}</span>
+                      <span style={{ color:'var(--text-secondary)' }}><CategoryIcon name={b.category} size={20} /></span>
                       <div style={{ flex:1 }}>
                         <div style={{ fontWeight:600,fontSize:14 }}>{b.category}</div>
                         {b.rollover && <div style={{ fontSize:11,color:'var(--text-secondary)' }}>Rollover enabled</div>}
@@ -421,7 +423,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         <div style={{ fontSize:12,color:'var(--text-secondary)' }}>of {cfmt(effLimit)}</div>
                         {avg3 !== null && b.amount > 0 && avg3 > b.amount * 1.1 && (
                           <div style={{ marginTop:4 }}>
-                            <div style={{ fontSize:10,color:'var(--amber)',marginBottom:3 }} title="Your 3-month average spend exceeds this budget">⚠ avg &gt; budget</div>
+                            <div style={{ fontSize:10,color:'var(--amber)',marginBottom:3 }} title="Your 3-month average spend exceeds this budget"><AlertTriangle size={9} strokeWidth={2} style={{ verticalAlign:'text-bottom', marginRight:2 }} /> avg &gt; budget</div>
                             <button className="btn btn-ghost btn-sm"
                               style={{ fontSize:10,color:'var(--green)',padding:'2px 6px',border:'1px solid #7fa88b44' }}
                               title={`Set budget to match 3-month average of ${cfmt(avg3)}`}
@@ -474,7 +476,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                   {historyCategories.map(cat => (
                     <tr key={cat} style={{ borderBottom:'1px solid #1e273640' }}>
                       <td style={{ padding:'10px 16px', fontSize:13, fontWeight:600 }}>
-                        {catIcon(cat)} {cat}
+                        <CategoryIcon name={cat} size={14} /> {cat}
                       </td>
                       {history6.map(m => {
                         const spent = historySpend[m]?.[cat] || 0;

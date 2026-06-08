@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { monthlyEquivalent, getAllCategories, FREQUENCIES, catIcon, fmt, fmtDate, today, uid, parseAmount, getNextRecurDate, freqLabel } from '../constants.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import Modal from './Modal.jsx';
+import CategoryIcon from './CategoryIcon.jsx';
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
 function RecurringForm({ initial, accounts, onSave, onClose, userCategories }) {
@@ -267,9 +268,10 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
             <div style={{
               width: 44, height: 44, borderRadius: 10, flexShrink: 0,
               background: r.amount >= 0 ? '#4ade8018' : '#c2735a18',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: r.amount >= 0 ? 'var(--green)' : 'var(--red)',
             }}>
-              {catIcon(r.category)}
+              <CategoryIcon name={r.category} size={20} />
             </div>
 
             {/* Info */}

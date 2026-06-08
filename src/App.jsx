@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './App.css';
+import {
+  LayoutDashboard, ArrowRightLeft, Landmark, Target, BarChart2, Briefcase, Settings,
+  Sun, Moon, Eye, EyeOff, Clock, FolderOpen, FolderInput, AlertTriangle,
+  Check, X, Info, ChevronRight, ChevronLeft, Keyboard,
+} from 'lucide-react';
 
 import { isDebtType, today, uid, fmt, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE, checkBudgetAlerts } from './constants.js';
 import { PrivacyContext } from './context/PrivacyContext.jsx';
@@ -31,7 +36,7 @@ function FirstRunScreen({ onChoose, onDefault, error }) {
   return (
     <div className="firstrun-overlay">
       <div className="firstrun-box">
-        <div style={{ fontSize:48, marginBottom:16 }}>⌚</div>
+        <div style={{ marginBottom:16, color:'var(--green)' }}><Clock size={48} strokeWidth={1} /></div>
         <div style={{ fontFamily:'DM Serif Display, serif', fontSize:32, color:'var(--green)', marginBottom:8 }}>Pocket Watch</div>
         <p style={{ color:'var(--text-secondary)', fontSize:15, marginBottom:32, lineHeight:1.6 }}>
           Your personal long-term financial record.<br />
@@ -39,15 +44,15 @@ function FirstRunScreen({ onChoose, onDefault, error }) {
         </p>
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <button className="btn btn-primary" style={{ justifyContent:'center', fontSize:15, padding:'12px 24px' }} onClick={onDefault}>
-            📂 Use default location
+            <FolderOpen size={15} strokeWidth={1.5} /> Use default location
           </button>
           <button className="btn btn-secondary" style={{ justifyContent:'center', fontSize:15, padding:'12px 24px' }} onClick={onChoose}>
-            🗂️ Choose my own location (Dropbox, iCloud…)
+            <FolderInput size={15} strokeWidth={1.5} /> Choose my own location (Dropbox, iCloud…)
           </button>
         </div>
         {error && (
           <p style={{ color:'var(--red)', fontSize:12, marginTop:16, background:'#c2735a11', padding:'8px 12px', borderRadius:8 }}>
-            ⚠️ {error}
+            <AlertTriangle size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> {error}
           </p>
         )}
         <p style={{ color:'var(--text-muted)', fontSize:12, marginTop:20 }}>
@@ -660,13 +665,13 @@ export default function App() {
 
   // ── Nav items ────────────────────────────────────────────────────────────────
   const nav = [
-    { id:'dashboard',    icon:'🏠', label:'Dashboard'   },
-    { id:'transactions', icon:'💸', label:'Transactions' },
-    { id:'accounts',     icon:'🏦', label:'Accounts'     },
-    { id:'budgets',      icon:'🎯', label:'Budgets'      },
-    { id:'reports',      icon:'📊', label:'Reports'      },
-    { id:'business',     icon:'🏢', label:'Business'     },
-    { id:'settings',     icon:'⚙️', label:'Settings'     },
+    { id:'dashboard',    Icon: LayoutDashboard, label:'Dashboard'   },
+    { id:'transactions', Icon: ArrowRightLeft,  label:'Transactions' },
+    { id:'accounts',     Icon: Landmark,        label:'Accounts'     },
+    { id:'budgets',      Icon: Target,          label:'Budgets'      },
+    { id:'reports',      Icon: BarChart2,        label:'Reports'      },
+    { id:'business',     Icon: Briefcase,        label:'Business'     },
+    { id:'settings',     Icon: Settings,        label:'Settings'     },
   ];
 
   // ── Render: Loading ──────────────────────────────────────────────────────────
@@ -700,7 +705,7 @@ export default function App() {
             </div>
           )}
           <button className="sidebar-toggle" onClick={()=>setSidebarCollapsed(c=>!c)} title={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}>
-            {sidebarCollapsed ? '»' : '«'}
+            {sidebarCollapsed ? <ChevronRight size={16} strokeWidth={2} /> : <ChevronLeft size={16} strokeWidth={2} />}
           </button>
         </div>
         <div style={{ height:1,background:'var(--bg-raised)',margin:'0 16px 8px' }} />
@@ -708,7 +713,7 @@ export default function App() {
           {nav.map(n=>(
             <div key={n.id} className={`nav-item${page===n.id?' active':''}`} onClick={()=>setPage(n.id)} title={n.label}>
               <span className="nav-icon" style={{ position:'relative' }}>
-                {n.icon}
+                <n.Icon size={20} strokeWidth={1.5} />
                 {n.id === 'budgets' && overBudgetCount > 0 && (
                   <span style={{ position:'absolute', top:-5, right:-7, background:'var(--red)', color:'#fff', borderRadius:'50%', fontSize:9, fontWeight:700, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     {overBudgetCount}
@@ -728,7 +733,7 @@ export default function App() {
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               style={{ fontSize: 16, padding: '4px 8px', lineHeight: 1 }}
             >
-              {theme === 'dark' ? '☀' : '☾'}
+              {theme === 'dark' ? <Sun size={16} strokeWidth={1.5} /> : <Moon size={16} strokeWidth={1.5} />}
             </button>
           </div>
         )}
@@ -740,7 +745,7 @@ export default function App() {
           <button className="btn btn-ghost btn-sm" style={{ fontSize:11, opacity:0.75 }}
             title={privacyMode ? 'Show amounts' : 'Hide amounts'}
             onClick={() => { const n = !privacyMode; setPrivacyMode(n); localStorage.setItem('pw_privacy', n ? '1' : '0'); }}>
-            {privacyMode ? '👁‍🗨 Show' : '👁 Hide'}
+            {privacyMode ? <><EyeOff size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Show</> : <><Eye size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Hide</>}
           </button>
         </div>
         {page==='dashboard'    && <Dashboard    transactions={transactions} accounts={accounts} budgets={budgets} recurrences={recurrences} grants={grants} netWorthHistory={netWorthHistory} goals={goals} onAddTx={()=>setShowAdd(true)} onAddGoal={addGoal} onEditGoal={editGoal} onDeleteGoal={deleteGoal} onDeposit={depositGoal} onGoToBudgets={()=>setPage('budgets')} compensationProfile={compensationProfile} onCategoryClick={cat=>{ setTxCatFilter(cat); setPage('transactions'); }} onGoToReports={(tab) => { setReportsInitialTab(tab ?? 'trend'); setPage('reports'); }} />}
@@ -775,7 +780,7 @@ export default function App() {
       {showHelp && (
         <div style={{ position:'fixed',inset:0,background:'#00000088',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center' }} onClick={()=>setShowHelp(false)}>
           <div style={{ background:'var(--bg-card)',border:'1px solid var(--bg-raised)',borderRadius:12,padding:'24px 28px',minWidth:340,maxWidth:440 }} onClick={e=>e.stopPropagation()}>
-            <div style={{ fontWeight:700,fontSize:16,color:'var(--text-primary)',marginBottom:16 }}>⌨️ Keyboard Shortcuts</div>
+            <div style={{ fontWeight:700,fontSize:16,color:'var(--text-primary)',marginBottom:16 }}><Keyboard size={16} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:8 }} /> Keyboard Shortcuts</div>
             {[
               ['1–9',         'Navigate to page'],
               ['N',           'New transaction'],
@@ -839,7 +844,10 @@ export default function App() {
             animation:'fadeIn 0.2s ease',
             maxWidth:320,
           }}>
-            {t.type==='success' ? '✓ ' : t.type==='warning' ? '⚠ ' : t.type==='error' ? '✕ ' : 'ℹ '}{t.msg}
+            {t.type==='success' ? <Check size={13} strokeWidth={2.5} style={{ marginRight:5, verticalAlign:'text-bottom', color:'var(--green)' }} />
+              : t.type==='warning' ? <AlertTriangle size={13} strokeWidth={2} style={{ marginRight:5, verticalAlign:'text-bottom', color:'var(--amber)' }} />
+              : t.type==='error'   ? <X size={13} strokeWidth={2.5} style={{ marginRight:5, verticalAlign:'text-bottom', color:'var(--red)' }} />
+              : <Info size={13} strokeWidth={1.5} style={{ marginRight:5, verticalAlign:'text-bottom', color:'var(--accent)' }} />}{t.msg}
           </div>
         ))}
       </div>

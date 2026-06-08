@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { acctEmoji, acctLabel, catIcon, fmt, fmtDate } from '../constants.js';
+import { acctLabel, fmt, fmtDate } from '../constants.js';
 import { useCurrency } from '../hooks/useCurrency.js';
+import CategoryIcon from './CategoryIcon.jsx';
+import {
+  LayoutDashboard, ArrowRightLeft, Landmark, Target, BarChart2, Settings,
+  CalendarCheck, Package,
+  PiggyBank, CreditCard, TrendingUp, Home, FileText, Wallet, Banknote,
+} from 'lucide-react';
+
+const ACCT_ICONS = {
+  checking: Landmark, savings: PiggyBank, credit: CreditCard, investment: TrendingUp,
+  asset: Home, loan: FileText, cash: Banknote, other: Wallet,
+};
 
 export default function CommandPalette({ transactions, accounts, goals, onClose, onNavigate, onCloseMonth }) {
   const cfmt = useCurrency();
@@ -11,24 +22,27 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const pages = [
-    { id:'dashboard',    label:'Dashboard',    icon:'🏠', type:'page' },
-    { id:'transactions', label:'Transactions', icon:'💸', type:'page' },
-    { id:'accounts',     label:'Accounts',     icon:'🏦', type:'page' },
-    { id:'budgets',      label:'Budgets',      icon:'🎯', type:'page' },
-    { id:'reports',      label:'Reports',      icon:'📊', type:'page' },
-    { id:'settings',     label:'Settings',     icon:'⚙️', type:'page' },
+    { id:'dashboard',    label:'Dashboard',    Icon: LayoutDashboard, type:'page' },
+    { id:'transactions', label:'Transactions', Icon: ArrowRightLeft,  type:'page' },
+    { id:'accounts',     label:'Accounts',     Icon: Landmark,        type:'page' },
+    { id:'budgets',      label:'Budgets',      Icon: Target,          type:'page' },
+    { id:'reports',      label:'Reports',      Icon: BarChart2,        type:'page' },
+    { id:'settings',     label:'Settings',     Icon: Settings,        type:'page' },
   ];
 
   const actions = [
-    { id:'close-month', label:'Close Month…', icon:'📅', type:'action', run: onCloseMonth },
+    { id:'close-month', label:'Close Month…', Icon: CalendarCheck, type:'action', run: onCloseMonth },
   ].filter(a => a.run);
 
   const q = query.toLowerCase().trim();
   const matchPages   = pages.filter(p => !q || p.label.toLowerCase().includes(q));
   const matchActions = actions.filter(a => !q || a.label.toLowerCase().includes(q));
-  const matchAccts = accounts.filter(a => !q || a.name.toLowerCase().includes(q)).slice(0,4).map(a=>({...a,acctType:a.type,type:'account',label:a.name,icon:acctEmoji(a.type)}));
-  const matchGoals = goals.filter(g => !q || g.name.toLowerCase().includes(q)).slice(0,4).map(g=>({...g,type:'goal',label:g.name}));
-  const matchTxs   = q ? transactions.filter(t=>t.description.toLowerCase().includes(q)||t.category.toLowerCase().includes(q)).slice(0,5).map(t=>({...t,type:'tx',label:t.description,icon:catIcon(t.category)})) : [];
+  const matchAccts   = accounts.filter(a => !q || a.name.toLowerCase().includes(q)).slice(0,4)
+    .map(a => ({ ...a, acctType:a.type, type:'account', label:a.name, Icon: ACCT_ICONS[a.type] ?? Wallet }));
+  const matchGoals   = goals.filter(g => !q || g.name.toLowerCase().includes(q)).slice(0,4)
+    .map(g => ({ ...g, type:'goal', label:g.name, Icon: Target }));
+  const matchTxs     = q ? transactions.filter(t=>t.description.toLowerCase().includes(q)||t.category.toLowerCase().includes(q)).slice(0,5)
+    .map(t => ({ ...t, type:'tx', label:t.description, catName:t.category })) : [];
 
   const items = [
     ...matchPages.map(p=>({...p,section:'Pages'})),
@@ -46,10 +60,10 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
   };
 
   const activate = (item) => {
-    if      (item.type === 'action')  { item.run(); return; } // action handles its own close
+    if      (item.type === 'action')  { item.run(); return; }
     if      (item.type === 'page')    onNavigate(item.id);
     else if (item.type === 'account') onNavigate('accounts');
-    else if (item.type === 'goal')    onNavigate('dashboard'); // goals live on the Dashboard now
+    else if (item.type === 'goal')    onNavigate('dashboard');
     else if (item.type === 'tx')      onNavigate('transactions');
     onClose();
   };
@@ -70,7 +84,11 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
                   <div key={item.id+''+i}>
                     {showSec && <div className="palette-section">{item.section}</div>}
                     <div className={`palette-item${i===selIdx?' selected':''}`} onClick={()=>activate(item)}>
-                      <span style={{ fontSize:18,width:24,textAlign:'center' }}>{item.icon ?? '📄'}</span>
+                      <span style={{ width:24,textAlign:'center',display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                        {item.type === 'tx'
+                          ? <CategoryIcon name={item.catName} size={18} />
+                          : item.Icon ? <item.Icon size={18} strokeWidth={1.5} /> : <Package size={18} strokeWidth={1.5} />}
+                      </span>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:14,color:'var(--text-primary)',fontWeight:500 }}>{item.label}</div>
                         {item.type==='account' && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{acctLabel(item.acctType??item.type)} · {cfmt(item.balance)}</div>}

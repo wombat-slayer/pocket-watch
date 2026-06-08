@@ -3,6 +3,8 @@ import { catColor, catIcon, fmt, thisMonth, isDebtType, CHART } from '../constan
 import { useChart } from '../hooks/useChart.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { usePrivacy } from '../context/PrivacyContext.jsx';
+import CategoryIcon from './CategoryIcon.jsx';
+import { AlertTriangle } from 'lucide-react';
 
 export default function Reports({ transactions, accounts = [], netWorthHistory = [], budgets = [], onCategoryDrillDown, initialTab }) {
   const cfmt = useCurrency();
@@ -243,7 +245,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
   useChart(canvasCat, () => ({
     type: 'bar',
     data: {
-      labels: catTotals.slice(0, 8).map(([c]) => `${catIcon(c)} ${c}`),
+      labels: catTotals.slice(0, 8).map(([c]) => c),
       datasets: [{
         data: catTotals.slice(0, 8).map(([, v]) => v),
         backgroundColor: catTotals.slice(0, 8).map(([c]) => catColor(c) + 'cc'),
@@ -379,7 +381,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     const generatedAt = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const rows = catTotals.slice(0, 12).map(([cat, amt]) => {
       const pct = avgSpend > 0 ? ((amt / (months ?? n)) / avgSpend * 100).toFixed(0) : 0;
-      return `<tr><td>${catIcon(cat)} ${cat}</td><td style="text-align:right">${fmt(amt)}</td><td style="text-align:right">${fmt(amt / (months ?? n))}/mo</td><td style="text-align:right">${pct}%</td></tr>`;
+      return `<tr><td>${cat}</td><td style="text-align:right">${fmt(amt)}</td><td style="text-align:right">${fmt(amt / (months ?? n))}/mo</td><td style="text-align:right">${pct}%</td></tr>`;
     }).join('');
     const trendRows = trendData.map(r => {
       const net = r.income - r.spend;
@@ -489,7 +491,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
             <div className="stat-card">
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Largest Category</div>
               <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: 'var(--text-secondary)' }}>
-                {weekLargestCat ? `${catIcon(weekLargestCat[0])} ${weekLargestCat[0]}` : '—'}
+                {weekLargestCat ? <><CategoryIcon name={weekLargestCat[0]} size={18} /> {weekLargestCat[0]}</> : '—'}
               </div>
               {weekLargestCat && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{cfmt(weekLargestCat[1])}</div>}
             </div>
@@ -512,7 +514,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                 return (
                   <div key={cat} style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{catIcon(cat)} {cat}</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}><CategoryIcon name={cat} size={13} /> {cat}</span>
                       <div style={{ textAlign: 'right' }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{cfmt(weekSpent)}</span>
                         {budget && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>MTD {cfmt(mtdSpent)} / {cfmt(budget)}</span>}
@@ -547,7 +549,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                       onClick={() => onCategoryDrillDown?.(t.category)}>
                       <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t.date}</td>
                       <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}>{t.description}</td>
-                      <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}>{catIcon(t.category)} {t.category}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}><CategoryIcon name={t.category} size={13} /> {t.category}</td>
                       <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--red)', fontWeight: 600 }}>{cfmt(Math.abs(t.amount))}</td>
                     </tr>
                   ))}
@@ -654,7 +656,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                 <tbody>
                   {taxData.rows.map(([cat, data]) => (
                     <tr key={cat} style={{ borderBottom:'1px solid var(--bg-raised)' }}>
-                      <td style={{ padding:'8px 10px', color:'var(--text-secondary)' }}>{catIcon(cat)} {cat}</td>
+                      <td style={{ padding:'8px 10px', color:'var(--text-secondary)' }}><CategoryIcon name={cat} size={13} /> {cat}</td>
                       <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--text-secondary)' }}>{data.txs.length}</td>
                       <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--green)', fontWeight:600 }}>{cfmt(data.total)}</td>
                     </tr>
@@ -683,7 +685,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                       <tr key={t.id} style={{ borderBottom:'1px solid var(--bg-page)' }}>
                         <td style={{ padding:'6px 10px', color:'var(--text-secondary)', whiteSpace:'nowrap' }}>{t.date}</td>
                         <td style={{ padding:'6px 10px', color:'var(--text-secondary)' }}>{t.description}</td>
-                        <td style={{ padding:'6px 10px', color:'var(--text-secondary)' }}>{catIcon(t.category)} {t.category}</td>
+                        <td style={{ padding:'6px 10px', color:'var(--text-secondary)' }}><CategoryIcon name={t.category} size={13} /> {t.category}</td>
                         <td style={{ padding:'6px 10px', textAlign:'right', color:'var(--green)' }}>{cfmt(Math.abs(t.amount))}</td>
                       </tr>
                     ))
@@ -715,7 +717,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                 <div className="chart-container" style={{ height: 320 }}><canvas ref={canvasNWHist} /></div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
                   {nwHistoryData.filter(d => !d.isActual).length > 0 && (
-                    <span>⚠ Reconstructed months are estimates based on transaction totals and current account balances. Import complete statements for better accuracy.</span>
+                    <span><AlertTriangle size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:5 }} /> Reconstructed months are estimates based on transaction totals and current account balances. Import complete statements for better accuracy.</span>
                   )}
                 </div>
               </>

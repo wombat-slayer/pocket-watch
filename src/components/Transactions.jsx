@@ -5,6 +5,8 @@ import * as XLSX from 'xlsx';
 import Modal from './Modal.jsx';
 import TransactionForm from './TransactionForm.jsx';
 import CSVImport from './CSVImport.jsx';
+import CategoryIcon from './CategoryIcon.jsx';
+import { Download, Search, Pencil, Trash2, RefreshCw, Check, CreditCard, Shuffle, ArrowRightLeft } from 'lucide-react';
 
 // Persist filter state across navigation using sessionStorage
 const FILTER_KEY = 'pw_tx_filters';
@@ -262,9 +264,9 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           <div className="section-sub">Showing {filtered.length} of {transactions.length} transactions</div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button className="btn btn-secondary" onClick={exportCSV}>⬇ CSV</button>
-          <button className="btn btn-secondary" onClick={exportXLSX}>📊 Excel</button>
-          <button className="btn btn-secondary" onClick={() => setShowCSV(true)}>📥 Import</button>
+          <button className="btn btn-secondary" onClick={exportCSV}><Download size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> CSV</button>
+          <button className="btn btn-secondary" onClick={exportXLSX}><Download size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Excel</button>
+          <button className="btn btn-secondary" onClick={() => setShowCSV(true)}><Download size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Import</button>
           <button className="btn btn-primary"   onClick={() => setShowAdd(true)}>+ Add</button>
         </div>
       </div>
@@ -309,7 +311,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
       <div className="card" style={{ marginBottom:16, padding:14 }}>
         {/* Primary filter row */}
         <div className="filter-bar" style={{ flexWrap:'wrap', gap:8 }}>
-          <input type="text" placeholder="🔍 Search…" value={search}
+          <input type="text" placeholder="Search…" value={search}
             onChange={e=>{ setSearch(e.target.value); setPage(0); }} style={{ width:190 }} />
           <select value={monthFilter} onChange={e=>{ setMonthFilter(e.target.value); setPage(0); }} style={{ width:150 }}>
             {months.map(m => <option key={m} value={m}>{m==='All'?'All Months':new Date(m+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'})}</option>)}
@@ -320,7 +322,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           </select>
           <select value={catFilter} onChange={e=>{ setCatFilter(e.target.value); setPage(0); }} style={{ width:158 }}>
             <option value="All">All Categories</option>
-            {getAllCategories(userCategories).map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+            {getAllCategories(userCategories).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
           </select>
           <select value={typeFilter} onChange={e=>{ setTypeFilter(e.target.value); setPage(0); }} style={{ width:130 }}>
             <option value="All">All Types</option>
@@ -335,7 +337,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
               onClick={() => { setRecurringOnly(v => !v); setPage(0); }}
               title="Show only transactions matching a recurring rule"
             >
-              🔁 Recurring{recurringOnly ? ' ●' : ''}
+              <RefreshCw size={12} strokeWidth={2} style={{ verticalAlign:'text-bottom' }} /> Recurring{recurringOnly ? ' ●' : ''}
             </button>
           )}
           {reviewMode && (
@@ -345,7 +347,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
               onClick={() => { setReviewMode(false); setPage(0); }}
               title="Showing only synced transactions that need a category"
             >
-              ✓ Needs category ●
+              <Check size={12} strokeWidth={2} style={{ verticalAlign:'text-bottom' }} /> Needs category ●
             </button>
           )}
           <button
@@ -382,18 +384,18 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           ? transactions.length === 0
             ? (
               <div style={{ padding:'48px 32px', textAlign:'center' }}>
-                <div style={{ fontSize:48, marginBottom:12 }}>💳</div>
+                <div style={{ marginBottom:12, color:'var(--text-muted)' }}><CreditCard size={48} strokeWidth={1} /></div>
                 <div style={{ fontSize:17, fontWeight:600, color:'var(--text-primary)', marginBottom:8 }}>No transactions yet</div>
                 <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:24, maxWidth:360, margin:'0 auto 24px' }}>
                   Add transactions manually, or import bank statements from the Accounts page to load months or years of history at once.
                 </div>
                 <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
                   <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Transaction</button>
-                  <button className="btn btn-secondary" onClick={() => setShowCSV(true)}>📥 Import</button>
+                  <button className="btn btn-secondary" onClick={() => setShowCSV(true)}><Download size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Import</button>
                 </div>
               </div>
             )
-            : <div className="empty-state"><div className="empty-icon">🔍</div><p>No transactions match your filters</p></div>
+            : <div className="empty-state"><div className="empty-icon"><Search size={40} strokeWidth={1} /></div><p>No transactions match your filters</p></div>
           : <>
               <div className="table-wrap">
                 <table>
@@ -481,11 +483,11 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                   </select>
                                 : isSplit
                                   ? <span className="tag" style={{ cursor:'pointer' }} onClick={e=>{ e.stopPropagation(); toggleSplitExpand(t.id); }}>
-                                      🔀 Split {isExpanded ? '▲' : '▼'}
+                                      <Shuffle size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Split {isExpanded ? '▲' : '▼'}
                                     </span>
                                   : isTransfer
-                                    ? <span className="tag">↔️ Transfer</span>
-                                    : <span className="tag">{catIcon(t.category)} {t.category}</span>
+                                    ? <span className="tag"><ArrowRightLeft size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Transfer</span>
+                                    : <span className="tag"><CategoryIcon name={t.category} size={12} /> {t.category}</span>
                               }
                             </td>
                             <td style={{ color:'var(--text-secondary)',fontSize:13 }}>{acctName(t.account)}</td>
@@ -511,14 +513,14 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                     if(!confirm('This is one side of a transfer. Editing it individually may cause the two sides to become inconsistent. Continue?')) return;
                                   }
                                   setEditTx(t);
-                                }}>✏️</button>
+                                }}><Pencil size={14} strokeWidth={1.5} /></button>
                               <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} title="Delete"
                                 onClick={()=>{
                                   const msg = t.transferId
                                     ? 'Delete this transfer? Both sides (debit and credit) will be removed.'
                                     : 'Delete this transaction?';
                                   if(confirm(msg)) onDelete(t.id);
-                                }}>🗑</button>
+                                }}><Trash2 size={14} strokeWidth={1.5} /></button>
                             </td>
                           </tr>
                           {isSplit && isExpanded && t.splits.map((sp, si) => (
@@ -529,7 +531,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                 └ {sp.notes || sp.category}
                               </td>
                               <td>
-                                <span className="tag" style={{ fontSize:11 }}>{catIcon(sp.category)} {sp.category}</span>
+                                <span className="tag" style={{ fontSize:11 }}><CategoryIcon name={sp.category} size={11} /> {sp.category}</span>
                               </td>
                               <td />
                               <td style={{ textAlign:'right', fontSize:13, color:'var(--red)', fontWeight:600 }}>
@@ -563,7 +565,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                   )}
                   <button className="btn btn-ghost btn-sm" style={{ color:'var(--bg-page)' }} onClick={clearSel}>Clear selection</button>
                   <button className="btn btn-sm" style={{ background:'#7f1d1d',color:'#fca5a5',border:'none' }} onClick={handleBulkDelete}>
-                    🗑 Delete {selectedCount} selected
+                    <Trash2 size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Delete {selectedCount} selected
                   </button>
                 </div>
               )}

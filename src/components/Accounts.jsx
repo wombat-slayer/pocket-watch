@@ -6,6 +6,19 @@ import { usePrivacy } from '../context/PrivacyContext.jsx';
 import Modal from './Modal.jsx';
 import StatementImport from './StatementImport.jsx';
 import RSUImportModal from './RSUImportModal.jsx';
+import {
+  Landmark, PiggyBank, CreditCard, TrendingUp, Home, FileText, Wallet, Banknote,
+  AlertTriangle, CheckCircle2, Download, Pencil, Trash2, Scale,
+} from 'lucide-react';
+
+const ACCT_ICONS = {
+  checking: Landmark, savings: PiggyBank, credit: CreditCard, investment: TrendingUp,
+  asset: Home, loan: FileText, cash: Banknote, other: Wallet,
+};
+function AccountIcon({ type, size = 18, strokeWidth = 1.5, style }) {
+  const Icon = ACCT_ICONS[type] ?? Wallet;
+  return <Icon size={size} strokeWidth={strokeWidth} style={style} />;
+}
 
 // ─── Debt Payoff Calculator ──────────────────────────────────────────────────
 function DebtPayoffPanel({ debts }) {
@@ -143,7 +156,7 @@ function DebtPayoffPanel({ debts }) {
 
   return (
     <div style={{ background:'var(--bg-page)', border:'1px solid #7f1d1d44', borderRadius:12, padding:20, marginTop:8 }}>
-      <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>💳 Debt Payoff Planner</div>
+      <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}><CreditCard size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Debt Payoff Planner</div>
       <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:16 }}>
         How fast can you eliminate your {debts.length} debt{debts.length !== 1 ? 's' : ''}? Adjust the settings below.
       </div>
@@ -259,7 +272,9 @@ function AccountForm({ initial, onSave, onClose }) {
           </div>
         </div>
         <div style={{ fontSize:12,color:'var(--text-secondary)' }}>
-          {isDebtType(form.type)?'⚠️ Debt accounts subtract from your net worth.':'✅ Asset accounts add to your net worth.'}
+          {isDebtType(form.type)
+            ? <><AlertTriangle size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Debt accounts subtract from your net worth.</>
+            : <><CheckCircle2 size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Asset accounts add to your net worth.</>}
         </div>
         {form.type === 'investment' && (
           <div className="form-group">
@@ -342,7 +357,7 @@ function HoldingsPanel({ account, onEdit }) {
     <div style={{ background:'var(--bg-page)', border:'1px solid var(--bg-raised)', borderRadius:10, padding:14, marginTop:6 }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
         <div>
-          <span style={{ fontWeight:600, fontSize:13, color:'var(--text-primary)' }}>📈 Holdings</span>
+          <span style={{ fontWeight:600, fontSize:13, color:'var(--text-primary)' }}><TrendingUp size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Holdings</span>
           {holdings.length > 0 && (
             <span style={{ marginLeft:10, fontSize:12, color: totalGainLoss >= 0 ? 'var(--green)' : 'var(--red)', fontWeight:600 }}>
               {totalGainLoss >= 0 ? '+' : ''}{cfmt(totalGainLoss)} ({totalCost > 0 ? ((totalGainLoss/totalCost)*100).toFixed(1) : '0'}%)
@@ -390,7 +405,7 @@ function HoldingsPanel({ account, onEdit }) {
                     {gl >= 0 ? '+' : ''}{cfmt(gl)}
                   </td>
                   <td style={{ padding:'6px 0', textAlign:'center' }}>
-                    <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)', fontSize:11 }} onClick={() => removeHolding(h.id)}>🗑</button>
+                    <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)', fontSize:11 }} onClick={() => removeHolding(h.id)}><Trash2 size={13} strokeWidth={1.5} /></button>
                   </td>
                 </tr>
               );
@@ -555,7 +570,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
         <div style={{ display:'flex', gap:8 }}>
           {debts.length > 0 && (
             <button className="btn btn-secondary" onClick={()=>setShowPayoff(p=>!p)}>
-              {showPayoff ? '✕ Hide Planner' : '💳 Payoff Planner'}
+              {showPayoff ? <><Wallet size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:5 }} /> Hide Planner</> : <><CreditCard size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:5 }} /> Payoff Planner</>}
             </button>
           )}
           <button className="btn btn-secondary" onClick={()=>setReconcileAllMode(m=>!m)}>
@@ -592,7 +607,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       )}
       {historyData.length < 2 && accounts.length > 0 && (
         <div className="card" style={{ marginBottom:24, textAlign:'center', padding:'24px', color:'var(--text-muted)' }}>
-          <div style={{ fontSize:24, marginBottom:8 }}>📈</div>
+          <div style={{ marginBottom:8, color:'var(--text-muted)' }}><TrendingUp size={24} strokeWidth={1.5} /></div>
           <p style={{ fontSize:14 }}>Net worth history will appear here as you use the app over time.</p>
           <p style={{ fontSize:12, marginTop:6 }}>Snapshots are captured automatically each day.</p>
         </div>
@@ -601,7 +616,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       {/* Net Worth Forecast */}
       {activeRecs.length > 0 && (
         <div className="card" style={{ marginBottom:24 }}>
-          <div style={{ fontWeight:600,fontSize:14,marginBottom:4 }}>📈 12-Month Net Worth Forecast</div>
+          <div style={{ fontWeight:600,fontSize:14,marginBottom:4 }}><TrendingUp size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> 12-Month Net Worth Forecast</div>
           <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:4 }}>
             Based on {activeRecs.length} active recurring rule{activeRecs.length!==1?'s':''} ·
             Estimated monthly net flow: <span style={{ color: monthlyNetFlow>=0?'var(--green)':'var(--red)',fontWeight:600 }}>{monthlyNetFlow>=0?'+':''}{cfmt(monthlyNetFlow)}/mo</span>
@@ -627,7 +642,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
             return (
               <div key={acct.id} style={{ marginBottom:10, border:`1px solid ${hasDiscrepancy ? '#f59e0b44' : '#14532d44'}`, borderRadius:10, overflow:'hidden' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background: hasDiscrepancy ? '#1a1600' : '#0a1a0a' }}>
-                  <div style={{ fontSize:18 }}>{acctEmoji(acct.type)}</div>
+                  <div style={{ color:'var(--text-secondary)' }}><AccountIcon type={acct.type} size={18} /></div>
                   <div style={{ flex:1 }}>
                     <span style={{ fontWeight:600, fontSize:14, color:'var(--text-primary)' }}>{acct.name}</span>
                     <span style={{ fontSize:12, color:'var(--text-secondary)', marginLeft:8 }}>{acctLabel(acct.type)}</span>
@@ -636,8 +651,8 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                     <div>Stored: <strong style={{ color:'var(--text-primary)' }}>{cfmt(acct.balance)}</strong></div>
                     <div>Computed: <strong style={{ color:'var(--text-primary)' }}>{cfmt(computed)}</strong></div>
                     {hasDiscrepancy
-                      ? <div style={{ color:'var(--amber)', fontWeight:600 }}>⚠ Discrepancy: {cfmt(discrepancy)}</div>
-                      : <div style={{ color:'var(--green)', fontWeight:600 }}>✅ Balanced</div>
+                      ? <div style={{ color:'var(--amber)', fontWeight:600 }}><AlertTriangle size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Discrepancy: {cfmt(discrepancy)}</div>
+                      : <div style={{ color:'var(--green)', fontWeight:600 }}><CheckCircle2 size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Balanced</div>
                     }
                   </div>
                 </div>
@@ -661,7 +676,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       )}
 
       {!reconcileAllMode && accounts.length === 0
-        ? <div className="card"><div className="empty-state"><div className="empty-icon">🏦</div><p>No accounts yet</p><button className="btn btn-primary" style={{ marginTop:12 }} onClick={()=>setShowAdd(true)}>+ Add Account</button></div></div>
+        ? <div className="card"><div className="empty-state"><div className="empty-icon"><Landmark size={40} strokeWidth={1} /></div><p>No accounts yet</p><button className="btn btn-primary" style={{ marginTop:12 }} onClick={()=>setShowAdd(true)}>+ Add Account</button></div></div>
         : <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
 
             {/* ── Assets ── */}
@@ -679,8 +694,8 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                     return (
                       <div key={a.id} style={{ marginBottom:8 }}>
                         <div className="card-sm" style={{ display:'flex',alignItems:'center',gap:12 }}>
-                          <div style={{ width:40,height:40,borderRadius:10,background:acctColor(a.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0 }}>
-                            {acctEmoji(a.type)}
+                          <div style={{ width:40,height:40,borderRadius:10,background:acctColor(a.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0, color:acctColor(a.type) }}>
+                            <AccountIcon type={a.type} size={20} />
                           </div>
                           <div style={{ flex:1 }}>
                             <div style={{ fontWeight:600,fontSize:14 }}>{a.name}</div>
@@ -689,13 +704,13 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                               const daysAgo = Math.floor((new Date() - new Date(a.lastStatementDate+'T00:00:00')) / (24*60*60*1000));
                               return (
                                 <div style={{ fontSize:11,color:daysAgo>45?'var(--amber)':'var(--text-secondary)',marginTop:3 }}>
-                                  Last reconciled: {a.lastStatementDate}{daysAgo>45?' ⚠':''}
+                                  Last reconciled: {a.lastStatementDate}{daysAgo>45 ? <> <AlertTriangle size={11} strokeWidth={2} style={{ verticalAlign:'text-bottom', color:'var(--amber)' }} /></> : ''}
                                 </div>
                               );
                             })()}
                             {oldUncleared.length > 0 && (
                               <div style={{ fontSize:11,color:'var(--amber)',marginTop:3 }}>
-                                ⚠ {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
+                                <AlertTriangle size={11} strokeWidth={2} style={{ verticalAlign:'text-bottom', marginRight:3 }} /> {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
                               </div>
                             )}
                           </div>
@@ -708,21 +723,21 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                               if (diff < 0.01) return null;
                               return (
                                 <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'var(--amber)', marginTop:3, cursor:'help' }}>
-                                  ⚠ tx total: {cfmt(computed)}
+                                  <AlertTriangle size={11} strokeWidth={2} style={{ verticalAlign:'text-bottom', marginRight:3 }} /> tx total: {cfmt(computed)}
                                 </div>
                               );
                             })()}
                           </div>
-                          <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}>📥</button>
-                          <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>⚖️</button>
+                          <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}><Download size={14} strokeWidth={1.5} /></button>
+                          <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}><Scale size={14} strokeWidth={1.5} /></button>
                           {a.type === 'investment' && (
                             <button className="btn btn-ghost btn-sm" title="Holdings" onClick={()=>setExpandedHoldings(s=>{const n=new Set(s);n.has(a.id)?n.delete(a.id):n.add(a.id);return n;})}>
                               {expandedHoldings.has(a.id) ? '▲' : '📊'}
                             </button>
                           )}
-                          <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>✏️</button>
+                          <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}><Pencil size={14} strokeWidth={1.5} /></button>
                           <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }}
-                            onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>🗑</button>
+                            onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}><Trash2 size={14} strokeWidth={1.5} /></button>
                         </div>
                         {a.type === 'investment' && expandedHoldings.has(a.id) && (
                           <HoldingsPanel account={a} onEdit={onEdit} />
@@ -783,8 +798,8 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                   return (
                     <div key={a.id} style={{ marginBottom:8 }}>
                       <div className="card-sm" style={{ display:'flex',alignItems:'center',gap:12, borderColor:'#7f1d1d44' }}>
-                        <div style={{ width:40,height:40,borderRadius:10,background:acctColor(a.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0 }}>
-                          {acctEmoji(a.type)}
+                        <div style={{ width:40,height:40,borderRadius:10,background:acctColor(a.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0, color:acctColor(a.type) }}>
+                          <AccountIcon type={a.type} size={20} />
                         </div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:600,fontSize:14 }}>{a.name}</div>
@@ -799,7 +814,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                           })()}
                           {oldUncleared.length > 0 && (
                             <div style={{ fontSize:11,color:'var(--amber)',marginTop:3 }}>
-                              ⚠ {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
+                              <AlertTriangle size={11} strokeWidth={2} style={{ verticalAlign:'text-bottom', marginRight:3 }} /> {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
                             </div>
                           )}
                         </div>
@@ -825,16 +840,16 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             if (diff < 0.01) return null;
                             return (
                               <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'var(--amber)', marginTop:3, cursor:'help' }}>
-                                ⚠ tx total: {cfmt(computed)}
+                                <AlertTriangle size={11} strokeWidth={2} style={{ verticalAlign:'text-bottom', marginRight:3 }} /> tx total: {cfmt(computed)}
                               </div>
                             );
                           })()}
                         </div>
-                        <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}>📥</button>
-                        <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>⚖️</button>
-                        <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>✏️</button>
+                        <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}><Download size={14} strokeWidth={1.5} /></button>
+                        <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}><Scale size={14} strokeWidth={1.5} /></button>
+                        <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}><Pencil size={14} strokeWidth={1.5} /></button>
                         <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }}
-                          onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>🗑</button>
+                          onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}><Trash2 size={14} strokeWidth={1.5} /></button>
                       </div>
                       {isReconciling && (
                         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border-default)',borderRadius:10,padding:14,marginTop:4 }}>

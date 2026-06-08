@@ -4,6 +4,8 @@ import { useChart } from '../hooks/useChart.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { usePrivacy } from '../context/PrivacyContext.jsx';
 import Goals from './Goals.jsx';
+import CategoryIcon from './CategoryIcon.jsx';
+import { Clock, BarChart2, ArrowRightLeft, RefreshCw, Lightbulb, Flame, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 
 export default function Dashboard({
   transactions, accounts, budgets, recurrences, onAddTx,
@@ -274,7 +276,7 @@ export default function Dashboard({
     <div className="fade-in" style={{ padding:'24px 28px' }}>
       {isNewUser && (
         <div style={{ background:'var(--bg-card)', border:'1px solid #14532d55', borderRadius:14, padding:'28px 32px', marginBottom:24 }}>
-          <div style={{ fontSize:36, marginBottom:10 }}>⌚</div>
+          <div style={{ marginBottom:10, color:'var(--green)' }}><Clock size={36} strokeWidth={1} /></div>
           <div style={{ fontWeight:700, fontSize:20, color:'var(--text-primary)', marginBottom:6 }}>Welcome to Pocket Watch</div>
           <div style={{ fontSize:14, color:'var(--text-secondary)', marginBottom:20, lineHeight:1.7 }}>
             Your data lives only on this machine — private, fast, and yours forever. Here's how to get started:
@@ -459,7 +461,7 @@ export default function Dashboard({
         <div className="card">
           <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Spending by Category</div>
           {topCats.length === 0 ? (
-            <div className="empty-state"><div className="empty-icon">📊</div><p>No expenses this month</p></div>
+            <div className="empty-state"><div className="empty-icon"><BarChart2 size={40} strokeWidth={1} /></div><p>No expenses this month</p></div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {topCats.slice(0, 8).map(([cat, amt]) => {
@@ -471,7 +473,7 @@ export default function Dashboard({
                     style={{ cursor: onCategoryClick ? 'pointer' : 'default' }}
                   >
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
-                      <span style={{ fontSize:13, color:'var(--text-primary)' }}>{catIcon(cat)} {cat}</span>
+                      <span style={{ fontSize:13, color:'var(--text-primary)' }}><CategoryIcon name={cat} size={14} /> {cat}</span>
                       <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{cfmt(amt)}</span>
                     </div>
                     <div style={{ background:'var(--bg-raised)', borderRadius:4, height:5, overflow:'hidden' }}>
@@ -503,7 +505,7 @@ export default function Dashboard({
                 <div key={b.id} onClick={onGoToBudgets} style={{ cursor:'pointer' }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
                     <span style={{ fontSize:13, color:'var(--text-primary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {catIcon(b.category)} {b.category}
+                      <CategoryIcon name={b.category} size={14} /> {b.category}
                     </span>
                     <span style={{ fontSize:11, color:'var(--text-secondary)', flexShrink:0, marginLeft:8 }}>{cfmt(b.spent)} / {cfmt(b.amount)}</span>
                   </div>
@@ -535,7 +537,7 @@ export default function Dashboard({
       <div className="card" style={{ marginBottom:20 }}>
         <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Recent Transactions</div>
         {transactions.length === 0 ? (
-          <div className="empty-state"><div className="empty-icon">💸</div><p>No transactions yet</p></div>
+          <div className="empty-state"><div className="empty-icon"><ArrowRightLeft size={40} strokeWidth={1} /></div><p>No transactions yet</p></div>
         ) : (
           <table>
             <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style={{ textAlign:'right' }}>Amount</th></tr></thead>
@@ -545,9 +547,9 @@ export default function Dashboard({
                   <td style={{ color:'var(--text-secondary)', fontSize:13 }}>{fmtDate(t.date)}</td>
                   <td style={{ fontWeight:500 }}>
                     {t.description}
-                    {t.recurringId && <span style={{ fontSize:10, background:'var(--bg-raised)', color:'var(--text-secondary)', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>🔁</span>}
+                    {t.recurringId && <span style={{ fontSize:10, background:'var(--bg-raised)', color:'var(--text-secondary)', padding:'2px 6px', borderRadius:10, marginLeft:4, display:'inline-flex', alignItems:'center', gap:2 }}><RefreshCw size={9} strokeWidth={2} /></span>}
                   </td>
-                  <td><span className="tag">{catIcon(t.category)} {t.category}</span></td>
+                  <td><span className="tag"><CategoryIcon name={t.category} size={12} /> {t.category}</span></td>
                   <td style={{ textAlign:'right', fontWeight:700, color:t.amount>=0?'var(--green)':'var(--red)' }}>
                     {t.amount>=0?'+':''}{cfmt(t.amount)}
                   </td>
@@ -561,12 +563,12 @@ export default function Dashboard({
       {/* ── Insights ── */}
       {insights.length > 0 && (
         <div className="card" style={{ marginBottom:20 }}>
-          <div style={{ fontWeight:600, fontSize:14, marginBottom:12 }}>💡 Spending Insights</div>
+          <div style={{ fontWeight:600, fontSize:14, marginBottom:12 }}><Lightbulb size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Spending Insights</div>
           {insights.map(({cat, spent, avg, pct, dir}) => (
             <div key={cat} style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
-              <span>{dir==='up'?'⬆️':'⬇️'}</span>
+              <span style={{ color: dir==='up' ? 'var(--red)' : 'var(--green)' }}>{dir==='up' ? <ArrowUp size={14} strokeWidth={2} /> : <ArrowDown size={14} strokeWidth={2} />}</span>
               <span>
-                <strong style={{ color:'var(--text-primary)' }}>{catIcon(cat)} {cat}</strong>
+                <strong style={{ color:'var(--text-primary)' }}><CategoryIcon name={cat} size={14} /> {cat}</strong>
                 {' '}is{' '}
                 <strong style={{ color: dir==='up'?'var(--red)':'var(--green)' }}>{pct.toFixed(0)}% {dir==='up'?'above':'below'}</strong>
                 {' '}your 3-month average ({cfmt(spent)} vs {cfmt(avg)} avg)
@@ -596,7 +598,7 @@ export default function Dashboard({
             </div>
             {fireData.avgMonthlySpend > 0 && (
               <div style={{ borderTop:'1px solid var(--bg-raised)', paddingTop:20 }}>
-                <div style={{ fontWeight:600, fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>🔥 FIRE Progress</div>
+                <div style={{ fontWeight:600, fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}><Flame size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> FIRE Progress</div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
                   <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'12px 14px' }}>
                     <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>FIRE Number</div>
@@ -614,7 +616,7 @@ export default function Dashboard({
                     <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Years to FIRE</div>
                     <div style={{ fontSize:18, fontWeight:700, color: fireData.yearsToFire !== null && fireData.yearsToFire <= 15 ? 'var(--green)' : 'var(--amber)' }}>
                       {fireData.yearsToFire === null
-                        ? netWorth >= fireData.fireNumber ? '🎉 Now!' : '—'
+                        ? netWorth >= fireData.fireNumber ? <><Sparkles size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Now!</> : '—'
                         : fireData.yearsToFire < 1 ? '<1 yr'
                         : `${fireData.yearsToFire.toFixed(1)} yrs`}
                     </div>

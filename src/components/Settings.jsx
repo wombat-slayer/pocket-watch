@@ -5,6 +5,7 @@ import PlaidSync from './PlaidSync.jsx';
 import Recurring from './Recurring.jsx';
 import Equity from './Equity.jsx';
 import PayStubImportModal from './PayStubImportModal.jsx';
+import { CheckCircle2, AlertTriangle, XCircle, Download, Archive, HeartPulse, Upload, RefreshCw, Trash2, FolderOpen, FolderInput, Loader2, Key, Landmark, Folder, BarChart2, TrendingUp, Tag, Bell, Briefcase } from 'lucide-react';
 
 export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile, budgetAlerts = { enabled: true, warnAt: 80, alertAt: 100 }, onSaveBudgetAlerts, onScanTransfers }) {
   const [confirmReset,     setConfirmReset]     = useState(false);
@@ -129,7 +130,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* API Keys */}
       <div className="settings-section">
-        <div className="settings-section-title">🔑 API Keys</div>
+        <div className="settings-section-title"><Key size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> API Keys</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Add a <strong style={{ color:'var(--text-primary)' }}>Finnhub</strong> API key to enable live stock price fetching in the Investments section below.
           {' '}<a href="https://finnhub.io/register" target="_blank" rel="noreferrer"
@@ -178,7 +179,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
             </button>
           )}
         </div>
-        {apiKeySaved && <p style={{ color:'var(--green)', fontSize:12, marginTop:6 }}>✅ API key saved.</p>}
+        {apiKeySaved && <p style={{ color:'var(--green)', fontSize:12, marginTop:6 }}><CheckCircle2 size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> API key saved.</p>}
         <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>Key is stored in your OS keychain — never in the data file or uploaded.</p>
       </div>
 
@@ -187,7 +188,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {compensationProfile !== undefined && onSetCompensationProfile && (
         <div className="settings-section">
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div className="settings-section-title" style={{ marginBottom:0 }}>💼 Compensation Profile</div>
+            <div className="settings-section-title" style={{ marginBottom:0 }}><Briefcase size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Compensation Profile</div>
             <button
               className="btn btn-secondary btn-sm"
               style={{ fontSize:12 }}
@@ -293,7 +294,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Bank Sync */}
       <div className="settings-section">
-        <div className="settings-section-title">🏦 Bank Sync (Plaid)</div>
+        <div className="settings-section-title"><Landmark size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Bank Sync (Plaid)</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:16 }}>
           Connect your bank accounts to automatically import transactions via Plaid.
           You'll need a free <a href="https://dashboard.plaid.com/signup" target="_blank" rel="noreferrer"
@@ -316,26 +317,26 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Data Health */}
       <div className="settings-section">
-        <div className="settings-section-title">🩺 Data Health</div>
+        <div className="settings-section-title"><HeartPulse size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Data Health</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
           {/* Total transactions */}
           <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color:'var(--green)', border:'1px solid #14532d44' }}>
-            ✅ {dataHealth.totalTxs} transactions
+            <CheckCircle2 size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> {dataHealth.totalTxs} transactions
             {dataHealth.oldestTx && dataHealth.newestTx && (
               <span style={{ color:'var(--text-secondary)', marginLeft:6 }}>({dataHealth.oldestTx} → {dataHealth.newestTx})</span>
             )}
           </div>
           {/* Uncleared old */}
           <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.unclearedOld > 0 ? 'var(--amber)' : 'var(--green)', border: dataHealth.unclearedOld > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
-            {dataHealth.unclearedOld > 0 ? '⚠' : '✅'} {dataHealth.unclearedOld} uncleared expense{dataHealth.unclearedOld !== 1 ? 's' : ''} older than 30 days
+            {dataHealth.unclearedOld > 0 ? <AlertTriangle size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> : <CheckCircle2 size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} />} {dataHealth.unclearedOld} uncleared expense{dataHealth.unclearedOld !== 1 ? 's' : ''} older than 30 days
           </div>
           {/* Accounts with no activity */}
           <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.accountsNoActivity > 0 ? 'var(--amber)' : 'var(--green)', border: dataHealth.accountsNoActivity > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
-            {dataHealth.accountsNoActivity > 0 ? '⚠' : '✅'} {dataHealth.accountsNoActivity} account{dataHealth.accountsNoActivity !== 1 ? 's' : ''} with no activity in 60 days
+            {dataHealth.accountsNoActivity > 0 ? <AlertTriangle size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> : <CheckCircle2 size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} />} {dataHealth.accountsNoActivity} account{dataHealth.accountsNoActivity !== 1 ? 's' : ''} with no activity in 60 days
           </div>
           {/* Budgets with no spending */}
           <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.budgetsNoSpend > 0 ? 'var(--amber)' : 'var(--green)', border: dataHealth.budgetsNoSpend > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
-            {dataHealth.budgetsNoSpend > 0 ? '⚠' : '✅'} {dataHealth.budgetsNoSpend} budget{dataHealth.budgetsNoSpend !== 1 ? 's' : ''} with no spending this month
+            {dataHealth.budgetsNoSpend > 0 ? <AlertTriangle size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> : <CheckCircle2 size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} />} {dataHealth.budgetsNoSpend} budget{dataHealth.budgetsNoSpend !== 1 ? 's' : ''} with no spending this month
           </div>
           {/* Untagged expenses */}
           <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color:'var(--text-secondary)', border:'1px solid var(--bg-raised)' }}>
@@ -346,7 +347,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Data file location */}
       <div className="settings-section">
-        <div className="settings-section-title">📁 Data File</div>
+        <div className="settings-section-title"><Folder size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Data File</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           All Pocket Watch data is stored locally in a single JSON file you control. You can put it in Dropbox, iCloud Drive, or any folder — it stays on your devices.
         </p>
@@ -354,14 +355,14 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           {dataPath ?? 'Loading…'}
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button className="btn btn-secondary" onClick={handleMoveDataFile}>📂 Move Data File…</button>
+          <button className="btn btn-secondary" onClick={handleMoveDataFile}><FolderInput size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Move Data File…</button>
         </div>
         <p style={{ fontSize:12,color:'var(--text-muted)',marginTop:10 }}>Moving the data file copies all data to the new location and updates the remembered path.</p>
       </div>
 
       {/* Storage stats */}
       <div className="settings-section">
-        <div className="settings-section-title">📊 Storage Overview</div>
+        <div className="settings-section-title"><BarChart2 size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Storage Overview</div>
         <div style={{ display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12 }}>
           {[['Transactions',transactions.length],['Accounts',accounts.length],['Budgets',budgets.length],['Goals',(goals??[]).length],['NW Snapshots',netWorthHistory.length]].map(([label,count])=>(
             <div key={label} className="card-sm" style={{ textAlign:'center',padding:14 }}>
@@ -374,14 +375,14 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Net Worth History Import */}
       <div className="settings-section">
-        <div className="settings-section-title">📈 Import Historical Net Worth</div>
+        <div className="settings-section-title"><TrendingUp size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Import Historical Net Worth</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Upload a CSV file with past net worth snapshots to populate the historical chart.
           Accepted columns (case-insensitive): <code style={{ fontSize:11, color:'var(--green)' }}>date, net_worth</code> or
           {' '}<code style={{ fontSize:11, color:'var(--green)' }}>date, assets, debts</code>.
           Date format: YYYY-MM-DD. Duplicate dates are skipped.
         </p>
-        <label className="file-label" htmlFor="nw-csv-import">📂 Choose Net Worth CSV</label>
+        <label className="file-label" htmlFor="nw-csv-import"><FolderOpen size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Choose Net Worth CSV</label>
         <input id="nw-csv-import" type="file" accept=".csv" onChange={(e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -416,14 +417,14 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
               }
               if (!rows.length) throw new Error('No valid rows found. Check date format (YYYY-MM-DD) and column names.');
               onImportNetWorthHistory?.(rows);
-              setNwImportResult(`✅ Imported ${rows.length} snapshot${rows.length!==1?'s':''} (duplicates skipped).`);
+              setNwImportResult(`Imported ${rows.length} snapshot${rows.length!==1?'s':''} (duplicates skipped).`);
             } catch (err) { setNwImportError(err.message); }
           };
           reader.readAsText(file);
           e.target.value = '';
         }} />
-        {nwImportError  && <p style={{ color:'var(--red)',fontSize:13,marginTop:8 }}>❌ {nwImportError}</p>}
-        {nwImportResult && <p style={{ color:'var(--green)',fontSize:13,marginTop:8 }}>{nwImportResult}</p>}
+        {nwImportError  && <p style={{ color:'var(--red)',fontSize:13,marginTop:8 }}><XCircle size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> {nwImportError}</p>}
+        {nwImportResult && <p style={{ color:'var(--green)',fontSize:13,marginTop:8 }}><CheckCircle2 size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> {nwImportResult}</p>}
         <p style={{ fontSize:11,color:'var(--text-muted)',marginTop:8 }}>
           Currently {netWorthHistory.length} snapshots stored.
           {netWorthHistory.length > 0 && ` Oldest: ${netWorthHistory[0]?.date}. Latest: ${netWorthHistory[netWorthHistory.length-1]?.date}.`}
@@ -432,7 +433,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Archive */}
       <div className="settings-section">
-        <div className="settings-section-title">🗃️ Transaction Archive</div>
+        <div className="settings-section-title"><Archive size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Transaction Archive</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Move old transactions to an archive to keep your active dataset small and fast. Archived transactions are still saved in your data file and can be restored at any time.
         </p>
@@ -443,7 +444,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           <button className="btn btn-secondary"
             onClick={() => {
               const count = onArchive?.(archiveBefore) ?? 0;
-              setArchiveResult(count > 0 ? `✅ Archived ${count} transaction${count!==1?'s':''}.` : '⚠ No transactions matched that date range.');
+              setArchiveResult(count > 0 ? `Archived ${count} transaction${count!==1?'s':''}.` : 'No transactions matched that date range.');
             }}>
             Archive Old Transactions
           </button>
@@ -465,10 +466,10 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Export */}
       <div className="settings-section">
-        <div className="settings-section-title">📤 Export Data</div>
+        <div className="settings-section-title"><Upload size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Export Data</div>
         <div style={{ display:'flex',gap:10,flexWrap:'wrap' }}>
-          <button className="btn btn-secondary" onClick={exportTransactionsCSV}>⬇ Transactions CSV</button>
-          <button className="btn btn-secondary" onClick={exportJSON}>⬇ Full Backup (JSON)</button>
+          <button className="btn btn-secondary" onClick={exportTransactionsCSV}><Download size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Transactions CSV</button>
+          <button className="btn btn-secondary" onClick={exportJSON}><Download size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Full Backup (JSON)</button>
           {onScanTransfers && (
             <button className="btn btn-secondary" onClick={onScanTransfers} title="Re-detect transfer pairs across all transactions">
               ⇄ Scan for transfers
@@ -480,17 +481,17 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Import */}
       <div className="settings-section">
-        <div className="settings-section-title">📥 Restore from Backup</div>
-        <label className="file-label" htmlFor="json-restore">📂 Choose JSON Backup File</label>
+        <div className="settings-section-title"><Download size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Restore from Backup</div>
+        <label className="file-label" htmlFor="json-restore"><FolderOpen size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Choose JSON Backup File</label>
         <input id="json-restore" type="file" accept=".json" onChange={handleImport} />
-        {importError && <p style={{ color:'var(--red)',fontSize:13,marginTop:8 }}>❌ {importError}</p>}
-        {importOk    && <p style={{ color:'var(--green)',fontSize:13,marginTop:8 }}>✅ Backup restored successfully.</p>}
-        <p style={{ fontSize:12,color:'var(--text-muted)',marginTop:10 }}>⚠️ Restoring replaces all current data with the backup contents.</p>
+        {importError && <p style={{ color:'var(--red)',fontSize:13,marginTop:8 }}><XCircle size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> {importError}</p>}
+        {importOk    && <p style={{ color:'var(--green)',fontSize:13,marginTop:8 }}><CheckCircle2 size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Backup restored successfully.</p>}
+        <p style={{ fontSize:12,color:'var(--text-muted)',marginTop:10 }}><AlertTriangle size={12} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Restoring replaces all current data with the backup contents.</p>
       </div>
 
       {/* Updates */}
       <div className="settings-section">
-        <div className="settings-section-title">🔄 Updates</div>
+        <div className="settings-section-title"><RefreshCw size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Updates</div>
         <p style={{ fontSize:13,color:'var(--text-secondary)',marginBottom:12 }}>
           Check for the latest version of Pocket Watch.
           {' '}<span style={{ color:'var(--text-muted)', fontSize:11 }}>
@@ -500,23 +501,23 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         </p>
         <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
           <button className="btn btn-secondary" onClick={handleCheckUpdate} disabled={updateStatus==='checking'}>
-            {updateStatus==='checking' ? '⏳ Checking…' : '🔍 Check for Updates'}
+            {updateStatus==='checking' ? <><Loader2 size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:5 }} /> Checking…</> : <><RefreshCw size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:5 }} /> Check for Updates</>}
           </button>
-          {updateStatus === 'uptodate' && <span style={{ color:'var(--green)',fontSize:13 }}>✅ You're up to date!</span>}
+          {updateStatus === 'uptodate' && <span style={{ color:'var(--green)',fontSize:13 }}><CheckCircle2 size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> You're up to date!</span>}
           {updateStatus === 'available' && updateInfo && (
             <>
-              <span style={{ color:'var(--amber)',fontSize:13 }}>🆕 Update available: v{updateInfo.version}</span>
-              <button className="btn btn-primary" onClick={handleInstallUpdate}>⬇ Install Update</button>
+              <span style={{ color:'var(--amber)',fontSize:13 }}><Download size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Update available: v{updateInfo.version}</span>
+              <button className="btn btn-primary" onClick={handleInstallUpdate}><Download size={14} strokeWidth={1.5} style={{ verticalAlign:'text-bottom' }} /> Install Update</button>
             </>
           )}
           {updateStatus === 'installing' && (
-            <span style={{ color:'var(--accent)',fontSize:13 }}>⏳ Downloading and installing…</span>
+            <span style={{ color:'var(--accent)',fontSize:13 }}><Loader2 size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Downloading and installing…</span>
           )}
           {updateStatus === 'restart' && (
-            <span style={{ color:'var(--green)',fontSize:13 }}>✅ Update installed — please restart Pocket Watch to finish.</span>
+            <span style={{ color:'var(--green)',fontSize:13 }}><CheckCircle2 size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Update installed — please restart Pocket Watch to finish.</span>
           )}
           {updateStatus === 'error' && (
-            <span style={{ color:'var(--red)',fontSize:13 }}>❌ Update check failed. Check your internet connection.</span>
+            <span style={{ color:'var(--red)',fontSize:13 }}><XCircle size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> Update check failed. Check your internet connection.</span>
           )}
         </div>
       </div>
@@ -524,7 +525,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Demo data */}
       {demoTotal > 0 && (
         <div className="settings-section">
-          <div className="settings-section-title">🧹 Clear Demo Data</div>
+          <div className="settings-section-title"><Trash2 size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Clear Demo Data</div>
           <p style={{ fontSize:14,color:'var(--text-secondary)',marginBottom:12 }}>
             You have <strong style={{ color:'var(--text-primary)' }}>{demoTxCount}</strong> demo transactions,{' '}
             <strong style={{ color:'var(--text-primary)' }}>{demoAccCount}</strong> demo accounts, and{' '}
@@ -543,7 +544,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Category Management */}
       <div className="settings-section">
-        <div className="settings-section-title">🏷️ Custom Categories</div>
+        <div className="settings-section-title"><Tag size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Custom Categories</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Add your own categories. Built-in categories cannot be removed.
         </p>
@@ -577,7 +578,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Recurring Rules (moved from its own nav page) */}
       <div className="settings-section">
-        <div className="settings-section-title">🔁 Recurring Rules</div>
+        <div className="settings-section-title"><RefreshCw size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Recurring Rules</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Rules that auto-generate transactions on a schedule (rent, salary, subscriptions).
           Generated transactions appear on the Transactions page with a 🔁 marker.
@@ -625,7 +626,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Notifications */}
       <div className="settings-section">
-        <div className="settings-section-title">🔔 Budget Notifications</div>
+        <div className="settings-section-title"><Bell size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Budget Notifications</div>
         <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Get OS notifications when spending approaches or exceeds your monthly budget limits.
         </p>
@@ -659,12 +660,12 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
 
       {/* Full reset */}
       <div className="settings-section" style={{ borderColor:'#7f1d1d44' }}>
-        <div className="settings-section-title" style={{ color:'#fca5a5' }}>⚠️ Danger Zone</div>
+        <div className="settings-section-title" style={{ color:'#fca5a5' }}><AlertTriangle size={15} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:6 }} /> Danger Zone</div>
         <p style={{ fontSize:14,color:'var(--text-secondary)',marginBottom:12 }}>Full reset deletes all transactions, accounts, budgets, and history. This cannot be undone.</p>
         {!confirmReset
           ? <button className="btn btn-danger" onClick={()=>setConfirmReset(true)}>Full Reset — Delete Everything</button>
           : <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
-              <span style={{ fontSize:13,color:'var(--red)' }}>⚠️ This is permanent and cannot be undone.</span>
+              <span style={{ fontSize:13,color:'var(--red)' }}><AlertTriangle size={13} strokeWidth={1.5} style={{ verticalAlign:'text-bottom', marginRight:4 }} /> This is permanent and cannot be undone.</span>
               <button className="btn btn-danger" onClick={()=>{onReset();setConfirmReset(false);}}>Yes, delete everything</button>
               <button className="btn btn-secondary" onClick={()=>setConfirmReset(false)}>Cancel</button>
             </div>
