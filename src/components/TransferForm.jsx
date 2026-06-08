@@ -12,7 +12,7 @@ export default function TransferForm({ accounts, onSave, onClose }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   if (accounts.length < 2) return (
-    <p style={{ color: '#64748b', padding: '16px 0' }}>You need at least 2 accounts to make a transfer.</p>
+    <p style={{ color: 'var(--text-secondary)', padding: '16px 0' }}>You need at least 2 accounts to make a transfer.</p>
   );
 
   const handleSave = () => {
@@ -70,7 +70,7 @@ export default function TransferForm({ accounts, onSave, onClose }) {
         </div>
       </div>
       {form.fromAccount === form.toAccount && (
-        <div style={{ fontSize:12, color:'#c2735a' }}>⚠️ From and To accounts must be different.</div>
+        <div style={{ fontSize:12, color:'var(--red)' }}>⚠️ From and To accounts must be different.</div>
       )}
       <div className="form-grid form-grid-2">
         <div className="form-group">

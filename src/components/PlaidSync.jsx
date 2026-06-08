@@ -550,12 +550,12 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       {/* ── Credentials section ───────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>Plaid API Credentials</span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Plaid API Credentials</span>
           {hasCreds && !credEditing && (
             <button className="btn btn-ghost btn-sm" onClick={() => setCredEditing(true)}>Edit</button>
           )}
           {hasCreds && (
-            <button className="btn btn-ghost btn-sm" style={{ color: '#c2735a' }} onClick={handleClearCreds}>
+            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={handleClearCreds}>
               Disconnect All
             </button>
           )}
@@ -602,13 +602,13 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
                 </button>
               )}
             </div>
-            {credSaved && <span style={{ color: '#4ade80', fontSize: 12 }}>✅ Saved.</span>}
+            {credSaved && <span style={{ color: 'var(--green)', fontSize: 12 }}>✅ Saved.</span>}
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: '#475569', fontFamily: 'monospace' }}>
-            Environment: <span style={{ color: '#7fa88b' }}>{creds.env}</span>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+            Environment: <span style={{ color: 'var(--green)' }}>{creds.env}</span>
             &nbsp;·&nbsp;
-            Client ID: <span style={{ color: '#7fa88b' }}>{creds.clientId.slice(0, 8)}…</span>
+            Client ID: <span style={{ color: 'var(--green)' }}>{creds.clientId.slice(0, 8)}…</span>
           </div>
         )}
       </div>
@@ -645,7 +645,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
             </button>
           )}
           {linkError && (
-            <p style={{ color: '#c2735a', fontSize: 12, marginTop: 8 }}>❌ {linkError}</p>
+            <p style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>❌ {linkError}</p>
           )}
         </div>
       )}
@@ -654,7 +654,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       {items.length > 0 && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
               Connected Institutions
             </span>
             <button
@@ -679,7 +679,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
           {syncAllMsg && (
             <div style={{
               fontSize: 12,
-              color: syncingAll ? '#94a3b8' : (syncAllMsg.startsWith('✅') ? '#4ade80' : '#c2735a'),
+              color: syncingAll ? 'var(--text-secondary)' : (syncAllMsg.startsWith('✅') ? 'var(--green)' : 'var(--red)'),
               marginBottom: 8,
             }}>
               {syncAllMsg}
@@ -692,8 +692,8 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
               <div
                 key={item.itemId}
                 style={{
-                  background: '#0d1117',
-                  border: '1px solid #1e2736',
+                  background: 'var(--bg-page)',
+                  border: '1px solid var(--bg-raised)',
                   borderRadius: 10,
                   padding: '14px 16px',
                   marginBottom: 12,
@@ -701,21 +701,21 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>
                       🏦 {item.institutionName}
                     </div>
-                    <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                       {item.accounts.map(a => `${a.name} (…${a.mask ?? ''})`).join(' · ')}
                     </div>
                     {item.lastSync && (
-                      <div style={{ fontSize: 11, color: '#334155', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                         Last synced: {item.lastSync}
                       </div>
                     )}
                   </div>
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ color: '#475569', fontSize: 11 }}
+                    style={{ color: 'var(--text-muted)', fontSize: 11 }}
                     onClick={() => handleRemoveItem(item)}
                   >
                     ✕ Disconnect
@@ -731,7 +731,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
                     {status === 'syncing' ? '⏳ Syncing…' : '↻ Sync'}
                   </button>
                   {msg && (
-                    <span style={{ fontSize: 12, color: status === 'error' ? '#c2735a' : '#4ade80' }}>
+                    <span style={{ fontSize: 12, color: status === 'error' ? 'var(--red)' : 'var(--green)' }}>
                       {msg}
                     </span>
                   )}
@@ -744,7 +744,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
       {hasCreds && items.length === 0 && !linkToken && (
-        <div style={{ fontSize: 13, color: '#334155', padding: '16px 0' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '16px 0' }}>
           No banks connected yet. Click "Connect Another Account" to link your first institution.
         </div>
       )}
@@ -754,8 +754,8 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
         <div style={{
           marginTop: 20,
           fontSize: 11,
-          color: '#334155',
-          borderTop: '1px solid #1e2736',
+          color: 'var(--text-muted)',
+          borderTop: '1px solid var(--bg-raised)',
           paddingTop: 12,
           lineHeight: 1.6,
         }}>
@@ -765,7 +765,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
           from Plaid and written to your local data file. You can audit or revoke this app's
           access any time at my.plaid.com.
           {creds.env === 'sandbox' && (
-            <span style={{ color: '#f59e0b', marginLeft: 4 }}>
+            <span style={{ color: 'var(--amber)', marginLeft: 4 }}>
               ⚠ Sandbox mode — using test data only.
             </span>
           )}

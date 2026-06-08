@@ -35,7 +35,7 @@ function Field({ label, value, onChange, step = '0.01', min = '0', suffix }) {
           onChange={e => onChange(e.target.value === '' ? null : +e.target.value)}
           style={{ flex:1 }}
         />
-        {suffix && <span style={{ fontSize:13, color:'#64748b', flexShrink:0 }}>{suffix}</span>}
+        {suffix && <span style={{ fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>{suffix}</span>}
       </div>
     </div>
   );
@@ -106,24 +106,24 @@ export default function PayStubImportModal({ compensationProfile = {}, onSetComp
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background:'#161d2b', border:'1px solid #334155', borderRadius:14,
+        background:'var(--bg-card)', border:'1px solid var(--text-muted)', borderRadius:14,
         padding:'28px 32px', width:480, maxWidth:'95vw', maxHeight:'90vh',
         overflowY:'auto', boxShadow:'0 16px 48px rgba(0,0,0,0.5)',
       }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:18, color:'#e2e8f0' }}>
+          <div style={{ fontWeight:700, fontSize:18, color:'var(--text-primary)' }}>
             {step === 'upload' ? '📄 Import Pay Stub' : '✅ Review Extracted Values'}
           </div>
           <button
             onClick={onClose}
-            style={{ background:'none', border:'none', color:'#64748b', fontSize:20, cursor:'pointer', lineHeight:1 }}
+            style={{ background:'none', border:'none', color:'var(--text-secondary)', fontSize:20, cursor:'pointer', lineHeight:1 }}
           >×</button>
         </div>
 
         {/* ── Step 1: Upload ── */}
         {step === 'upload' && (
           <>
-            <p style={{ fontSize:13, color:'#94a3b8', marginBottom:20, lineHeight:1.6 }}>
+            <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:20, lineHeight:1.6 }}>
               Supports ADP format (PDF). All values are shown for review before saving.
             </p>
 
@@ -141,22 +141,22 @@ export default function PayStubImportModal({ compensationProfile = {}, onSetComp
               onDragOver={e => e.preventDefault()}
               onClick={() => inputRef.current?.click()}
               style={{
-                border:'2px dashed #334155', borderRadius:10, padding:'32px 20px',
+                border:'2px dashed var(--text-muted)', borderRadius:10, padding:'32px 20px',
                 textAlign:'center', cursor:'pointer', transition:'border-color 0.15s',
-                background:'#0d1117',
+                background:'var(--bg-page)',
               }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#7fa88b'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#334155'}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--green)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--text-muted)'}
             >
               {loading ? (
-                <div style={{ color:'#94a3b8', fontSize:14 }}>Extracting text…</div>
+                <div style={{ color:'var(--text-secondary)', fontSize:14 }}>Extracting text…</div>
               ) : (
                 <>
                   <div style={{ fontSize:32, marginBottom:10 }}>📄</div>
-                  <div style={{ fontSize:14, color:'#94a3b8', marginBottom:6 }}>
+                  <div style={{ fontSize:14, color:'var(--text-secondary)', marginBottom:6 }}>
                     Drop PDF here or click to browse
                   </div>
-                  <div style={{ fontSize:12, color:'#475569' }}>PDF pay stub only</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)' }}>PDF pay stub only</div>
                 </>
               )}
             </div>
@@ -169,7 +169,7 @@ export default function PayStubImportModal({ compensationProfile = {}, onSetComp
             />
 
             {error && (
-              <div style={{ marginTop:14, padding:'10px 14px', background:'#c2735a22', border:'1px solid #c2735a44', borderRadius:8, fontSize:13, color:'#c2735a' }}>
+              <div style={{ marginTop:14, padding:'10px 14px', background:'#c2735a22', border:'1px solid #c2735a44', borderRadius:8, fontSize:13, color:'var(--red)' }}>
                 {error}
               </div>
             )}
@@ -220,7 +220,7 @@ export default function PayStubImportModal({ compensationProfile = {}, onSetComp
               />
             </div>
 
-            <p style={{ fontSize:12, color:'#475569', marginTop:14, lineHeight:1.6 }}>
+            <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:14, lineHeight:1.6 }}>
               These values will populate Settings → Compensation Profile. You can edit them there at any time.
             </p>
 

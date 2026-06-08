@@ -61,15 +61,15 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000000cc', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#161d2b', border: '1px solid #1e2736', borderRadius: 16, padding: '28px 32px', width: 'min(680px,95vw)', maxHeight: '85vh', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-raised)', borderRadius: 16, padding: '28px 32px', width: 'min(680px,95vw)', maxHeight: '85vh', overflowY: 'auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
               Month Close — {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Step {step} of 4 — {steps[step - 1].label}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Step {step} of 4 — {steps[step - 1].label}</div>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
         </div>
@@ -77,29 +77,29 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
         {/* Step indicator */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
           {steps.map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < step ? '#7fa88b' : '#1e2736' }} />
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < step ? 'var(--green)' : 'var(--bg-raised)' }} />
           ))}
         </div>
 
         {/* Step 1: Uncategorized */}
         {step === 1 && (
           <div>
-            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
               {uncategorized.length === 0
                 ? null
                 : `${uncategorized.length} transaction${uncategorized.length !== 1 ? 's' : ''} need review`}
             </div>
             {uncategorized.length === 0
               ? (
-                <div style={{ textAlign: 'center', padding: '24px', color: '#4ade80' }}>
+                <div style={{ textAlign: 'center', padding: '24px', color: 'var(--green)' }}>
                   All transactions are categorized!
                 </div>
               )
               : uncategorized.map(tx => (
-                <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #1e2736', fontSize: 13 }}>
-                  <div style={{ flex: 1, color: '#e2e8f0' }}>{tx.description}</div>
-                  <div style={{ color: '#64748b', fontSize: 12 }}>{tx.date}</div>
-                  <div style={{ color: '#c2735a' }}>{fmt(tx.amount)}</div>
+                <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--bg-raised)', fontSize: 13 }}>
+                  <div style={{ flex: 1, color: 'var(--text-primary)' }}>{tx.description}</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{tx.date}</div>
+                  <div style={{ color: 'var(--red)' }}>{fmt(tx.amount)}</div>
                   <select
                     value={catEdits[tx.id] || 'Other'}
                     onChange={e => setCatEdits(p => ({ ...p, [tx.id]: e.target.value }))}
@@ -125,23 +125,23 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
         {step === 2 && (
           <div>
             {monthBudgets.length === 0
-              ? <div style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No budgets set for this month.</div>
+              ? <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>No budgets set for this month.</div>
               : monthBudgets.map(b => {
                   const spent = catSpend[b.category] || 0;
                   const pct   = b.amount > 0 ? spent / b.amount : 0;
-                  const color = pct >= 1 ? '#c2735a' : pct >= 0.8 ? '#f59e0b' : '#4ade80';
+                  const color = pct >= 1 ? 'var(--red)' : pct >= 0.8 ? 'var(--amber)' : 'var(--green)';
                   return (
-                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #1e2736', fontSize: 13 }}>
-                      <div style={{ flex: 1, color: '#e2e8f0' }}>{b.category}</div>
+                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--bg-raised)', fontSize: 13 }}>
+                      <div style={{ flex: 1, color: 'var(--text-primary)' }}>{b.category}</div>
                       <div style={{ color }}>
                         {fmt(spent)} / {fmt(b.amount)}
                         <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>{(pct * 100).toFixed(0)}%</span>
                       </div>
                       {pct >= 1 && (
-                        <span style={{ fontSize: 11, background: '#c2735a22', color: '#c2735a', padding: '2px 6px', borderRadius: 4 }}>Over</span>
+                        <span style={{ fontSize: 11, background: '#c2735a22', color: 'var(--red)', padding: '2px 6px', borderRadius: 4 }}>Over</span>
                       )}
                       {pct >= 0.8 && pct < 1 && (
-                        <span style={{ fontSize: 11, background: '#f59e0b22', color: '#f59e0b', padding: '2px 6px', borderRadius: 4 }}>Near</span>
+                        <span style={{ fontSize: 11, background: '#f59e0b22', color: 'var(--amber)', padding: '2px 6px', borderRadius: 4 }}>Near</span>
                       )}
                     </div>
                   );
@@ -157,13 +157,13 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
         {/* Step 3: Account balances */}
         {step === 3 && (
           <div>
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               Update balances for investment and asset accounts to reflect current statements.
             </p>
             {accounts.filter(a => ['investment', 'asset'].includes(a.type)).map(a => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #1e2736', fontSize: 13 }}>
-                <div style={{ flex: 1, color: '#e2e8f0' }}>{a.name}</div>
-                <div style={{ color: '#64748b', fontSize: 12 }}>Current: {fmt(a.balance)}</div>
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--bg-raised)', fontSize: 13 }}>
+                <div style={{ flex: 1, color: 'var(--text-primary)' }}>{a.name}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Current: {fmt(a.balance)}</div>
                 <input
                   type="number"
                   step="0.01"
@@ -175,7 +175,7 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
               </div>
             ))}
             {accounts.filter(a => ['investment', 'asset'].includes(a.type)).length === 0 && (
-              <div style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No investment or asset accounts found.</div>
+              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>No investment or asset accounts found.</div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
               <button className="btn btn-secondary" onClick={() => setStep(2)}>← Back</button>
@@ -191,24 +191,24 @@ export default function MonthClose({ transactions, accounts, budgets, netWorthHi
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
               <div className="stat-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Income</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#4ade80' }}>{fmt(monthIncome)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Income</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--green)' }}>{fmt(monthIncome)}</div>
               </div>
               <div className="stat-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Spending</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#c2735a' }}>{fmt(monthSpend)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Spending</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--red)' }}>{fmt(monthSpend)}</div>
               </div>
               <div className="stat-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Net</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: monthIncome - monthSpend >= 0 ? '#4ade80' : '#c2735a' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Net</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: monthIncome - monthSpend >= 0 ? 'var(--green)' : 'var(--red)' }}>
                   {monthIncome - monthSpend >= 0 ? '+' : ''}{fmt(monthIncome - monthSpend)}
                 </div>
               </div>
             </div>
             {nwDelta !== null && (
               <div className="stat-card" style={{ marginBottom: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Net Worth Change vs Last Month</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: nwDelta >= 0 ? '#4ade80' : '#c2735a' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Net Worth Change vs Last Month</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: nwDelta >= 0 ? 'var(--green)' : 'var(--red)' }}>
                   {nwDelta >= 0 ? '+' : ''}{fmt(nwDelta)}
                 </div>
               </div>

@@ -32,7 +32,7 @@ function BudgetForm({ initial, defaultMonth, onSave, onClose, userCategories }) 
       <div className="form-group" style={{ display:'flex', alignItems:'center', gap:10 }}>
         <input type="checkbox" id="rollover-toggle" checked={rollover} onChange={e=>setRollover(e.target.checked)}
           style={{ width:16, height:16, cursor:'pointer' }} />
-        <label htmlFor="rollover-toggle" style={{ cursor:'pointer', fontSize:14, color:'#e2e8f0' }}>
+        <label htmlFor="rollover-toggle" style={{ cursor:'pointer', fontSize:14, color:'var(--text-primary)' }}>
           Roll over unspent amounts to next month
         </label>
       </div>
@@ -223,12 +223,12 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
   const nmLabel = new Date(nextMonth(month)+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   const cellColor = (spent, limit) => {
-    if (!limit) return '#1e2736';
+    if (!limit) return 'var(--bg-raised)';
     const pct = spent / limit;
     if (pct > 1)   return '#c2735a33';
     if (pct > 0.8) return '#f59e0b22';
     if (pct > 0)   return '#4ade8011';
-    return '#1e2736';
+    return 'var(--bg-raised)';
   };
 
   return (
@@ -274,7 +274,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
         <>
           <div className="card" style={{ marginBottom:16, padding:'12px 16px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-              <span style={{ fontSize:13, fontWeight:600, color:'#94a3b8' }}>Templates</span>
+              <span style={{ fontSize:13, fontWeight:600, color:'var(--text-secondary)' }}>Templates</span>
               <button
                 className="btn btn-secondary"
                 style={{ fontSize:12, padding:'4px 10px' }}
@@ -308,16 +308,16 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {budgetTemplates.map(t => (
                     <div key={t.name} style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'#1e2736', border:'1px solid #334155', borderRadius:20, padding:'2px 10px', fontSize:11, color:'#94a3b8' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'var(--bg-raised)', border:'1px solid var(--text-muted)', borderRadius:20, padding:'2px 10px', fontSize:11, color:'var(--text-secondary)' }}>
                         {t.name}
                         <button
-                          style={{ background:'none', border:'none', cursor:'pointer', color:'#7fa88b', fontSize:11, padding:0, marginLeft:2 }}
+                          style={{ background:'none', border:'none', cursor:'pointer', color:'var(--green)', fontSize:11, padding:0, marginLeft:2 }}
                           onClick={() => { if (onLoadTemplate && confirm(`Apply template "${t.name}"?`)) onLoadTemplate(t); }}
                         >
                           Apply
                         </button>
                       </span>
-                      <label style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, color:'#64748b', cursor:'pointer', paddingLeft:10 }}>
+                      <label style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, color:'var(--text-secondary)', cursor:'pointer', paddingLeft:10 }}>
                         <input
                           type="checkbox"
                           checked={t.autoApply === true}
@@ -327,7 +327,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         Auto-apply monthly
                       </label>
                       {t.autoApply && (
-                        <div style={{ fontSize:10, color:'#7fa88b', paddingLeft:10 }}>Applied automatically on the 1st of each month</div>
+                        <div style={{ fontSize:10, color:'var(--green)', paddingLeft:10 }}>Applied automatically on the 1st of each month</div>
                       )}
                     </div>
                   ))}
@@ -338,27 +338,27 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
 
           <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:20 }}>
             <div className="stat-card">
-              <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Budgeted</div>
-              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:'#e2e8f0' }}>{fmt(totalBudget)}</div>
+              <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Budgeted</div>
+              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:'var(--text-primary)' }}>{fmt(totalBudget)}</div>
             </div>
             <div className="stat-card">
-              <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Spent</div>
-              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalSpend>totalBudget?'#c2735a':'#e2e8f0' }}>{fmt(totalSpend)}</div>
+              <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Spent</div>
+              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalSpend>totalBudget?'var(--red)':'var(--text-primary)' }}>{fmt(totalSpend)}</div>
             </div>
             <div className="stat-card">
-              <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Remaining</div>
-              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalBudget-totalSpend>=0?'#4ade80':'#c2735a' }}>{fmt(totalBudget-totalSpend)}</div>
+              <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Remaining</div>
+              <div className="hero-num" style={{ fontSize:26,fontWeight:400,color:totalBudget-totalSpend>=0?'var(--green)':'var(--red)' }}>{fmt(totalBudget-totalSpend)}</div>
             </div>
           </div>
 
           {totalBudget > 0 && (
             <div className="card" style={{ marginBottom:20 }}>
-              <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8,fontSize:13,color:'#94a3b8' }}>
+              <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8,fontSize:13,color:'var(--text-secondary)' }}>
                 <span>Overall budget usage</span>
                 <span style={{ fontWeight:600 }}>{Math.round(totalSpend/totalBudget*100)}%</span>
               </div>
               <div className="progress-bar" style={{ height:10 }}>
-                <div className="progress-fill" style={{ width:`${Math.min(100,totalSpend/totalBudget*100)}%`, background:totalSpend>totalBudget?'#c2735a':totalSpend/totalBudget>0.8?'#f59e0b':'#7fa88b' }} />
+                <div className="progress-fill" style={{ width:`${Math.min(100,totalSpend/totalBudget*100)}%`, background:totalSpend>totalBudget?'var(--red)':totalSpend/totalBudget>0.8?'var(--amber)':'var(--green)' }} />
               </div>
             </div>
           )}
@@ -367,15 +367,15 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
             ? (
               <div className="card" style={{ padding:'40px 32px', textAlign:'center' }}>
                 <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
-                <div style={{ fontSize:16, fontWeight:600, color:'#e2e8f0', marginBottom:8 }}>No budgets for this month</div>
-                <div style={{ fontSize:13, color:'#64748b', marginBottom:20, maxWidth:400, margin:'0 auto 20px' }}>
+                <div style={{ fontSize:16, fontWeight:600, color:'var(--text-primary)', marginBottom:8 }}>No budgets for this month</div>
+                <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:20, maxWidth:400, margin:'0 auto 20px' }}>
                   Set category limits to control your spending. Use a template to apply last month's budgets instantly, or add them one at a time.
                 </div>
                 <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
                   <button className="btn btn-primary" onClick={()=>setShowAdd(true)}>+ Add Budget</button>
                   {budgetTemplates.length > 0 && (
                     <select defaultValue="" onChange={e => { const tpl = budgetTemplates.find(t=>t.name===e.target.value); if (tpl && onLoadTemplate) onLoadTemplate(tpl); }}
-                      style={{ fontSize:13, background:'#1e2736', border:'1px solid #334155', borderRadius:6, color:'#94a3b8', padding:'6px 10px', cursor:'pointer' }}>
+                      style={{ fontSize:13, background:'var(--bg-raised)', border:'1px solid var(--text-muted)', borderRadius:6, color:'var(--text-secondary)', padding:'6px 10px', cursor:'pointer' }}>
                       <option value="" disabled>📂 Load template…</option>
                       {budgetTemplates.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
                     </select>
@@ -402,12 +402,12 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                       <span style={{ fontSize:20 }}>{catIcon(b.category)}</span>
                       <div style={{ flex:1 }}>
                         <div style={{ fontWeight:600,fontSize:14 }}>{b.category}</div>
-                        {b.rollover && <div style={{ fontSize:11,color:'#64748b' }}>Rollover enabled</div>}
+                        {b.rollover && <div style={{ fontSize:11,color:'var(--text-secondary)' }}>Rollover enabled</div>}
                         {avg3 !== null && (
-                          <div style={{ fontSize:11,color:'#64748b',marginTop:2 }}>
-                            3-mo avg: <span style={{ color:'#94a3b8' }}>{fmt(avg3)}/mo</span>
+                          <div style={{ fontSize:11,color:'var(--text-secondary)',marginTop:2 }}>
+                            3-mo avg: <span style={{ color:'var(--text-secondary)' }}>{fmt(avg3)}/mo</span>
                             {trendPct !== null && (
-                              <span style={{ marginLeft:8, color: Math.abs(trendPct) < 5 ? '#64748b' : trendPct > 0 ? '#c2735a' : '#4ade80', fontWeight:600 }}>
+                              <span style={{ marginLeft:8, color: Math.abs(trendPct) < 5 ? 'var(--text-secondary)' : trendPct > 0 ? 'var(--red)' : 'var(--green)', fontWeight:600 }}>
                                 {trendPct > 0 ? '▲' : '▼'} {Math.abs(trendPct).toFixed(0)}% vs avg
                               </span>
                             )}
@@ -415,13 +415,13 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         )}
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <div style={{ fontSize:15,fontWeight:700,color:over?'#c2735a':'#e2e8f0' }}>{fmt(spent)}</div>
-                        <div style={{ fontSize:12,color:'#64748b' }}>of {fmt(effLimit)}</div>
+                        <div style={{ fontSize:15,fontWeight:700,color:over?'var(--red)':'var(--text-primary)' }}>{fmt(spent)}</div>
+                        <div style={{ fontSize:12,color:'var(--text-secondary)' }}>of {fmt(effLimit)}</div>
                         {avg3 !== null && b.amount > 0 && avg3 > b.amount * 1.1 && (
                           <div style={{ marginTop:4 }}>
-                            <div style={{ fontSize:10,color:'#f59e0b',marginBottom:3 }} title="Your 3-month average spend exceeds this budget">⚠ avg &gt; budget</div>
+                            <div style={{ fontSize:10,color:'var(--amber)',marginBottom:3 }} title="Your 3-month average spend exceeds this budget">⚠ avg &gt; budget</div>
                             <button className="btn btn-ghost btn-sm"
-                              style={{ fontSize:10,color:'#7fa88b',padding:'2px 6px',border:'1px solid #7fa88b44' }}
+                              style={{ fontSize:10,color:'var(--green)',padding:'2px 6px',border:'1px solid #7fa88b44' }}
                               title={`Set budget to match 3-month average of ${fmt(avg3)}`}
                               onClick={() => onEdit({ ...b, amount: Math.round(avg3) })}>
                               Suggest ${Math.round(avg3)}
@@ -430,18 +430,18 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                         )}
                       </div>
                       <button className="btn btn-ghost btn-sm" onClick={()=>setEditB(b)}>Edit</button>
-                      <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
+                      <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }}
                         onClick={()=>{ if(confirm('Remove this budget?')) onDelete(b.id); }}>Delete</button>
                     </div>
                     <div className="progress-bar">
-                      <div className="progress-fill" style={{ width:`${pct}%`, background:over?'#c2735a':pct>80?'#f59e0b':catColor(b.category) }} />
+                      <div className="progress-fill" style={{ width:`${pct}%`, background:over?'var(--red)':pct>80?'var(--amber)':catColor(b.category) }} />
                     </div>
-                    <div style={{ display:'flex',justifyContent:'space-between',marginTop:6,fontSize:12,color:'#475569' }}>
+                    <div style={{ display:'flex',justifyContent:'space-between',marginTop:6,fontSize:12,color:'var(--text-muted)' }}>
                       <span>
                         {Math.round(pct)}% used
-                        {rolloverAmt > 0 && <span style={{ color:'#7fa88b',marginLeft:6 }}>incl. {fmt(rolloverAmt)} rollover</span>}
+                        {rolloverAmt > 0 && <span style={{ color:'var(--green)',marginLeft:6 }}>incl. {fmt(rolloverAmt)} rollover</span>}
                       </span>
-                      <span style={{ color:over?'#c2735a':'#4ade80' }}>
+                      <span style={{ color:over?'var(--red)':'var(--green)' }}>
                         {over ? `${fmt(spent-effLimit)} over budget` : `${fmt(effLimit-spent)} remaining`}
                       </span>
                     </div>
@@ -460,9 +460,9 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign:'left', padding:'12px 16px', fontSize:13, color:'#64748b', borderBottom:'1px solid #1e2736' }}>Category</th>
+                    <th style={{ textAlign:'left', padding:'12px 16px', fontSize:13, color:'var(--text-secondary)', borderBottom:'1px solid var(--bg-raised)' }}>Category</th>
                     {history6.map(m => (
-                      <th key={m} style={{ textAlign:'right', padding:'12px 12px', fontSize:12, color:'#64748b', borderBottom:'1px solid #1e2736', whiteSpace:'nowrap' }}>
+                      <th key={m} style={{ textAlign:'right', padding:'12px 12px', fontSize:12, color:'var(--text-secondary)', borderBottom:'1px solid var(--bg-raised)', whiteSpace:'nowrap' }}>
                         {new Date(m+'-01').toLocaleDateString('en-US',{month:'short',year:'2-digit'})}
                       </th>
                     ))}
@@ -470,7 +470,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                 </thead>
                 <tbody>
                   {historyCategories.map(cat => (
-                    <tr key={cat} style={{ borderBottom:'1px solid #1e273666' }}>
+                    <tr key={cat} style={{ borderBottom:'1px solid #1e273640' }}>
                       <td style={{ padding:'10px 16px', fontSize:13, fontWeight:600 }}>
                         {catIcon(cat)} {cat}
                       </td>
@@ -482,11 +482,11 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                           <td key={m} style={{ textAlign:'right', padding:'10px 12px', background:color }}>
                             {limit > 0 ? (
                               <>
-                                <div style={{ fontSize:13, fontWeight:600, color: spent > limit ? '#c2735a' : '#e2e8f0' }}>{fmt(spent)}</div>
-                                <div style={{ fontSize:10, color:'#475569' }}>of {fmt(limit)}</div>
+                                <div style={{ fontSize:13, fontWeight:600, color: spent > limit ? 'var(--red)' : 'var(--text-primary)' }}>{fmt(spent)}</div>
+                                <div style={{ fontSize:10, color:'var(--text-muted)' }}>of {fmt(limit)}</div>
                               </>
                             ) : (
-                              <span style={{ color:'#334155', fontSize:12 }}>-</span>
+                              <span style={{ color:'var(--text-muted)', fontSize:12 }}>-</span>
                             )}
                           </td>
                         );
@@ -508,9 +508,9 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign:'left', padding:'12px 16px', color:'#64748b', borderBottom:'1px solid #1e2736', whiteSpace:'nowrap' }}>Month</th>
+                    <th style={{ textAlign:'left', padding:'12px 16px', color:'var(--text-secondary)', borderBottom:'1px solid var(--bg-raised)', whiteSpace:'nowrap' }}>Month</th>
                     {annualCategories.map(cat => (
-                      <th key={cat} style={{ textAlign:'right', padding:'12px 10px', color:'#64748b', borderBottom:'1px solid #1e2736', whiteSpace:'nowrap', fontSize:11 }}>
+                      <th key={cat} style={{ textAlign:'right', padding:'12px 10px', color:'var(--text-secondary)', borderBottom:'1px solid var(--bg-raised)', whiteSpace:'nowrap', fontSize:11 }}>
                         {cat}
                       </th>
                     ))}
@@ -521,7 +521,7 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                     const label = new Date(row.month + '-02').toLocaleString('default', { month: 'short' });
                     return (
                       <tr key={row.month} style={{ borderBottom:'1px solid #1e273640' }}>
-                        <td style={{ padding:'10px 16px', color:'#94a3b8', fontWeight:600, whiteSpace:'nowrap' }}>{label}</td>
+                        <td style={{ padding:'10px 16px', color:'var(--text-secondary)', fontWeight:600, whiteSpace:'nowrap' }}>{label}</td>
                         {annualCategories.map(cat => {
                           const spent  = row.spent[cat] ?? 0;
                           const budget = annualBudgetMap[row.month]?.[cat] ?? 0;
@@ -529,11 +529,11 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
                           return (
                             <td key={cat} style={{ textAlign:'right', padding:'10px 10px', whiteSpace:'nowrap' }}>
                               {spent > 0 ? (
-                                <span style={{ color: over ? '#c2735a' : '#e2e8f0', fontWeight: over ? 700 : 400 }}>
+                                <span style={{ color: over ? 'var(--red)' : 'var(--text-primary)', fontWeight: over ? 700 : 400 }}>
                                   {fmt(spent)}
-                                  {budget > 0 && <span style={{ color:'#64748b', fontSize:11, marginLeft:4 }}>/ {fmt(budget)}</span>}
+                                  {budget > 0 && <span style={{ color:'var(--text-secondary)', fontSize:11, marginLeft:4 }}>/ {fmt(budget)}</span>}
                                 </span>
-                              ) : <span style={{ color:'#334155', fontSize:12 }}>-</span>}
+                              ) : <span style={{ color:'var(--text-muted)', fontSize:12 }}>-</span>}
                             </td>
                           );
                         })}
@@ -560,13 +560,13 @@ export default function Budgets({ transactions, budgets, onAdd, onEdit, onDelete
 
       {showSuggest && (
         <Modal title="Suggested Budgets from Your Spending" onClose={() => setShowSuggest(false)}>
-          <div style={{ marginBottom:12, fontSize:13, color:'#94a3b8' }}>
+          <div style={{ marginBottom:12, fontSize:13, color:'var(--text-secondary)' }}>
             Based on your average spending over the last 3 months. Adjust any amount, then confirm to add only the categories you don't already have budgets for.
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight:360, overflowY:'auto', marginBottom:16 }}>
             {suggestedItems.map(s => (
               <div key={s.category} style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <span style={{ flex:1, fontSize:13, color:'#e2e8f0' }}>{s.category}</span>
+                <span style={{ flex:1, fontSize:13, color:'var(--text-primary)' }}>{s.category}</span>
                 <input
                   type="number"
                   min="1"

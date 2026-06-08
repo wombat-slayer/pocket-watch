@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, Fragment } from 'react';
-import { fmt, fmtDate, today, uid } from '../constants.js';
+import { fmt, fmtDate, today, uid, CHART } from '../constants.js';
 import Modal from './Modal.jsx';
 import { useMarketData, isCryptoTicker } from '../hooks/useMarketData.js';
 import { useChart } from '../hooks/useChart.js';
@@ -20,8 +20,8 @@ function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPric
             {['Name', 'Shares (Vested / Total)', 'Price', 'Current Value', 'Status'].map(h => (
               <th key={h} style={{
                 textAlign: (h === 'Price' || h === 'Current Value') ? 'right' : 'left',
-                color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase',
-                letterSpacing: '0.05em', padding: '6px 10px', borderBottom: '1px solid #1e2736',
+                color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase',
+                letterSpacing: '0.05em', padding: '6px 10px', borderBottom: '1px solid var(--bg-raised)',
               }}>
                 {h}
               </th>
@@ -39,19 +39,19 @@ function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPric
             const isEditing = editingPrice === g.id;
 
             return (
-              <tr key={g.id} style={{ borderBottom: '1px solid #1e2736' }}>
-                <td style={{ padding: '8px 10px', color: '#e2e8f0', fontWeight: 600 }}>
+              <tr key={g.id} style={{ borderBottom: '1px solid var(--bg-raised)' }}>
+                <td style={{ padding: '8px 10px', color: 'var(--text-primary)', fontWeight: 600 }}>
                   {g.name}
                   {g.ticker && (
-                    <span style={{ marginLeft: 6, fontSize: 11, background: '#1e2736', color: '#8b5cf6',
+                    <span style={{ marginLeft: 6, fontSize: 11, background: 'var(--bg-raised)', color: 'var(--accent-2)',
                       padding: '1px 6px', borderRadius: 20, fontWeight: 600 }}>{g.ticker}</span>
                   )}
                 </td>
-                <td style={{ padding: '8px 10px', color: '#94a3b8' }}>
-                  <span style={{ color: '#4ade80', fontWeight: 700 }}>
+                <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>
+                  <span style={{ color: 'var(--green)', fontWeight: 700 }}>
                     {vested.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
-                  <span style={{ color: '#475569' }}> / {(g.totalShares || 0).toLocaleString()}</span>
+                  <span style={{ color: 'var(--text-muted)' }}> / {(g.totalShares || 0).toLocaleString()}</span>
                 </td>
                 <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                   {isEditing ? (
@@ -66,31 +66,31 @@ function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPric
                       }}
                       autoFocus
                       style={{ width: 80, textAlign: 'right', fontSize: 13, padding: '2px 6px',
-                        background: '#1e2736', border: '1px solid #8b5cf6', borderRadius: 4, color: '#e2e8f0' }}
+                        background: 'var(--bg-raised)', border: '1px solid var(--accent-2)', borderRadius: 4, color: 'var(--text-primary)' }}
                     />
                   ) : (
                     <span
                       title="Click to edit price"
                       onClick={() => onPriceClick(g.id, price)}
-                      style={{ cursor: 'pointer', color: '#e2e8f0', borderBottom: '1px dashed #475569', paddingBottom: 1 }}>
+                      style={{ cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px dashed var(--text-muted)', paddingBottom: 1 }}>
                       {fmt(price)}
                     </span>
                   )}
                 </td>
-                <td style={{ padding: '8px 10px', textAlign: 'right', color: '#4ade80', fontWeight: 700 }}>
+                <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--green)', fontWeight: 700 }}>
                   {fmt(value)}
                   {g.grantPrice > 0 && (
-                    <div style={{ fontSize: 11, color: gainPos ? '#4ade80' : '#c2735a', fontWeight: 400, marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: gainPos ? 'var(--green)' : 'var(--red)', fontWeight: 400, marginTop: 2 }}>
                       {gainPos ? '+' : ''}{fmt(gain)} gain
                     </div>
                   )}
                 </td>
                 <td style={{ padding: '8px 10px' }}>
                   {vested >= (g.totalShares || 0)
-                    ? <span style={{ color: '#4ade80', fontWeight: 600, fontSize: 12 }}>Fully Vested</span>
+                    ? <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: 12 }}>Fully Vested</span>
                     : vested > 0
-                      ? <span style={{ color: '#f59e0b', fontSize: 12 }}>Vesting</span>
-                      : <span style={{ color: '#475569', fontSize: 12 }}>Pending</span>}
+                      ? <span style={{ color: 'var(--amber)', fontSize: 12 }}>Vesting</span>
+                      : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Pending</span>}
                 </td>
               </tr>
             );
@@ -98,13 +98,13 @@ function HoldingsLedger({ grants, editingPrice, priceInput, onPriceClick, onPric
         </tbody>
         {grants.length > 0 && (
           <tfoot>
-            <tr style={{ borderTop: '2px solid #334155' }}>
-              <td colSpan={3} style={{ padding: '10px 10px', color: '#94a3b8', fontWeight: 600, fontSize: 13 }}>
+            <tr style={{ borderTop: '2px solid var(--text-muted)' }}>
+              <td colSpan={3} style={{ padding: '10px 10px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13 }}>
                 Portfolio Total
               </td>
               <td style={{ padding: '10px 10px', textAlign: 'right' }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: '#4ade80' }}>{fmt(totalPortfolioValue)}</span>
-                <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>vested shares at current price</div>
+                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)' }}>{fmt(totalPortfolioValue)}</span>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>vested shares at current price</div>
               </td>
               <td />
             </tr>
@@ -132,9 +132,9 @@ function VestAccountModal({ vestLabel, vestValue, investmentAccounts, onConfirm,
   const [selectedId, setSelectedId] = useState(investmentAccounts[0]?.id ?? '');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontSize: 13, color: '#94a3b8' }}>
-        Recording <strong style={{ color: '#e2e8f0' }}>{vestLabel}</strong> worth{' '}
-        <strong style={{ color: '#4ade80' }}>{fmt(vestValue)}</strong>
+      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+        Recording <strong style={{ color: 'var(--text-primary)' }}>{vestLabel}</strong> worth{' '}
+        <strong style={{ color: 'var(--green)' }}>{fmt(vestValue)}</strong>
       </div>
       <div className="form-group">
         <label className="form-label">Credit to investment account</label>
@@ -299,45 +299,45 @@ function GrantCard({ grant, onEdit, onDelete }) {
           📈
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#e2e8f0' }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
             {grant.name}
             {grant.ticker && (
-              <span style={{ marginLeft: 8, fontSize: 12, background: '#1e2736', color: '#8b5cf6',
+              <span style={{ marginLeft: 8, fontSize: 12, background: 'var(--bg-raised)', color: 'var(--accent-2)',
                 padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{grant.ticker}</span>
             )}
           </div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
             Granted {fmtDate(grant.grantDate)} · {grant.totalShares.toLocaleString()} shares total ·
             {' '}{grant.vestFrequency === 'quarterly' ? 'Quarterly' : 'Monthly'} over {grant.vestingMonths}mo
           </div>
           {!pastCliff && (
-            <div style={{ fontSize: 12, color: '#f59e0b', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 2 }}>
               Cliff: {fmtDate(cliffStr)}
             </div>
           )}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => onEdit(grant)}>Edit</button>
-          <button className="btn btn-ghost btn-sm" style={{ color: '#c2735a' }}
+          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }}
             onClick={() => { if (confirm(`Delete grant "${grant.name}"?`)) onDelete(grant.id); }}>Delete</button>
         </div>
       </div>
 
       <div style={{ marginBottom: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
           <span>{vestedPct.toFixed(0)}% vested ({vestedShares.toLocaleString()} of {grant.totalShares.toLocaleString()} shares)</span>
-          <span>Vested value: <strong style={{ color: '#4ade80' }}>{fmt(vestedValue)}</strong></span>
+          <span>Vested value: <strong style={{ color: 'var(--green)' }}>{fmt(vestedValue)}</strong></span>
         </div>
         <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${Math.min(100, vestedPct)}%`, background: '#8b5cf6' }} />
+          <div className="progress-fill" style={{ width: `${Math.min(100, vestedPct)}%`, background: 'var(--accent-2)' }} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+      <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
         <span>Grant @ {fmt(grant.grantPrice)}/sh</span>
         <span>Current @ {fmt(grant.currentPrice || grant.grantPrice)}/sh</span>
-        {nextVest && <span style={{ color: '#f59e0b' }}>Next vest: {fmtDate(nextVest.date)} ({nextVest.shares.toLocaleString()} shares)</span>}
-        <span>Unvested: <strong style={{ color: '#94a3b8' }}>{fmt(unvestedValue)}</strong></span>
+        {nextVest && <span style={{ color: 'var(--amber)' }}>Next vest: {fmtDate(nextVest.date)} ({nextVest.shares.toLocaleString()} shares)</span>}
+        <span>Unvested: <strong style={{ color: 'var(--text-secondary)' }}>{fmt(unvestedValue)}</strong></span>
       </div>
 
       <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}
@@ -350,26 +350,26 @@ function GrantCard({ grant, onEdit, onDelete }) {
           <table style={{ width: '100%', fontSize: 12 }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left',  color: '#64748b', padding: '4px 8px' }}>Date</th>
-                <th style={{ textAlign: 'right', color: '#64748b', padding: '4px 8px' }}>Shares</th>
-                <th style={{ textAlign: 'right', color: '#64748b', padding: '4px 8px' }}>Cost Basis</th>
-                <th style={{ textAlign: 'right', color: '#64748b', padding: '4px 8px' }}>Mkt Value</th>
-                <th style={{ textAlign: 'right', color: '#64748b', padding: '4px 8px' }}>Status</th>
+                <th style={{ textAlign: 'left',  color: 'var(--text-secondary)', padding: '4px 8px' }}>Date</th>
+                <th style={{ textAlign: 'right', color: 'var(--text-secondary)', padding: '4px 8px' }}>Shares</th>
+                <th style={{ textAlign: 'right', color: 'var(--text-secondary)', padding: '4px 8px' }}>Cost Basis</th>
+                <th style={{ textAlign: 'right', color: 'var(--text-secondary)', padding: '4px 8px' }}>Mkt Value</th>
+                <th style={{ textAlign: 'right', color: 'var(--text-secondary)', padding: '4px 8px' }}>Status</th>
               </tr>
             </thead>
             <tbody>
               {events.map((e, i) => (
                 <tr key={i} style={{ opacity: e.vested ? 1 : 0.6 }}>
-                  <td style={{ padding: '3px 8px', color: '#94a3b8' }}>{fmtDate(e.date)}</td>
-                  <td style={{ padding: '3px 8px', textAlign: 'right', color: '#e2e8f0' }}>
+                  <td style={{ padding: '3px 8px', color: 'var(--text-secondary)' }}>{fmtDate(e.date)}</td>
+                  <td style={{ padding: '3px 8px', textAlign: 'right', color: 'var(--text-primary)' }}>
                     {e.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '3px 8px', textAlign: 'right', color: '#94a3b8' }}>{fmt(e.costBasis)}</td>
-                  <td style={{ padding: '3px 8px', textAlign: 'right', color: e.vested ? '#4ade80' : '#94a3b8' }}>{fmt(e.mktValue)}</td>
+                  <td style={{ padding: '3px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmt(e.costBasis)}</td>
+                  <td style={{ padding: '3px 8px', textAlign: 'right', color: e.vested ? 'var(--green)' : 'var(--text-secondary)' }}>{fmt(e.mktValue)}</td>
                   <td style={{ padding: '3px 8px', textAlign: 'right' }}>
                     {e.vested
-                      ? <span style={{ color: '#4ade80', fontWeight: 600 }}>Vested</span>
-                      : <span style={{ color: '#475569' }}>Pending</span>}
+                      ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>Vested</span>
+                      : <span style={{ color: 'var(--text-muted)' }}>Pending</span>}
                   </td>
                 </tr>
               ))}
@@ -407,7 +407,7 @@ function PortfolioChart({ grants, quotes }) {
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '65%',
         plugins: {
-          legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+          legend: { labels: { color: CHART.gridLabel, font: { size: 11 } } },
           tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } },
         },
       },
@@ -493,9 +493,9 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
 
   const thStyle = (align = 'left') => ({
     textAlign: align,
-    color: '#64748b', fontWeight: 600, fontSize: 11,
+    color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11,
     textTransform: 'uppercase', letterSpacing: '0.05em',
-    padding: '7px 10px', borderBottom: '1px solid #1e2736',
+    padding: '7px 10px', borderBottom: '1px solid var(--bg-raised)',
     whiteSpace: 'nowrap',
   });
   const tdStyle = (align = 'left', extra = {}) => ({
@@ -505,7 +505,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
   const fmtChg = (pct) => {
     if (pct == null) return null;
     const sign = pct >= 0 ? '+' : '';
-    return <span style={{ fontSize:10, color: pct >= 0 ? '#4ade80' : '#c2735a', fontWeight:600, marginLeft:4 }}>
+    return <span style={{ fontSize:10, color: pct >= 0 ? 'var(--green)' : 'var(--red)', fontWeight:600, marginLeft:4 }}>
       {sign}{pct.toFixed(2)}%
     </span>;
   };
@@ -531,12 +531,12 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
 
       {/* API status / errors */}
       {quotesError && (
-        <div style={{ background:'#c2735a18', border:'1px solid #c2735a44', borderRadius:8, padding:'8px 14px', marginBottom:12, fontSize:12, color:'#c2735a' }}>
+        <div style={{ background:'#c2735a18', border:'1px solid #c2735a44', borderRadius:8, padding:'8px 14px', marginBottom:12, fontSize:12, color:'var(--red)' }}>
           ⚠ {quotesError}
         </div>
       )}
       {lastUpdated && !quotesError && (
-        <div style={{ fontSize:11, color:'#475569', marginBottom:8 }}>
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8 }}>
           Prices last updated {new Date(lastUpdated).toLocaleTimeString()}
         </div>
       )}
@@ -545,18 +545,18 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
       {grants.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
           <div className="stat-card">
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Total Grants</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: '#e2e8f0' }}>{grants.length}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Total Grants</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--text-primary)' }}>{grants.length}</div>
           </div>
           <div className="stat-card">
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Vested Value</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: '#4ade80' }}>{fmt(totalVestedValue)}</div>
-            <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>at current price</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Vested Value</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--green)' }}>{fmt(totalVestedValue)}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>at current price</div>
           </div>
           <div className="stat-card">
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Unvested Value</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: '#8b5cf6' }}>{fmt(totalUnvestedValue)}</div>
-            <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>at current price</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Unvested Value</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--accent-2)' }}>{fmt(totalUnvestedValue)}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>at current price</div>
           </div>
         </div>
       )}
@@ -564,7 +564,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
       {/* Portfolio allocation chart */}
       {grants.length > 1 && (
         <div className="card" style={{ marginBottom:16, padding:16 }}>
-          <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Portfolio Allocation</div>
+          <div style={{ fontWeight:600, fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>Portfolio Allocation</div>
           <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:16, alignItems:'center' }}>
             <div style={{ width:220, height:220, position:'relative' }}>
               {grants.map(g => null) /* force re-mount on change */}
@@ -579,8 +579,8 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                 return (
                   <div key={g.id} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12 }}>
                     <div style={{ width:10, height:10, borderRadius:3, background: COLORS[i % COLORS.length], flexShrink:0 }} />
-                    <span style={{ color:'#94a3b8', flex:1 }}>{g.ticker || g.name}</span>
-                    <span style={{ color:'#e2e8f0', fontWeight:600 }}>{fmt(value)}</span>
+                    <span style={{ color:'var(--text-secondary)', flex:1 }}>{g.ticker || g.name}</span>
+                    <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{fmt(value)}</span>
                   </div>
                 );
               })}
@@ -632,33 +632,33 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                     {/* Main grant row */}
                     <tr
                       style={{
-                        borderBottom: isExpanded ? 'none' : '1px solid #1e2736',
-                        background: isExpanded ? '#131c2b' : 'transparent',
+                        borderBottom: isExpanded ? 'none' : '1px solid var(--bg-raised)',
+                        background: isExpanded ? 'var(--bg-card)' : 'transparent',
                         cursor: 'pointer',
                       }}
                       onClick={() => setExpandedGrant(isExpanded ? null : g.id)}
                     >
                       <td style={tdStyle('left')}>
-                        <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{g.name}</span>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{g.name}</span>
                         {isExpanded && (
-                          <span style={{ marginLeft: 6, fontSize: 10, color: '#8b5cf6' }}>▲</span>
+                          <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent-2)' }}>▲</span>
                         )}
                         {!isExpanded && (
-                          <span style={{ marginLeft: 6, fontSize: 10, color: '#475569' }}>▼</span>
+                          <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-muted)' }}>▼</span>
                         )}
                       </td>
                       <td style={tdStyle('left')}>
                         {g.ticker
-                          ? <span style={{ fontSize: 11, background: '#1e2736', color: '#8b5cf6', padding: '1px 7px', borderRadius: 20, fontWeight: 600 }}>{g.ticker}</span>
-                          : <span style={{ color: '#475569' }}>—</span>}
+                          ? <span style={{ fontSize: 11, background: 'var(--bg-raised)', color: 'var(--accent-2)', padding: '1px 7px', borderRadius: 20, fontWeight: 600 }}>{g.ticker}</span>
+                          : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
                       <td style={tdStyle('right')}>
-                        <span style={{ color: '#4ade80', fontWeight: 700 }}>
+                        <span style={{ color: 'var(--green)', fontWeight: 700 }}>
                           {vested.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                       </td>
                       <td style={tdStyle('right')}>
-                        <span style={{ color: '#94a3b8' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>
                           {unvested.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                       </td>
@@ -675,7 +675,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                               }}
                               autoFocus
                               style={{ width: 72, textAlign: 'right', fontSize: 12, padding: '2px 5px',
-                                background: '#1e2736', border: '1px solid #8b5cf6', borderRadius: 4, color: '#e2e8f0' }}
+                                background: 'var(--bg-raised)', border: '1px solid var(--accent-2)', borderRadius: 4, color: 'var(--text-primary)' }}
                             />
                             <button className="btn btn-primary btn-sm" style={{ fontSize: 11, padding: '2px 8px' }}
                               onClick={() => handlePriceSave(g.id)}>Save</button>
@@ -684,19 +684,19 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                           </span>
                         ) : (
                           <span title={liveQuote ? 'Live price — click to override' : 'Click to edit price'}
-                            style={{ cursor: 'pointer', color: liveQuote ? '#4ade80' : '#e2e8f0', borderBottom: '1px dashed #475569', paddingBottom: 1 }}>
+                            style={{ cursor: 'pointer', color: liveQuote ? 'var(--green)' : 'var(--text-primary)', borderBottom: '1px dashed var(--text-muted)', paddingBottom: 1 }}>
                             {fmt(price)}
                             {liveQuote && fmtChg(liveQuote.changePct)}
                           </span>
                         )}
                       </td>
                       <td style={tdStyle('right')}>
-                        <span style={{ color: '#4ade80', fontWeight: 700 }}>{fmt(totalValue)}</span>
+                        <span style={{ color: 'var(--green)', fontWeight: 700 }}>{fmt(totalValue)}</span>
                       </td>
                       <td style={tdStyle('left')}>
                         {nextVest
-                          ? <span style={{ color: '#f59e0b', fontSize: 12 }}>{fmtDate(nextVest.date)}</span>
-                          : <span style={{ color: '#4ade80', fontSize: 12 }}>Fully Vested</span>}
+                          ? <span style={{ color: 'var(--amber)', fontSize: 12 }}>{fmtDate(nextVest.date)}</span>
+                          : <span style={{ color: 'var(--green)', fontSize: 12 }}>Fully Vested</span>}
                       </td>
                       <td style={tdStyle('right')} onClick={e => e.stopPropagation()}>
                         <span style={{ display: 'inline-flex', gap: 4 }}>
@@ -710,7 +710,7 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                           <button
                             className="btn btn-ghost btn-sm"
                             title="Delete grant"
-                            style={{ fontSize: 13, padding: '2px 7px', color: '#c2735a' }}
+                            style={{ fontSize: 13, padding: '2px 7px', color: 'var(--red)' }}
                             onClick={() => { if (window.confirm(`Delete grant "${g.name}"?`)) onDelete(g.id); }}>
                             &#x1F5D1;&#xFE0F;
                           </button>
@@ -720,10 +720,10 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
 
                     {/* Expanded vest schedule drawer */}
                     {isExpanded && (
-                      <tr key={`${g.id}-drawer`} style={{ borderBottom: '1px solid #1e2736' }}>
-                        <td colSpan={8} style={{ padding: 0, background: '#131c2b' }}>
+                      <tr key={`${g.id}-drawer`} style={{ borderBottom: '1px solid var(--bg-raised)' }}>
+                        <td colSpan={8} style={{ padding: 0, background: 'var(--bg-card)' }}>
                           <div style={{ padding: '12px 16px 16px 32px' }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
                               Vest Schedule
                             </div>
                             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -732,9 +732,9 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                                   {['Date', 'Shares', 'Status', 'Value', 'Action'].map((h, i) => (
                                     <th key={h} style={{
                                       textAlign: i >= 2 ? 'right' : 'left',
-                                      color: '#475569', fontWeight: 600, fontSize: 11,
+                                      color: 'var(--text-muted)', fontWeight: 600, fontSize: 11,
                                       textTransform: 'uppercase', letterSpacing: '0.04em',
-                                      padding: '4px 8px', borderBottom: '1px solid #1e2736',
+                                      padding: '4px 8px', borderBottom: '1px solid var(--bg-raised)',
                                     }}>{h}</th>
                                   ))}
                                 </tr>
@@ -743,17 +743,17 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
                                 {vestEvents.map((e, i) => {
                                   const evtValue = e.shares * effectivePrice(g);
                                   return (
-                                    <tr key={i} style={{ opacity: e.vested ? 0.65 : 1, borderBottom: '1px solid #0d1520' }}>
-                                      <td style={{ padding: '5px 8px', color: '#94a3b8' }}>{fmtDate(e.date)}</td>
-                                      <td style={{ padding: '5px 8px', color: '#e2e8f0' }}>
+                                    <tr key={i} style={{ opacity: e.vested ? 0.65 : 1, borderBottom: '1px solid var(--bg-page)' }}>
+                                      <td style={{ padding: '5px 8px', color: 'var(--text-secondary)' }}>{fmtDate(e.date)}</td>
+                                      <td style={{ padding: '5px 8px', color: 'var(--text-primary)' }}>
                                         {e.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                       </td>
                                       <td style={{ padding: '5px 8px', textAlign: 'right' }}>
                                         {e.vested
-                                          ? <span style={{ color: '#4ade80' }}>Vested</span>
-                                          : <span style={{ color: '#f59e0b' }}>Upcoming</span>}
+                                          ? <span style={{ color: 'var(--green)' }}>Vested</span>
+                                          : <span style={{ color: 'var(--amber)' }}>Upcoming</span>}
                                       </td>
-                                      <td style={{ padding: '5px 8px', textAlign: 'right', color: e.vested ? '#4ade80' : '#94a3b8' }}>
+                                      <td style={{ padding: '5px 8px', textAlign: 'right', color: e.vested ? 'var(--green)' : 'var(--text-secondary)' }}>
                                         {fmt(evtValue)}
                                       </td>
                                       <td style={{ padding: '5px 8px', textAlign: 'right' }}>
@@ -781,21 +781,21 @@ export default function Equity({ grants, onAdd, onEdit, onDelete, onAddTx, onVes
             </tbody>
             {/* Summary footer */}
             <tfoot>
-              <tr style={{ borderTop: '2px solid #334155' }}>
-                <td colSpan={2} style={{ padding: '10px 10px', color: '#94a3b8', fontWeight: 600, fontSize: 13 }}>
+              <tr style={{ borderTop: '2px solid var(--text-muted)' }}>
+                <td colSpan={2} style={{ padding: '10px 10px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13 }}>
                   Portfolio Total
                 </td>
                 <td style={{ padding: '10px 10px', textAlign: 'right' }}>
-                  <span style={{ color: '#4ade80', fontWeight: 700 }}>{fmt(totalVestedValue)}</span>
-                  <div style={{ fontSize: 10, color: '#475569' }}>vested</div>
+                  <span style={{ color: 'var(--green)', fontWeight: 700 }}>{fmt(totalVestedValue)}</span>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>vested</div>
                 </td>
                 <td style={{ padding: '10px 10px', textAlign: 'right' }}>
-                  <span style={{ color: '#8b5cf6', fontWeight: 700 }}>{fmt(totalUnvestedValue)}</span>
-                  <div style={{ fontSize: 10, color: '#475569' }}>unvested</div>
+                  <span style={{ color: 'var(--accent-2)', fontWeight: 700 }}>{fmt(totalUnvestedValue)}</span>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>unvested</div>
                 </td>
                 <td colSpan={2} style={{ padding: '10px 10px', textAlign: 'right' }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>{fmt(totalVestedValue + totalUnvestedValue)}</span>
-                  <div style={{ fontSize: 10, color: '#475569' }}>portfolio total</div>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(totalVestedValue + totalUnvestedValue)}</span>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>portfolio total</div>
                 </td>
                 <td colSpan={2} />
               </tr>

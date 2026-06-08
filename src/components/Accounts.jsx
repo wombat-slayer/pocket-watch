@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent, sanitizeText, safeNum } from '../constants.js';
+import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent, sanitizeText, safeNum, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import Modal from './Modal.jsx';
 import StatementImport from './StatementImport.jsx';
@@ -113,19 +113,19 @@ function DebtPayoffPanel({ debts }) {
       datasets: [{
         label: 'Total Debt Remaining',
         data: chartData.map(p => p.remaining),
-        borderColor: '#c2735a',
-        backgroundColor: '#c2735a22',
+        borderColor: CHART.expense,
+        backgroundColor: CHART.expense + '22',
         tension: 0.3, fill: true,
         pointRadius: chartData.length > 30 ? 0 : 3,
-        pointBackgroundColor: '#c2735a',
+        pointBackgroundColor: CHART.expense,
       }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Remaining: ${fmt(ctx.raw)}` } } },
       scales: {
-        x: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', maxTicksLimit: 12 } },
-        y: { grid: { color: '#1e2736' }, ticks: { color: '#64748b', callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) }, min: 0 },
+        x: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, maxTicksLimit: 12 } },
+        y: { grid: { color: CHART.gridLine }, ticks: { color: CHART.gridLabel, callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) }, min: 0 },
       },
     },
   }), [JSON.stringify(chartData)]);
@@ -137,22 +137,22 @@ function DebtPayoffPanel({ debts }) {
     : '—';
 
   return (
-    <div style={{ background:'#0d1117', border:'1px solid #7f1d1d44', borderRadius:12, padding:20, marginTop:8 }}>
-      <div style={{ fontSize:14, fontWeight:700, color:'#e2e8f0', marginBottom:4 }}>💳 Debt Payoff Planner</div>
-      <div style={{ fontSize:12, color:'#64748b', marginBottom:16 }}>
+    <div style={{ background:'var(--bg-page)', border:'1px solid #7f1d1d44', borderRadius:12, padding:20, marginTop:8 }}>
+      <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>💳 Debt Payoff Planner</div>
+      <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:16 }}>
         How fast can you eliminate your {debts.length} debt{debts.length !== 1 ? 's' : ''}? Adjust the settings below.
       </div>
 
       {/* Controls */}
       <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginBottom:16, alignItems:'flex-end' }}>
         <div>
-          <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Extra monthly payment ($)</label>
+          <label style={{ fontSize:11, color:'var(--text-secondary)', display:'block', marginBottom:4 }}>Extra monthly payment ($)</label>
           <input type="number" min="0" step="50" value={extra}
             onChange={e => setExtra(e.target.value)}
-            style={{ width:120, padding:'6px 10px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:13 }} />
+            style={{ width:120, padding:'6px 10px', background:'var(--bg-card)', border:'1px solid var(--border-default)', borderRadius:6, color:'var(--text-primary)', fontSize:13 }} />
         </div>
         <div>
-          <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Method</label>
+          <label style={{ fontSize:11, color:'var(--text-secondary)', display:'block', marginBottom:4 }}>Method</label>
           <div style={{ display:'flex', gap:6 }}>
             <button className={`btn btn-sm ${method === 'avalanche' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMethod('avalanche')}>
               🏔 Avalanche
@@ -162,8 +162,8 @@ function DebtPayoffPanel({ debts }) {
             </button>
           </div>
         </div>
-        <div style={{ fontSize:11, color:'#475569', maxWidth:260, lineHeight:1.5 }}>
-          <strong style={{ color:'#64748b' }}>{method === 'avalanche' ? 'Avalanche' : 'Snowball'}:</strong>{' '}
+        <div style={{ fontSize:11, color:'var(--text-muted)', maxWidth:260, lineHeight:1.5 }}>
+          <strong style={{ color:'var(--text-secondary)' }}>{method === 'avalanche' ? 'Avalanche' : 'Snowball'}:</strong>{' '}
           {method === 'avalanche'
             ? 'Pay highest APR first. Saves the most interest.'
             : 'Pay smallest balance first. Wins psychological momentum.'}
@@ -172,26 +172,26 @@ function DebtPayoffPanel({ debts }) {
 
       {/* APR inputs per debt */}
       <div style={{ marginBottom:16 }}>
-        <div style={{ fontSize:11, color:'#64748b', marginBottom:8, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>Interest rates & minimums</div>
+        <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:8, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>Interest rates & minimums</div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:8 }}>
           {debts.map(d => (
-            <div key={d.id} style={{ background:'#161d2b', borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:10 }}>
+            <div key={d.id} style={{ background:'var(--bg-card)', borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'#e2e8f0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.name}</div>
-                <div style={{ fontSize:11, color:'#c2735a' }}>{fmt(d.balance)}</div>
+                <div style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.name}</div>
+                <div style={{ fontSize:11, color:'var(--red)' }}>{fmt(d.balance)}</div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                  <span style={{ fontSize:10, color:'#64748b', width:30 }}>APR%</span>
+                  <span style={{ fontSize:10, color:'var(--text-secondary)', width:30 }}>APR%</span>
                   <input type="number" min="0" max="100" step="0.1" value={aprs[d.id] ?? 20}
                     onChange={e => setAprs(a => ({ ...a, [d.id]: parseFloat(e.target.value) || 0 }))}
-                    style={{ width:56, padding:'2px 6px', background:'#0d1117', border:'1px solid #2d3748', borderRadius:4, color:'#e2e8f0', fontSize:11 }} />
+                    style={{ width:56, padding:'2px 6px', background:'var(--bg-page)', border:'1px solid var(--border-default)', borderRadius:4, color:'var(--text-primary)', fontSize:11 }} />
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                  <span style={{ fontSize:10, color:'#64748b', width:30 }}>Min $</span>
+                  <span style={{ fontSize:10, color:'var(--text-secondary)', width:30 }}>Min $</span>
                   <input type="number" min="0" step="5" value={mins[d.id] ?? 25}
                     onChange={e => setMins(m => ({ ...m, [d.id]: parseFloat(e.target.value) || 0 }))}
-                    style={{ width:56, padding:'2px 6px', background:'#0d1117', border:'1px solid #2d3748', borderRadius:4, color:'#e2e8f0', fontSize:11 }} />
+                    style={{ width:56, padding:'2px 6px', background:'var(--bg-page)', border:'1px solid var(--border-default)', borderRadius:4, color:'var(--text-primary)', fontSize:11 }} />
                 </div>
               </div>
             </div>
@@ -201,27 +201,27 @@ function DebtPayoffPanel({ debts }) {
 
       {/* Summary stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
-        <div style={{ background:'#161d2b', borderRadius:8, padding:'12px 14px' }}>
-          <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Monthly budget</div>
-          <div style={{ fontSize:16, fontWeight:700, color:'#e2e8f0' }}>{fmt(budget)}</div>
-          <div style={{ fontSize:10, color:'#475569' }}>Minimums {fmt(totalMin)} + extra {fmt(parseFloat(extra)||0)}</div>
+        <div style={{ background:'var(--bg-card)', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:4 }}>Monthly budget</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{fmt(budget)}</div>
+          <div style={{ fontSize:10, color:'var(--text-muted)' }}>Minimums {fmt(totalMin)} + extra {fmt(parseFloat(extra)||0)}</div>
         </div>
-        <div style={{ background:'#161d2b', borderRadius:8, padding:'12px 14px' }}>
-          <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Payoff time</div>
-          <div style={{ fontSize:16, fontWeight:700, color: simulation.payoffMonths > 60 ? '#f59e0b' : '#4ade80' }}>{payoffStr}</div>
-          <div style={{ fontSize:10, color:'#475569' }}>{simulation.payoffMonths} monthly payments</div>
+        <div style={{ background:'var(--bg-card)', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:4 }}>Payoff time</div>
+          <div style={{ fontSize:16, fontWeight:700, color: simulation.payoffMonths > 60 ? 'var(--amber)' : 'var(--green)' }}>{payoffStr}</div>
+          <div style={{ fontSize:10, color:'var(--text-muted)' }}>{simulation.payoffMonths} monthly payments</div>
         </div>
-        <div style={{ background:'#161d2b', borderRadius:8, padding:'12px 14px' }}>
-          <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>Est. total interest</div>
-          <div style={{ fontSize:16, fontWeight:700, color:'#c2735a' }}>{fmt(simulation.totalInterest)}</div>
-          <div style={{ fontSize:10, color:'#475569' }}>On {fmt(totalDebt)} of debt</div>
+        <div style={{ background:'var(--bg-card)', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:4 }}>Est. total interest</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'var(--red)' }}>{fmt(simulation.totalInterest)}</div>
+          <div style={{ fontSize:10, color:'var(--text-muted)' }}>On {fmt(totalDebt)} of debt</div>
         </div>
       </div>
 
       {/* Payoff chart */}
       {simulation.months.length > 0 && (
         <div>
-          <div style={{ fontSize:12, color:'#64748b', marginBottom:8 }}>Debt balance over time</div>
+          <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:8 }}>Debt balance over time</div>
           <div style={{ height:200 }}><canvas ref={canvasPayoff} /></div>
         </div>
       )}
@@ -253,7 +253,7 @@ function AccountForm({ initial, onSave, onClose }) {
             <input type="text" placeholder="0.00" value={form.balance} onChange={e=>set('balance',e.target.value)} />
           </div>
         </div>
-        <div style={{ fontSize:12,color:'#64748b' }}>
+        <div style={{ fontSize:12,color:'var(--text-secondary)' }}>
           {isDebtType(form.type)?'⚠️ Debt accounts subtract from your net worth.':'✅ Asset accounts add to your net worth.'}
         </div>
         {form.type === 'investment' && (
@@ -275,16 +275,16 @@ function AccountForm({ initial, onSave, onClose }) {
               value={form.unvestedRSUValue || ''}
               onChange={e => set('unvestedRSUValue', e.target.value === '' ? 0 : +e.target.value)}
             />
-            <div style={{ fontSize:11, color:'#64748b', marginTop:4 }}>
+            <div style={{ fontSize:11, color:'var(--text-secondary)', marginTop:4 }}>
               Enter the current market value of unvested RSU grants. This is excluded from your vested net worth on the dashboard.
             </div>
           </div>
         )}
-        <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', padding:'8px 10px', background:'#0d1117', borderRadius:8, border:'1px solid #1e2736' }}>
-          <input type="checkbox" checked={!!form.isBusiness} onChange={e=>set('isBusiness', e.target.checked)} style={{ accentColor:'#7fa88b', width:15, height:15 }} />
+        <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', padding:'8px 10px', background:'var(--bg-page)', borderRadius:8, border:'1px solid var(--bg-raised)' }}>
+          <input type="checkbox" checked={!!form.isBusiness} onChange={e=>set('isBusiness', e.target.checked)} style={{ accentColor:'var(--green)', width:15, height:15 }} />
           <div>
-            <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500 }}>🏢 Business account</div>
-            <div style={{ fontSize:11, color:'#64748b', marginTop:2 }}>Mark accounts used for business income and expenses.</div>
+            <div style={{ fontSize:13, color:'var(--text-primary)', fontWeight:500 }}>🏢 Business account</div>
+            <div style={{ fontSize:11, color:'var(--text-secondary)', marginTop:2 }}>Mark accounts used for business income and expenses.</div>
           </div>
         </label>
         <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
@@ -333,12 +333,12 @@ function HoldingsPanel({ account, onEdit }) {
     onEdit({ ...account, holdings: holdings.map(h => h.id === id ? { ...h, currentPrice: safeNum(price) } : h) });
 
   return (
-    <div style={{ background:'#0d1117', border:'1px solid #1e2736', borderRadius:10, padding:14, marginTop:6 }}>
+    <div style={{ background:'var(--bg-page)', border:'1px solid var(--bg-raised)', borderRadius:10, padding:14, marginTop:6 }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
         <div>
-          <span style={{ fontWeight:600, fontSize:13, color:'#e2e8f0' }}>📈 Holdings</span>
+          <span style={{ fontWeight:600, fontSize:13, color:'var(--text-primary)' }}>📈 Holdings</span>
           {holdings.length > 0 && (
-            <span style={{ marginLeft:10, fontSize:12, color: totalGainLoss >= 0 ? '#4ade80' : '#c2735a', fontWeight:600 }}>
+            <span style={{ marginLeft:10, fontSize:12, color: totalGainLoss >= 0 ? 'var(--green)' : 'var(--red)', fontWeight:600 }}>
               {totalGainLoss >= 0 ? '+' : ''}{fmt(totalGainLoss)} ({totalCost > 0 ? ((totalGainLoss/totalCost)*100).toFixed(1) : '0'}%)
             </span>
           )}
@@ -349,7 +349,7 @@ function HoldingsPanel({ account, onEdit }) {
       </div>
 
       {holdings.length === 0 && !showForm && (
-        <div style={{ fontSize:12, color:'#475569', textAlign:'center', padding:'12px 0' }}>
+        <div style={{ fontSize:12, color:'var(--text-muted)', textAlign:'center', padding:'12px 0' }}>
           No holdings yet. Add your first position above.
         </div>
       )}
@@ -359,7 +359,7 @@ function HoldingsPanel({ account, onEdit }) {
           <thead>
             <tr>
               {['Ticker','Shares','Cost/sh','Price/sh','Value','Gain/Loss',''].map(h => (
-                <th key={h} style={{ textAlign: h===''?'center':'left', color:'#64748b', fontWeight:600, paddingBottom:6, borderBottom:'1px solid #1e2736' }}>{h}</th>
+                <th key={h} style={{ textAlign: h===''?'center':'left', color:'var(--text-secondary)', fontWeight:600, paddingBottom:6, borderBottom:'1px solid var(--bg-raised)' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -369,31 +369,31 @@ function HoldingsPanel({ account, onEdit }) {
               const gl  = val - safeNum(h.shares) * safeNum(h.costBasis);
               return (
                 <tr key={h.id}>
-                  <td style={{ padding:'6px 0', color:'#e2e8f0', fontWeight:700 }}>{h.ticker}</td>
-                  <td style={{ padding:'6px 0', color:'#94a3b8' }}>{h.shares}</td>
-                  <td style={{ padding:'6px 0', color:'#94a3b8' }}>{fmt(h.costBasis)}</td>
+                  <td style={{ padding:'6px 0', color:'var(--text-primary)', fontWeight:700 }}>{h.ticker}</td>
+                  <td style={{ padding:'6px 0', color:'var(--text-secondary)' }}>{h.shares}</td>
+                  <td style={{ padding:'6px 0', color:'var(--text-secondary)' }}>{fmt(h.costBasis)}</td>
                   <td style={{ padding:'6px 0' }}>
                     <input
                       type="number" step="0.01" value={h.currentPrice}
                       onChange={e => updatePrice(h.id, e.target.value)}
-                      style={{ width:72, padding:'2px 6px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:5, color:'#e2e8f0', fontSize:12 }}
+                      style={{ width:72, padding:'2px 6px', background:'var(--bg-card)', border:'1px solid var(--border-default)', borderRadius:5, color:'var(--text-primary)', fontSize:12 }}
                     />
                   </td>
-                  <td style={{ padding:'6px 0', color:'#e2e8f0', fontWeight:600 }}>{fmt(val)}</td>
-                  <td style={{ padding:'6px 0', fontWeight:600, color: gl >= 0 ? '#4ade80' : '#c2735a' }}>
+                  <td style={{ padding:'6px 0', color:'var(--text-primary)', fontWeight:600 }}>{fmt(val)}</td>
+                  <td style={{ padding:'6px 0', fontWeight:600, color: gl >= 0 ? 'var(--green)' : 'var(--red)' }}>
                     {gl >= 0 ? '+' : ''}{fmt(gl)}
                   </td>
                   <td style={{ padding:'6px 0', textAlign:'center' }}>
-                    <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a', fontSize:11 }} onClick={() => removeHolding(h.id)}>🗑</button>
+                    <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)', fontSize:11 }} onClick={() => removeHolding(h.id)}>🗑</button>
                   </td>
                 </tr>
               );
             })}
             {holdings.length > 1 && (
-              <tr style={{ borderTop:'1px solid #1e2736' }}>
-                <td colSpan={4} style={{ padding:'6px 0', color:'#64748b', fontSize:11 }}>Total</td>
-                <td style={{ padding:'6px 0', fontWeight:700, color:'#e2e8f0' }}>{fmt(totalValue)}</td>
-                <td style={{ padding:'6px 0', fontWeight:700, color: totalGainLoss >= 0 ? '#4ade80' : '#c2735a' }}>
+              <tr style={{ borderTop:'1px solid var(--bg-raised)' }}>
+                <td colSpan={4} style={{ padding:'6px 0', color:'var(--text-secondary)', fontSize:11 }}>Total</td>
+                <td style={{ padding:'6px 0', fontWeight:700, color:'var(--text-primary)' }}>{fmt(totalValue)}</td>
+                <td style={{ padding:'6px 0', fontWeight:700, color: totalGainLoss >= 0 ? 'var(--green)' : 'var(--red)' }}>
                   {totalGainLoss >= 0 ? '+' : ''}{fmt(totalGainLoss)}
                 </td>
                 <td />
@@ -406,24 +406,24 @@ function HoldingsPanel({ account, onEdit }) {
       {showForm && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8, marginTop:8 }}>
           <div>
-            <label style={{ fontSize:11, color:'#64748b' }}>Ticker</label>
+            <label style={{ fontSize:11, color:'var(--text-secondary)' }}>Ticker</label>
             <input placeholder="AAPL" value={form.ticker} onChange={e => set('ticker', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'var(--bg-card)', border:'1px solid var(--border-default)', borderRadius:6, color:'var(--text-primary)', fontSize:12 }} />
           </div>
           <div>
-            <label style={{ fontSize:11, color:'#64748b' }}>Shares</label>
+            <label style={{ fontSize:11, color:'var(--text-secondary)' }}>Shares</label>
             <input type="number" step="0.001" placeholder="10" value={form.shares} onChange={e => set('shares', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'var(--bg-card)', border:'1px solid var(--border-default)', borderRadius:6, color:'var(--text-primary)', fontSize:12 }} />
           </div>
           <div>
-            <label style={{ fontSize:11, color:'#64748b' }}>Cost / share ($)</label>
+            <label style={{ fontSize:11, color:'var(--text-secondary)' }}>Cost / share ($)</label>
             <input type="number" step="0.01" placeholder="150.00" value={form.costBasis} onChange={e => set('costBasis', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'var(--bg-card)', border:'1px solid var(--border-default)', borderRadius:6, color:'var(--text-primary)', fontSize:12 }} />
           </div>
           <div>
-            <label style={{ fontSize:11, color:'#64748b' }}>Current price ($)</label>
+            <label style={{ fontSize:11, color:'var(--text-secondary)' }}>Current price ($)</label>
             <input type="number" step="0.01" placeholder="175.00" value={form.currentPrice} onChange={e => set('currentPrice', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'#161d2b', border:'1px solid #2d3748', borderRadius:6, color:'#e2e8f0', fontSize:12 }} />
+              style={{ width:'100%', boxSizing:'border-box', padding:'5px 8px', background:'var(--bg-card)', border:'1px solid var(--border-default)', borderRadius:6, color:'var(--text-primary)', fontSize:12 }} />
           </div>
           <div style={{ gridColumn:'1/-1', display:'flex', justifyContent:'flex-end', gap:8, marginTop:4 }}>
             <button className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
@@ -499,18 +499,18 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       datasets: [{
         label: 'Net Worth',
         data: historyData.map(h=>h.netWorth),
-        borderColor: netWorth>=0?'#7fa88b':'#c2735a',
-        backgroundColor: netWorth>=0?'#7fa88b22':'#c2735a22',
+        borderColor: netWorth>=0?CHART.income:CHART.expense,
+        backgroundColor: netWorth>=0?CHART.income+'22':CHART.expense+'22',
         tension: 0.4, fill: true, pointRadius: historyData.length<20?4:2,
-        pointBackgroundColor: netWorth>=0?'#7fa88b':'#c2735a',
+        pointBackgroundColor: netWorth>=0?CHART.income:CHART.expense,
       }],
     },
     options: {
       responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>` Net Worth: ${fmt(ctx.raw)}`}} },
       scales:{
-        x:{ grid:{color:'#1e2736'}, ticks:{color:'#64748b',maxTicksLimit:10} },
-        y:{ grid:{color:'#1e2736'}, ticks:{color:'#64748b',callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v)} },
+        x:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,maxTicksLimit:10} },
+        y:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v)} },
       },
     },
   }), [JSON.stringify(historyData)]);
@@ -522,19 +522,19 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       datasets: [{
         label: '12-Month Forecast',
         data: forecastData.map(d=>d.value),
-        borderColor: monthlyNetFlow >= 0 ? '#7fa88b' : '#c2735a',
-        backgroundColor: monthlyNetFlow >= 0 ? '#7fa88b22' : '#c2735a22',
+        borderColor: monthlyNetFlow >= 0 ? CHART.income : CHART.expense,
+        backgroundColor: monthlyNetFlow >= 0 ? CHART.income+'22' : CHART.expense+'22',
         tension: 0.3, fill: true, pointRadius: 3,
         borderDash: [0],
-        pointBackgroundColor: monthlyNetFlow >= 0 ? '#7fa88b' : '#c2735a',
+        pointBackgroundColor: monthlyNetFlow >= 0 ? CHART.income : CHART.expense,
       }],
     },
     options: {
       responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>` Forecast: ${fmt(ctx.raw)}`}} },
       scales:{
-        x:{ grid:{color:'#1e2736'}, ticks:{color:'#64748b'} },
-        y:{ grid:{color:'#1e2736'}, ticks:{color:'#64748b',callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v)} },
+        x:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel} },
+        y:{ grid:{color:CHART.gridLine}, ticks:{color:CHART.gridLabel,callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':v)} },
       },
     },
   }), [JSON.stringify(forecastData)]);
@@ -558,31 +558,31 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
 
       <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24 }}>
         <div className="stat-card" style={{ borderColor:netWorth>=0?'#14532d44':'#7f1d1d44' }}>
-          <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Net Worth</div>
-          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:netWorth>=0?'#4ade80':'#c2735a' }}>{fmt(netWorth)}</div>
-          <div style={{ fontSize:12,color:'#475569',marginTop:4 }}>Assets minus debts</div>
+          <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Net Worth</div>
+          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:netWorth>=0?'var(--green)':'var(--red)' }}>{fmt(netWorth)}</div>
+          <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:4 }}>Assets minus debts</div>
         </div>
         <div className="stat-card">
-          <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Assets</div>
-          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'#4ade80' }}>{fmt(totAssets)}</div>
-          <div style={{ fontSize:12,color:'#475569',marginTop:4 }}>{assets.length} accounts</div>
+          <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Assets</div>
+          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'var(--green)' }}>{fmt(totAssets)}</div>
+          <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:4 }}>{assets.length} accounts</div>
         </div>
         <div className="stat-card">
-          <div style={{ fontSize:12,color:'#64748b',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Debts</div>
-          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'#c2735a' }}>{fmt(totDebts)}</div>
-          <div style={{ fontSize:12,color:'#475569',marginTop:4 }}>{debts.length} accounts</div>
+          <div style={{ fontSize:12,color:'var(--text-secondary)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6 }}>Total Debts</div>
+          <div className="hero-num" style={{ fontSize:28,fontWeight:400,color:'var(--red)' }}>{fmt(totDebts)}</div>
+          <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:4 }}>{debts.length} accounts</div>
         </div>
       </div>
 
       {historyData.length >= 2 && (
         <div className="card" style={{ marginBottom:24 }}>
           <div style={{ fontWeight:600,fontSize:14,marginBottom:4 }}>Net Worth Over Time</div>
-          <div style={{ fontSize:12,color:'#64748b',marginBottom:16 }}>{historyData.length} daily snapshots (auto-tracked)</div>
+          <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:16 }}>{historyData.length} daily snapshots (auto-tracked)</div>
           <div className="chart-container" style={{ height:200 }}><canvas ref={canvasNW} /></div>
         </div>
       )}
       {historyData.length < 2 && accounts.length > 0 && (
-        <div className="card" style={{ marginBottom:24, textAlign:'center', padding:'24px', color:'#475569' }}>
+        <div className="card" style={{ marginBottom:24, textAlign:'center', padding:'24px', color:'var(--text-muted)' }}>
           <div style={{ fontSize:24, marginBottom:8 }}>📈</div>
           <p style={{ fontSize:14 }}>Net worth history will appear here as you use the app over time.</p>
           <p style={{ fontSize:12, marginTop:6 }}>Snapshots are captured automatically each day.</p>
@@ -593,12 +593,12 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       {activeRecs.length > 0 && (
         <div className="card" style={{ marginBottom:24 }}>
           <div style={{ fontWeight:600,fontSize:14,marginBottom:4 }}>📈 12-Month Net Worth Forecast</div>
-          <div style={{ fontSize:12,color:'#64748b',marginBottom:4 }}>
+          <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:4 }}>
             Based on {activeRecs.length} active recurring rule{activeRecs.length!==1?'s':''} ·
-            Estimated monthly net flow: <span style={{ color: monthlyNetFlow>=0?'#4ade80':'#c2735a',fontWeight:600 }}>{monthlyNetFlow>=0?'+':''}{fmt(monthlyNetFlow)}/mo</span>
+            Estimated monthly net flow: <span style={{ color: monthlyNetFlow>=0?'var(--green)':'var(--red)',fontWeight:600 }}>{monthlyNetFlow>=0?'+':''}{fmt(monthlyNetFlow)}/mo</span>
           </div>
-          <div style={{ fontSize:12,color:'#475569',marginBottom:12 }}>
-            Projected 12 months from now: <strong style={{ color: forecastData[12]?.value >= netWorth?'#4ade80':'#c2735a' }}>{fmt(forecastData[12]?.value ?? netWorth)}</strong>
+          <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:12 }}>
+            Projected 12 months from now: <strong style={{ color: forecastData[12]?.value >= netWorth?'var(--green)':'var(--red)' }}>{fmt(forecastData[12]?.value ?? netWorth)}</strong>
           </div>
           <div className="chart-container" style={{ height:180 }}><canvas ref={canvasForecast} /></div>
         </div>
@@ -607,7 +607,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
       {reconcileAllMode && (
         <div style={{ marginBottom:24 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <div style={{ fontWeight:700, fontSize:15, color:'#e2e8f0' }}>🔍 Reconcile All Accounts</div>
+            <div style={{ fontWeight:700, fontSize:15, color:'var(--text-primary)' }}>🔍 Reconcile All Accounts</div>
             <button className="btn btn-primary btn-sm" onClick={()=>setReconcileAllMode(false)}>Done</button>
           </div>
           {accounts.map(acct => {
@@ -620,27 +620,27 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                 <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background: hasDiscrepancy ? '#1a1600' : '#0a1a0a' }}>
                   <div style={{ fontSize:18 }}>{acctEmoji(acct.type)}</div>
                   <div style={{ flex:1 }}>
-                    <span style={{ fontWeight:600, fontSize:14, color:'#e2e8f0' }}>{acct.name}</span>
-                    <span style={{ fontSize:12, color:'#64748b', marginLeft:8 }}>{acctLabel(acct.type)}</span>
+                    <span style={{ fontWeight:600, fontSize:14, color:'var(--text-primary)' }}>{acct.name}</span>
+                    <span style={{ fontSize:12, color:'var(--text-secondary)', marginLeft:8 }}>{acctLabel(acct.type)}</span>
                   </div>
-                  <div style={{ textAlign:'right', fontSize:12, color:'#94a3b8' }}>
-                    <div>Stored: <strong style={{ color:'#e2e8f0' }}>{fmt(acct.balance)}</strong></div>
-                    <div>Computed: <strong style={{ color:'#e2e8f0' }}>{fmt(computed)}</strong></div>
+                  <div style={{ textAlign:'right', fontSize:12, color:'var(--text-secondary)' }}>
+                    <div>Stored: <strong style={{ color:'var(--text-primary)' }}>{fmt(acct.balance)}</strong></div>
+                    <div>Computed: <strong style={{ color:'var(--text-primary)' }}>{fmt(computed)}</strong></div>
                     {hasDiscrepancy
-                      ? <div style={{ color:'#f59e0b', fontWeight:600 }}>⚠ Discrepancy: {fmt(discrepancy)}</div>
-                      : <div style={{ color:'#4ade80', fontWeight:600 }}>✅ Balanced</div>
+                      ? <div style={{ color:'var(--amber)', fontWeight:600 }}>⚠ Discrepancy: {fmt(discrepancy)}</div>
+                      : <div style={{ color:'var(--green)', fontWeight:600 }}>✅ Balanced</div>
                     }
                   </div>
                 </div>
                 {hasDiscrepancy && acctTxs.length > 0 && (
-                  <div style={{ padding:'10px 14px', background:'#161d2b', borderTop:'1px solid #2d3748' }}>
-                    <div style={{ fontSize:12, color:'#94a3b8', marginBottom:6 }}>Uncleared transactions:</div>
+                  <div style={{ padding:'10px 14px', background:'var(--bg-card)', borderTop:'1px solid var(--border-default)' }}>
+                    <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:6 }}>Uncleared transactions:</div>
                     {acctTxs.sort((a,b)=>b.date.localeCompare(a.date)).map(t => (
                       <div key={t.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 0', borderBottom:'1px solid #1e273640' }}>
                         <input type="checkbox" checked={t.cleared} onChange={()=>{ if(onToggleCleared) onToggleCleared(t.id); }} />
-                        <span style={{ fontSize:12, color:'#94a3b8', width:80, flexShrink:0 }}>{t.date}</span>
-                        <span style={{ fontSize:12, color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.description}</span>
-                        <span style={{ fontSize:12, fontWeight:600, color:t.amount>=0?'#4ade80':'#c2735a', flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
+                        <span style={{ fontSize:12, color:'var(--text-secondary)', width:80, flexShrink:0 }}>{t.date}</span>
+                        <span style={{ fontSize:12, color:'var(--text-primary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.description}</span>
+                        <span style={{ fontSize:12, fontWeight:600, color:t.amount>=0?'var(--green)':'var(--red)', flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -657,9 +657,9 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
 
             {/* ── Assets ── */}
             <div>
-              <div style={{ fontSize:12,fontWeight:700,color:'#4ade80',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12 }}>Assets ({assets.length})</div>
+              <div style={{ fontSize:12,fontWeight:700,color:'var(--green)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12 }}>Assets ({assets.length})</div>
               {assets.length === 0
-                ? <div className="card-sm" style={{ color:'#475569',fontSize:14,textAlign:'center' }}>No asset accounts</div>
+                ? <div className="card-sm" style={{ color:'var(--text-muted)',fontSize:14,textAlign:'center' }}>No asset accounts</div>
                 : assets.map(a => {
                     const acctTxs = transactions.filter(t => t.account === a.id).sort((x,y) => y.date.localeCompare(x.date));
                     const oldUncleared = acctTxs.filter(t => !t.cleared && (new Date() - new Date(t.date + 'T00:00:00')) > 30*24*60*60*1000);
@@ -679,26 +679,26 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             {a.lastStatementDate && (() => {
                               const daysAgo = Math.floor((new Date() - new Date(a.lastStatementDate+'T00:00:00')) / (24*60*60*1000));
                               return (
-                                <div style={{ fontSize:11,color:daysAgo>45?'#f59e0b':'#64748b',marginTop:3 }}>
+                                <div style={{ fontSize:11,color:daysAgo>45?'var(--amber)':'var(--text-secondary)',marginTop:3 }}>
                                   Last reconciled: {a.lastStatementDate}{daysAgo>45?' ⚠':''}
                                 </div>
                               );
                             })()}
                             {oldUncleared.length > 0 && (
-                              <div style={{ fontSize:11,color:'#f59e0b',marginTop:3 }}>
+                              <div style={{ fontSize:11,color:'var(--amber)',marginTop:3 }}>
                                 ⚠ {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
                               </div>
                             )}
                           </div>
                           <div style={{ textAlign:'right', marginRight:8 }}>
-                            <div style={{ fontSize:17,fontWeight:700,color:'#e2e8f0' }}>{fmt(a.balance)}</div>
+                            <div style={{ fontSize:17,fontWeight:700,color:'var(--text-primary)' }}>{fmt(a.balance)}</div>
                             {(() => {
                               const computed = computeBalance(a.id, transactions, a.type);
                               if (computed === null) return null;
                               const diff = Math.abs(computed - a.balance);
                               if (diff < 0.01) return null;
                               return (
-                                <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'#f59e0b', marginTop:3, cursor:'help' }}>
+                                <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'var(--amber)', marginTop:3, cursor:'help' }}>
                                   ⚠ tx total: {fmt(computed)}
                                 </div>
                               );
@@ -712,40 +712,40 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             </button>
                           )}
                           <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>✏️</button>
-                          <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
+                          <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }}
                             onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>🗑</button>
                         </div>
                         {a.type === 'investment' && expandedHoldings.has(a.id) && (
                           <HoldingsPanel account={a} onEdit={onEdit} />
                         )}
                         {isReconciling && (
-                          <div style={{ background:'#161d2b',border:'1px solid #2d3748',borderRadius:10,padding:14,marginTop:4 }}>
-                            <div style={{ fontWeight:600,fontSize:13,marginBottom:10,color:'#e2e8f0' }}>Reconcile: {a.name}</div>
+                          <div style={{ background:'var(--bg-card)',border:'1px solid var(--border-default)',borderRadius:10,padding:14,marginTop:4 }}>
+                            <div style={{ fontWeight:600,fontSize:13,marginBottom:10,color:'var(--text-primary)' }}>Reconcile: {a.name}</div>
                             <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:8,flexWrap:'wrap' }}>
-                              <label style={{ fontSize:12,color:'#94a3b8' }}>Statement Balance ($)</label>
+                              <label style={{ fontSize:12,color:'var(--text-secondary)' }}>Statement Balance ($)</label>
                               <input type="number" step="0.01" value={stmtBalance} onChange={e=>setStmtBalance(e.target.value)}
-                                style={{ width:120,padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
-                              <label style={{ fontSize:12,color:'#94a3b8',marginLeft:8 }}>Statement End Date</label>
+                                style={{ width:120,padding:'4px 8px',background:'var(--bg-page)',border:'1px solid var(--border-default)',borderRadius:6,color:'var(--text-primary)',fontSize:13 }} />
+                              <label style={{ fontSize:12,color:'var(--text-secondary)',marginLeft:8 }}>Statement End Date</label>
                               <input type="date" value={stmtDate} onChange={e=>setStmtDate(e.target.value)}
-                                style={{ padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
+                                style={{ padding:'4px 8px',background:'var(--bg-page)',border:'1px solid var(--border-default)',borderRadius:6,color:'var(--text-primary)',fontSize:13 }} />
                             </div>
                             <div style={{ maxHeight:220,overflowY:'auto',marginBottom:10 }}>
                               {acctTxs.length === 0
-                                ? <div style={{ fontSize:12,color:'#475569',padding:'8px 0' }}>No transactions for this account.</div>
+                                ? <div style={{ fontSize:12,color:'var(--text-muted)',padding:'8px 0' }}>No transactions for this account.</div>
                                 : acctTxs.map(t => (
                                     <div key={t.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #1e273640' }}>
                                       <input type="checkbox" checked={clearedIds.has(t.id)} onChange={()=>toggleClearedLocal(t.id)} />
-                                      <span style={{ fontSize:12,color:'#94a3b8',width:80,flexShrink:0 }}>{t.date}</span>
-                                      <span style={{ fontSize:12,color:'#cbd5e1',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
-                                      <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'#4ade80':'#c2735a',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
+                                      <span style={{ fontSize:12,color:'var(--text-secondary)',width:80,flexShrink:0 }}>{t.date}</span>
+                                      <span style={{ fontSize:12,color:'var(--text-primary)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
+                                      <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'var(--green)':'var(--red)',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
                                     </div>
                                   ))
                               }
                             </div>
-                            <div style={{ fontSize:12,color:'#94a3b8',marginBottom:8,display:'flex',gap:20 }}>
-                              <span>Cleared sum: <strong style={{ color:'#e2e8f0' }}>{fmt(clearedSum)}</strong></span>
+                            <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:8,display:'flex',gap:20 }}>
+                              <span>Cleared sum: <strong style={{ color:'var(--text-primary)' }}>{fmt(clearedSum)}</strong></span>
                               {stmtBalance !== '' && (
-                                <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'#4ade80':'#f59e0b' }}>{fmt(discrepancy)}</strong></span>
+                                <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'var(--green)':'var(--amber)' }}>{fmt(discrepancy)}</strong></span>
                               )}
                             </div>
                             <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
@@ -763,7 +763,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
             {/* \u2500\u2500 Debts \u2500\u2500 */}
             {debts.length > 0 && (
               <div>
-                <div style={{ fontSize:12,fontWeight:700,color:'#c2735a',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12 }}>Debts ({debts.length})</div>
+                <div style={{ fontSize:12,fontWeight:700,color:'var(--red)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12 }}>Debts ({debts.length})</div>
                 {debts.map(a => {
                   const acctTxs = transactions.filter(t => t.account === a.id).sort((x,y) => y.date.localeCompare(x.date));
                   const oldUncleared = acctTxs.filter(t => !t.cleared && (new Date() - new Date(t.date + 'T00:00:00')) > 30*24*60*60*1000);
@@ -783,19 +783,19 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                           {a.lastStatementDate && (() => {
                             const daysAgo = Math.floor((new Date() - new Date(a.lastStatementDate+'T00:00:00')) / (24*60*60*1000));
                             return (
-                              <div style={{ fontSize:11,color:daysAgo>45?'#f59e0b':'#64748b',marginTop:3 }}>
+                              <div style={{ fontSize:11,color:daysAgo>45?'var(--amber)':'var(--text-secondary)',marginTop:3 }}>
                                 Last reconciled: {a.lastStatementDate}{daysAgo>45?' \u26a0':''}
                               </div>
                             );
                           })()}
                           {oldUncleared.length > 0 && (
-                            <div style={{ fontSize:11,color:'#f59e0b',marginTop:3 }}>
+                            <div style={{ fontSize:11,color:'var(--amber)',marginTop:3 }}>
                               ⚠ {oldUncleared.length} uncleared transaction{oldUncleared.length!==1?'s':''} &gt;30 days
                             </div>
                           )}
                         </div>
                         <div style={{ textAlign:'right', marginRight:8 }}>
-                          <div style={{ fontSize:17,fontWeight:700,color:'#c2735a' }}>{fmt(a.balance)}</div>
+                          <div style={{ fontSize:17,fontWeight:700,color:'var(--red)' }}>{fmt(a.balance)}</div>
                           {(() => {
                             if (a.lastPlaidSync) {
                               const d = new Date(a.lastPlaidSync);
@@ -805,7 +805,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                               const label = diffDays === 0 ? 'today' : diffDays === 1 ? 'yesterday'
                                 : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
                               return (
-                                <div style={{ fontSize:11, color:'#475569', marginTop:3 }}>
+                                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
                                   Balance from bank · synced {label}
                                 </div>
                               );
@@ -815,7 +815,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                             const diff = Math.abs(computed - a.balance);
                             if (diff < 0.01) return null;
                             return (
-                              <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'#f59e0b', marginTop:3, cursor:'help' }}>
+                              <div title="Transaction history total differs from stored balance. Consider reconciling." style={{ fontSize:11, color:'var(--amber)', marginTop:3, cursor:'help' }}>
                                 ⚠ tx total: {fmt(computed)}
                               </div>
                             );
@@ -824,37 +824,37 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                         <button className="btn btn-ghost btn-sm" title="Import statement" onClick={()=>setImportAcct(a)}>📥</button>
                         <button className="btn btn-ghost btn-sm" title="Reconcile" onClick={()=>isReconciling?closeReconcile():openReconcile(a.id)}>⚖️</button>
                         <button className="btn btn-ghost btn-sm" onClick={()=>setEditA({...a,balance:String(a.balance)})}>✏️</button>
-                        <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
+                        <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }}
                           onClick={()=>{ if(confirm('Remove this account?')) onDelete(a.id); }}>🗑</button>
                       </div>
                       {isReconciling && (
-                        <div style={{ background:'#161d2b',border:'1px solid #2d3748',borderRadius:10,padding:14,marginTop:4 }}>
-                          <div style={{ fontWeight:600,fontSize:13,marginBottom:10,color:'#e2e8f0' }}>Reconcile: {a.name}</div>
+                        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border-default)',borderRadius:10,padding:14,marginTop:4 }}>
+                          <div style={{ fontWeight:600,fontSize:13,marginBottom:10,color:'var(--text-primary)' }}>Reconcile: {a.name}</div>
                           <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:8,flexWrap:'wrap' }}>
-                            <label style={{ fontSize:12,color:'#94a3b8' }}>Statement Balance ($)</label>
+                            <label style={{ fontSize:12,color:'var(--text-secondary)' }}>Statement Balance ($)</label>
                             <input type="number" step="0.01" value={stmtBalance} onChange={e=>setStmtBalance(e.target.value)}
-                              style={{ width:120,padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
-                            <label style={{ fontSize:12,color:'#94a3b8',marginLeft:8 }}>Statement End Date</label>
+                              style={{ width:120,padding:'4px 8px',background:'var(--bg-page)',border:'1px solid var(--border-default)',borderRadius:6,color:'var(--text-primary)',fontSize:13 }} />
+                            <label style={{ fontSize:12,color:'var(--text-secondary)',marginLeft:8 }}>Statement End Date</label>
                             <input type="date" value={stmtDate} onChange={e=>setStmtDate(e.target.value)}
-                              style={{ padding:'4px 8px',background:'#0d1117',border:'1px solid #2d3748',borderRadius:6,color:'#e2e8f0',fontSize:13 }} />
+                              style={{ padding:'4px 8px',background:'var(--bg-page)',border:'1px solid var(--border-default)',borderRadius:6,color:'var(--text-primary)',fontSize:13 }} />
                           </div>
                           <div style={{ maxHeight:220,overflowY:'auto',marginBottom:10 }}>
                             {acctTxs.length === 0
-                              ? <div style={{ fontSize:12,color:'#475569',padding:'8px 0' }}>No transactions for this account.</div>
+                              ? <div style={{ fontSize:12,color:'var(--text-muted)',padding:'8px 0' }}>No transactions for this account.</div>
                               : acctTxs.map(t => (
                                   <div key={t.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #1e273640' }}>
                                     <input type="checkbox" checked={clearedIds.has(t.id)} onChange={()=>toggleClearedLocal(t.id)} />
-                                    <span style={{ fontSize:12,color:'#94a3b8',width:80,flexShrink:0 }}>{t.date}</span>
-                                    <span style={{ fontSize:12,color:'#cbd5e1',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
-                                    <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'#4ade80':'#c2735a',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
+                                    <span style={{ fontSize:12,color:'var(--text-secondary)',width:80,flexShrink:0 }}>{t.date}</span>
+                                    <span style={{ fontSize:12,color:'var(--text-primary)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{t.description}</span>
+                                    <span style={{ fontSize:12,fontWeight:600,color:t.amount>=0?'var(--green)':'var(--red)',flexShrink:0 }}>{t.amount>=0?'+':''}{fmt(t.amount)}</span>
                                   </div>
                                 ))
                             }
                           </div>
-                          <div style={{ fontSize:12,color:'#94a3b8',marginBottom:8,display:'flex',gap:20 }}>
-                            <span>Cleared sum: <strong style={{ color:'#e2e8f0' }}>{fmt(clearedSum)}</strong></span>
+                          <div style={{ fontSize:12,color:'var(--text-secondary)',marginBottom:8,display:'flex',gap:20 }}>
+                            <span>Cleared sum: <strong style={{ color:'var(--text-primary)' }}>{fmt(clearedSum)}</strong></span>
                             {stmtBalance !== '' && (
-                              <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'#4ade80':'#f59e0b' }}>{fmt(discrepancy)}</strong></span>
+                              <span>Discrepancy: <strong style={{ color:Math.abs(discrepancy)<0.01?'var(--green)':'var(--amber)' }}>{fmt(discrepancy)}</strong></span>
                             )}
                           </div>
                           <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>

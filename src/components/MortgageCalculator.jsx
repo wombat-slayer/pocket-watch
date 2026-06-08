@@ -33,8 +33,8 @@ export default function MortgageCalculator({ goal }) {
   });
 
   return (
-    <div style={{ marginTop: 12, background: '#0d1117', borderRadius: 8, padding: 14, border: '1px solid #1e2736' }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 12 }}>🏠 Mortgage Calculator</div>
+    <div style={{ marginTop: 12, background: 'var(--bg-page)', borderRadius: 8, padding: 14, border: '1px solid var(--bg-raised)' }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>🏠 Mortgage Calculator</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
         <div className="form-group" style={{ margin: 0 }}>
@@ -63,20 +63,20 @@ export default function MortgageCalculator({ goal }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 14 }}>
         {[
-          { label: 'Principal & Interest', value: fmt(pi),           color: '#c2735a' },
-          { label: 'Total Monthly',        value: fmt(totalMonthly), color: '#e2e8f0' },
-          { label: 'Down Payment',         value: fmt(downAmount),   color: '#94a3b8' },
-          { label: 'Cash to Close (~3%)',  value: fmt(cashAtClose),  color: '#94a3b8' },
+          { label: 'Principal & Interest', value: fmt(pi),           color: 'var(--red)' },
+          { label: 'Total Monthly',        value: fmt(totalMonthly), color: 'var(--text-primary)' },
+          { label: 'Down Payment',         value: fmt(downAmount),   color: 'var(--text-secondary)' },
+          { label: 'Cash to Close (~3%)',  value: fmt(cashAtClose),  color: 'var(--text-secondary)' },
         ].map(r => (
-          <div key={r.label} style={{ background: '#161d2b', borderRadius: 6, padding: '8px 12px' }}>
-            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{r.label}</div>
+          <div key={r.label} style={{ background: 'var(--bg-card)', borderRadius: 6, padding: '8px 12px' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{r.label}</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: r.color }}>{r.value}</div>
           </div>
         ))}
       </div>
 
       {goal && (
-        <div style={{ fontSize: 12, color: stillNeeded > 0 ? '#64748b' : '#4ade80', marginBottom: 12, background: '#1e273640', borderRadius: 6, padding: '6px 10px' }}>
+        <div style={{ fontSize: 12, color: stillNeeded > 0 ? 'var(--text-secondary)' : 'var(--green)', marginBottom: 12, background: 'var(--bg-raised)', borderRadius: 6, padding: '6px 10px' }}>
           {stillNeeded > 0
             ? `Goal progress: ${fmt(currentSaved)} saved · ${fmt(stillNeeded)} still needed for cash-to-close`
             : `✓ Goal covers cash-to-close (${fmt(currentSaved)} saved)`
@@ -84,24 +84,24 @@ export default function MortgageCalculator({ goal }) {
         </div>
       )}
 
-      <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Scenario Comparison</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Scenario Comparison</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
-          <tr style={{ borderBottom: '1px solid #1e2736' }}>
+          <tr style={{ borderBottom: '1px solid var(--bg-raised)' }}>
             {['Scenario', 'Rate', 'Down', 'P&I/mo', 'Total/mo', 'Cash to Close'].map(h => (
-              <th key={h} style={{ textAlign: h === 'Scenario' ? 'left' : 'right', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
+              <th key={h} style={{ textAlign: h === 'Scenario' ? 'left' : 'right', padding: '4px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {scenarios.map(s => (
-            <tr key={s.label} style={{ borderBottom: '1px solid #0d1117', background: s.label === 'Current' ? '#7fa88b11' : 'transparent' }}>
-              <td style={{ padding: '6px 8px', color: '#94a3b8', fontWeight: s.label === 'Current' ? 600 : 400 }}>{s.label}</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b' }}>{s.rate.toFixed(1)}%</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b' }}>{s.downPct}%</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: '#c2735a' }}>{fmt(s.mpi)}</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: '#e2e8f0', fontWeight: 600 }}>{fmt(s.total)}</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', color: '#94a3b8' }}>{fmt(s.cashAtClose)}</td>
+            <tr key={s.label} style={{ borderBottom: '1px solid var(--bg-page)', background: s.label === 'Current' ? '#7fa88b11' : 'transparent' }}>
+              <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: s.label === 'Current' ? 600 : 400 }}>{s.label}</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.rate.toFixed(1)}%</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{s.downPct}%</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--red)' }}>{fmt(s.mpi)}</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-primary)', fontWeight: 600 }}>{fmt(s.total)}</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmt(s.cashAtClose)}</td>
             </tr>
           ))}
         </tbody>

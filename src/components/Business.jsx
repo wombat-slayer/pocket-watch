@@ -96,11 +96,11 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
   if (businessAccounts.length === 0) {
     return (
       <div style={{ padding: 32 }}>
-        <h1 style={{ fontFamily:'DM Serif Display, serif', fontSize:28, color:'#e2e8f0', marginBottom: 8 }}>Business</h1>
-        <div style={{ background:'#161d2b', border:'1px solid #1e2736', borderRadius:12, padding:'40px 32px', textAlign:'center', maxWidth:480 }}>
+        <h1 style={{ fontFamily:'DM Serif Display, serif', fontSize:28, color:'var(--text-primary)', marginBottom: 8 }}>Business</h1>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-raised)', borderRadius:12, padding:'40px 32px', textAlign:'center', maxWidth:480 }}>
           <div style={{ fontSize:40, marginBottom:12 }}>🏢</div>
-          <div style={{ fontSize:16, color:'#e2e8f0', fontWeight:600, marginBottom:8 }}>No business accounts yet</div>
-          <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6 }}>
+          <div style={{ fontSize:16, color:'var(--text-primary)', fontWeight:600, marginBottom:8 }}>No business accounts yet</div>
+          <div style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.6 }}>
             Mark an account as a "Business account" in Accounts settings to track business income and expenses here.
           </div>
         </div>
@@ -112,22 +112,22 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
     <div style={{ padding: 32 }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
-        <h1 style={{ fontFamily:'DM Serif Display, serif', fontSize:28, color:'#e2e8f0', margin:0 }}>Business</h1>
+        <h1 style={{ fontFamily:'DM Serif Display, serif', fontSize:28, color:'var(--text-primary)', margin:0 }}>Business</h1>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {/* Period type selector */}
-          <div style={{ display:'flex', background:'#0d1117', border:'1px solid #1e2736', borderRadius:8, overflow:'hidden' }}>
+          <div style={{ display:'flex', background:'var(--bg-page)', border:'1px solid var(--bg-raised)', borderRadius:8, overflow:'hidden' }}>
             {['month','quarter','year'].map(p => (
               <button key={p} onClick={() => { setPeriod(p); setOffset(0); }}
                 style={{ padding:'6px 14px', fontSize:12, fontWeight:600, border:'none', cursor:'pointer', textTransform:'capitalize',
-                  background: period === p ? '#1e2736' : 'transparent',
-                  color:      period === p ? '#e2e8f0' : '#64748b' }}>
+                  background: period === p ? 'var(--bg-raised)' : 'transparent',
+                  color:      period === p ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                 {p.charAt(0).toUpperCase() + p.slice(1)}
               </button>
             ))}
           </div>
           {/* Period navigation */}
           <button className="btn btn-ghost btn-sm" onClick={() => setOffset(o => o - 1)}>‹</button>
-          <span style={{ fontSize:13, color:'#94a3b8', minWidth:140, textAlign:'center' }}>{label}</span>
+          <span style={{ fontSize:13, color:'var(--text-secondary)', minWidth:140, textAlign:'center' }}>{label}</span>
           <button className="btn btn-ghost btn-sm" onClick={() => setOffset(o => o + 1)} disabled={offset >= 0}>›</button>
           {/* Export */}
           <button className="btn btn-secondary" style={{ fontSize:12 }} onClick={handleExportScheduleC}>
@@ -139,12 +139,12 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
       {/* P&L Summary */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:28 }}>
         {[
-          { label:'Revenue',   value: revenue,   color:'#4ade80' },
-          { label:'Expenses',  value:-expenses,  color:'#c2735a' },
-          { label:'Net Income',value: net,       color: net >= 0 ? '#4ade80' : '#c2735a' },
+          { label:'Revenue',   value: revenue,   color:'var(--green)' },
+          { label:'Expenses',  value:-expenses,  color:'var(--red)' },
+          { label:'Net Income',value: net,       color: net >= 0 ? 'var(--green)' : 'var(--red)' },
         ].map(({ label, value, color }) => (
-          <div key={label} style={{ background:'#161d2b', border:'1px solid #1e2736', borderRadius:12, padding:'18px 20px' }}>
-            <div style={{ fontSize:12, color:'#64748b', marginBottom:6 }}>{label}</div>
+          <div key={label} style={{ background:'var(--bg-card)', border:'1px solid var(--bg-raised)', borderRadius:12, padding:'18px 20px' }}>
+            <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:6 }}>{label}</div>
             <div style={{ fontSize:22, fontWeight:700, color }}>{fmt(value)}</div>
           </div>
         ))}
@@ -152,14 +152,14 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:28, alignItems:'start' }}>
         {/* Expense breakdown */}
-        <div style={{ background:'#161d2b', border:'1px solid #1e2736', borderRadius:12, padding:'18px 20px' }}>
-          <div style={{ fontSize:13, fontWeight:600, color:'#e2e8f0', marginBottom:14 }}>Expense Breakdown</div>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-raised)', borderRadius:12, padding:'18px 20px' }}>
+          <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', marginBottom:14 }}>Expense Breakdown</div>
           {expenseByCategory.length === 0 ? (
-            <div style={{ fontSize:13, color:'#475569' }}>No expenses in this period.</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)' }}>No expenses in this period.</div>
           ) : (
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
-                <tr style={{ color:'#475569' }}>
+                <tr style={{ color:'var(--text-muted)' }}>
                   <th style={{ textAlign:'left',  padding:'4px 0', fontWeight:500 }}>Category</th>
                   <th style={{ textAlign:'center',padding:'4px 6px', fontWeight:500 }}>Sch. C</th>
                   <th style={{ textAlign:'right', padding:'4px 0', fontWeight:500 }}>Amount</th>
@@ -170,15 +170,15 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
                   const line     = SCHEDULE_C_LINES[cat] ?? 27;
                   const isMeals  = cat === 'Business - Meals (50% deductible)';
                   return (
-                    <tr key={cat} style={{ borderTop:'1px solid #1e2736' }}>
-                      <td style={{ padding:'7px 0', color:'#cbd5e1' }}>
+                    <tr key={cat} style={{ borderTop:'1px solid var(--bg-raised)' }}>
+                      <td style={{ padding:'7px 0', color:'var(--text-primary)' }}>
                         {cat.replace('Business - ', '')}
-                        {isMeals && <span style={{ fontSize:10, color:'#f59e0b', marginLeft:6 }}>50% deductible</span>}
+                        {isMeals && <span style={{ fontSize:10, color:'var(--amber)', marginLeft:6 }}>50% deductible</span>}
                       </td>
-                      <td style={{ padding:'7px 6px', color:'#64748b', textAlign:'center' }}>Ln {line}</td>
-                      <td style={{ padding:'7px 0', color:'#e2e8f0', textAlign:'right', fontWeight:500 }}>
+                      <td style={{ padding:'7px 6px', color:'var(--text-secondary)', textAlign:'center' }}>Ln {line}</td>
+                      <td style={{ padding:'7px 0', color:'var(--text-primary)', textAlign:'right', fontWeight:500 }}>
                         {fmt(total)}
-                        {isMeals && <div style={{ fontSize:10, color:'#94a3b8' }}>{fmt(total * 0.5)} ded.</div>}
+                        {isMeals && <div style={{ fontSize:10, color:'var(--text-secondary)' }}>{fmt(total * 0.5)} ded.</div>}
                       </td>
                     </tr>
                   );
@@ -189,19 +189,19 @@ export default function Business({ accounts, transactions, onUpdateTransaction }
         </div>
 
         {/* Transaction list */}
-        <div style={{ background:'#161d2b', border:'1px solid #1e2736', borderRadius:12, padding:'18px 20px' }}>
-          <div style={{ fontSize:13, fontWeight:600, color:'#e2e8f0', marginBottom:14 }}>Transactions ({businessTxs.length})</div>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--bg-raised)', borderRadius:12, padding:'18px 20px' }}>
+          <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', marginBottom:14 }}>Transactions ({businessTxs.length})</div>
           {businessTxs.length === 0 ? (
-            <div style={{ fontSize:13, color:'#475569' }}>No transactions in this period.</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)' }}>No transactions in this period.</div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:380, overflowY:'auto' }}>
               {businessTxs.slice().sort((a,b) => b.date.localeCompare(a.date)).map(t => (
-                <div key={t.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', background:'#0d1117', borderRadius:8 }}>
+                <div key={t.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', background:'var(--bg-page)', borderRadius:8 }}>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.description}</div>
-                    <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>{fmtDate(t.date)} · {t.category ?? '—'}</div>
+                    <div style={{ fontSize:13, color:'var(--text-primary)', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.description}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{fmtDate(t.date)} · {t.category ?? '—'}</div>
                   </div>
-                  <div style={{ fontSize:13, fontWeight:600, color: t.amount >= 0 ? '#4ade80' : '#c2735a', whiteSpace:'nowrap' }}>
+                  <div style={{ fontSize:13, fontWeight:600, color: t.amount >= 0 ? 'var(--green)' : 'var(--red)', whiteSpace:'nowrap' }}>
                     {t.amount >= 0 ? '+' : ''}{fmt(t.amount)}
                   </div>
                 </div>

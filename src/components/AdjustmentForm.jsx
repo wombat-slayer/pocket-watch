@@ -8,7 +8,7 @@ export default function AdjustmentForm({ accounts, onSave, onClose }) {
   const [notes,      setNotes]      = useState('');
 
   if (accounts.length === 0) return (
-    <p style={{ color: '#64748b', padding: '16px 0' }}>No accounts found. Add an account first.</p>
+    <p style={{ color: 'var(--text-secondary)', padding: '16px 0' }}>No accounts found. Add an account first.</p>
   );
 
   const acct   = accounts.find(a => a.id === acctId);
@@ -42,8 +42,8 @@ export default function AdjustmentForm({ accounts, onSave, onClose }) {
         </div>
       </div>
       {delta !== null && (
-        <div style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, background: '#1e2736',
-          color: delta >= 0 ? '#4ade80' : '#c2735a' }}>
+        <div style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-raised)',
+          color: delta >= 0 ? 'var(--green)' : 'var(--red)' }}>
           {delta >= 0 ? '▲' : '▼'} Change: {delta >= 0 ? '+' : ''}{fmt(delta)} from current {fmt(acct?.balance ?? 0)}
         </div>
       )}

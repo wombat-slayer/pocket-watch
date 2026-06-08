@@ -21,8 +21,8 @@ const S = {
     padding: '16px',
   },
   card: {
-    background: '#1a2540',
-    border: '1px solid #1e2736',
+    background: 'var(--bg-raised)',
+    border: '1px solid var(--bg-raised)',
     borderRadius: '16px',
     width: '100%',
     maxWidth: '480px',
@@ -42,19 +42,19 @@ const S = {
     width: active ? '24px' : '8px',
     height: '8px',
     borderRadius: '4px',
-    background: active ? '#c2735a' : '#2d3f5f',
+    background: active ? 'var(--red)' : '#2d3f5f',
     transition: 'all 0.25s ease',
   }),
   heading: {
     fontSize: '24px',
     fontWeight: 700,
-    color: '#e2e8f0',
+    color: 'var(--text-primary)',
     margin: 0,
     lineHeight: 1.2,
   },
   sub: {
     fontSize: '14px',
-    color: '#64748b',
+    color: 'var(--text-secondary)',
     margin: 0,
     lineHeight: 1.6,
   },
@@ -62,29 +62,29 @@ const S = {
     display: 'block',
     fontSize: '12px',
     fontWeight: 600,
-    color: '#94a3b8',
+    color: 'var(--text-secondary)',
     marginBottom: '6px',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
   input: {
     width: '100%',
-    background: '#0f1729',
-    border: '1px solid #1e2736',
+    background: 'var(--bg-page)',
+    border: '1px solid var(--bg-raised)',
     borderRadius: '8px',
     padding: '10px 12px',
-    color: '#e2e8f0',
+    color: 'var(--text-primary)',
     fontSize: '14px',
     boxSizing: 'border-box',
     outline: 'none',
   },
   select: {
     width: '100%',
-    background: '#0f1729',
-    border: '1px solid #1e2736',
+    background: 'var(--bg-page)',
+    border: '1px solid var(--bg-raised)',
     borderRadius: '8px',
     padding: '10px 12px',
-    color: '#e2e8f0',
+    color: 'var(--text-primary)',
     fontSize: '14px',
     boxSizing: 'border-box',
     outline: 'none',
@@ -100,7 +100,7 @@ const S = {
     flexDirection: 'column',
   },
   btnPrimary: {
-    background: '#c2735a',
+    background: 'var(--red)',
     color: '#fff',
     border: 'none',
     borderRadius: '8px',
@@ -112,9 +112,9 @@ const S = {
     transition: 'opacity 0.15s',
   },
   btnSecondary: {
-    background: '#1e2736',
-    color: '#e2e8f0',
-    border: '1px solid #2d3f5f',
+    background: 'var(--bg-raised)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border-default)',
     borderRadius: '8px',
     padding: '12px 24px',
     fontSize: '15px',
@@ -131,7 +131,7 @@ const S = {
   skipLink: {
     textAlign: 'center',
     fontSize: '13px',
-    color: '#64748b',
+    color: 'var(--text-secondary)',
     cursor: 'pointer',
     textDecoration: 'underline',
     background: 'none',
@@ -144,16 +144,16 @@ const S = {
     alignItems: 'center',
     gap: '10px',
     padding: '10px 14px',
-    background: '#0f1729',
+    background: 'var(--bg-page)',
     borderRadius: '8px',
     fontSize: '14px',
-    color: '#e2e8f0',
+    color: 'var(--text-primary)',
   },
   dot2: {
     width: '8px',
     height: '8px',
     borderRadius: '50%',
-    background: '#4ade80',
+    background: 'var(--green)',
     flexShrink: 0,
   },
 };
@@ -237,7 +237,7 @@ function StepAccount({ onNext }) {
             />
           </div>
         </div>
-        {error && <p style={{ margin: 0, fontSize: '13px', color: '#f87171' }}>{error}</p>}
+        {error && <p style={{ margin: 0, fontSize: '13px', color: 'var(--red)' }}>{error}</p>}
       </div>
       <div style={S.btnRow}>
         <button style={S.btnPrimary} onClick={handleAdd}>Add Account</button>
@@ -273,7 +273,7 @@ function StepBudgets({ onNext, onSkip }) {
             <div style={{
               width: '36px',
               height: '36px',
-              background: '#0f1729',
+              background: 'var(--bg-page)',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',

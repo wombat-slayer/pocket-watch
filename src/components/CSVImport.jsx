@@ -291,14 +291,14 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
 
   if (step === 'upload') return (
     <div>
-      <p style={{ fontSize:13, color:'#64748b', marginBottom:16 }}>
+      <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:16 }}>
         Import transactions from your bank export.
-        <strong style={{ color:'#94a3b8' }}> OFX / QFX</strong> is recommended — it includes bank-assigned transaction IDs for reliable duplicate detection.
-        <strong style={{ color:'#94a3b8' }}> CSV</strong> and <strong style={{ color:'#94a3b8' }}> Excel (.xlsx)</strong> also supported.
+        <strong style={{ color:'var(--text-secondary)' }}> OFX / QFX</strong> is recommended — it includes bank-assigned transaction IDs for reliable duplicate detection.
+        <strong style={{ color:'var(--text-secondary)' }}> CSV</strong> and <strong style={{ color:'var(--text-secondary)' }}> Excel (.xlsx)</strong> also supported.
       </p>
 
       <div style={{ marginBottom:14 }}>
-        <label style={{ fontSize:13, color:'#94a3b8', display:'block', marginBottom:5 }}>Import into Account</label>
+        <label style={{ fontSize:13, color:'var(--text-secondary)', display:'block', marginBottom:5 }}>Import into Account</label>
         <select value={importAcct} onChange={e => setImportAcct(e.target.value)} style={{ width:'100%' }}>
           <option value="">— Select account —</option>
           {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -306,8 +306,8 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
       </div>
 
       <div style={{ marginBottom:14 }}>
-        <label style={{ fontSize:13, color:'#94a3b8', display:'block', marginBottom:5 }}>
-          CSV Bank Format <span style={{ fontWeight:400, color:'#475569' }}>(ignored for OFX/QFX files)</span>
+        <label style={{ fontSize:13, color:'var(--text-secondary)', display:'block', marginBottom:5 }}>
+          CSV Bank Format <span style={{ fontWeight:400, color:'var(--text-muted)' }}>(ignored for OFX/QFX files)</span>
         </label>
         <select value={csvPreset} onChange={e => setCsvPreset(e.target.value)} style={{ width:'100%' }}>
           {Object.entries(CSV_PRESETS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
@@ -316,10 +316,10 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
           const p = CSV_PRESETS[csvPreset];
           const cols = [p.dateCol, p.descCol, p.amountCol || (p.debitCol ? (p.debitCol + ' / ' + p.creditCol) : null)].filter(Boolean);
           return (
-            <div style={{ fontSize:12, color:'#64748b', marginTop:5 }}>
+            <div style={{ fontSize:12, color:'var(--text-secondary)', marginTop:5 }}>
               {'Tip: Expected columns: '}
-              <span style={{ color:'#94a3b8' }}>{cols.join(', ')}</span>
-              {p.flip && <span style={{ color:'#f59e0b', marginLeft:6 }}>(amounts sign-flipped)</span>}
+              <span style={{ color:'var(--text-secondary)' }}>{cols.join(', ')}</span>
+              {p.flip && <span style={{ color:'var(--amber)', marginLeft:6 }}>(amounts sign-flipped)</span>}
             </div>
           );
         })()}
@@ -329,18 +329,18 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
         onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); }}
         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
-        style={{ border:'2px dashed ' + (dragOver ? '#6366f1' : '#2d3a4a'), borderRadius:10, padding:'28px 24px', textAlign:'center', marginBottom:12, background: dragOver ? '#6366f108' : 'transparent', transition:'border-color 0.15s, background 0.15s' }}>
+        style={{ border:'2px dashed ' + (dragOver ? 'var(--accent)' : 'var(--border-default)'), borderRadius:10, padding:'28px 24px', textAlign:'center', marginBottom:12, background: dragOver ? '#6366f108' : 'transparent', transition:'border-color 0.15s, background 0.15s' }}>
         <div style={{ fontSize:32, marginBottom:6 }}>📥</div>
-        <p style={{ color:'#94a3b8', marginBottom:3, fontSize:14 }}>Drag and drop your export file here</p>
-        <p style={{ color:'#475569', marginBottom:12, fontSize:12 }}>OFX · QFX · CSV · TXT · XLSX · XLS</p>
+        <p style={{ color:'var(--text-secondary)', marginBottom:3, fontSize:14 }}>Drag and drop your export file here</p>
+        <p style={{ color:'var(--text-muted)', marginBottom:12, fontSize:12 }}>OFX · QFX · CSV · TXT · XLSX · XLS</p>
         <label className="file-label" htmlFor="tx-import-file">📂 Choose File</label>
         <input id="tx-import-file" type="file" accept=".csv,.txt,.ofx,.qfx,.xlsx,.xls" onChange={e => handleFile(e.target.files[0])} />
       </div>
 
-      <div style={{ background:'#0f172a', borderRadius:8, padding:'9px 13px', fontSize:12, color:'#64748b', lineHeight:1.6 }}>
-        <strong style={{ color:'#94a3b8' }}>Finding OFX/QFX:</strong> In your bank website look for "Download Transactions", "Export to Quicken", or "Export to Money". OFX and QFX are the same format under different names.
+      <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'9px 13px', fontSize:12, color:'var(--text-secondary)', lineHeight:1.6 }}>
+        <strong style={{ color:'var(--text-secondary)' }}>Finding OFX/QFX:</strong> In your bank website look for "Download Transactions", "Export to Quicken", or "Export to Money". OFX and QFX are the same format under different names.
       </div>
-      {error && <p style={{ color:'#c2735a', fontSize:13, marginTop:10 }}>{error}</p>}
+      {error && <p style={{ color:'var(--red)', fontSize:13, marginTop:10 }}>{error}</p>}
     </div>
   );
 
@@ -349,13 +349,13 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
     const mappedSet  = new Set(Object.values(colMap).filter(Boolean));
     return (
       <div>
-        <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b33', borderRadius:8, padding:'9px 13px', marginBottom:16, fontSize:13, color:'#f59e0b' }}>
+        <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b33', borderRadius:8, padding:'9px 13px', marginBottom:16, fontSize:13, color:'var(--amber)' }}>
           Could not auto-detect columns. Map them manually below.
         </div>
 
         {[['Date column', 'date'], ['Description column', 'description']].map(([label, key]) => (
           <div key={key} style={{ marginBottom:12 }}>
-            <label style={{ fontSize:12, color:'#94a3b8', display:'block', marginBottom:4 }}>{label}</label>
+            <label style={{ fontSize:12, color:'var(--text-secondary)', display:'block', marginBottom:4 }}>{label}</label>
             <select value={colMap[key]} onChange={e => setColMap(m => ({ ...m, [key]: e.target.value }))} style={{ width:'100%' }}>
               <option value="">— select —</option>
               {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
@@ -364,12 +364,12 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
         ))}
 
         <div style={{ marginBottom:12 }}>
-          <label style={{ fontSize:12, color:'#94a3b8', display:'block', marginBottom:6 }}>Amount format</label>
+          <label style={{ fontSize:12, color:'var(--text-secondary)', display:'block', marginBottom:6 }}>Amount format</label>
           <div style={{ display:'flex', gap:16, marginBottom:8 }}>
-            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, color:'#e2e8f0' }}>
+            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}>
               <input type="radio" checked={amtMode === 'single'} onChange={() => setAmtMode('single')} /> Single amount column
             </label>
-            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, color:'#e2e8f0' }}>
+            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}>
               <input type="radio" checked={amtMode === 'debitcredit'} onChange={() => setAmtMode('debitcredit')} /> Separate Debit / Credit columns
             </label>
           </div>
@@ -379,21 +379,21 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
                 <option value="">— select —</option>
                 {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
-              <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:12, color:'#94a3b8', whiteSpace:'nowrap' }}>
+              <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:12, color:'var(--text-secondary)', whiteSpace:'nowrap' }}>
                 <input type="checkbox" checked={flipSign} onChange={e => setFlipSign(e.target.checked)} /> Flip signs
               </label>
             </div>
           ) : (
             <div style={{ display:'flex', gap:10 }}>
               <div style={{ flex:1 }}>
-                <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:3 }}>Debit (expenses)</label>
+                <label style={{ fontSize:11, color:'var(--text-secondary)', display:'block', marginBottom:3 }}>Debit (expenses)</label>
                 <select value={colMap.debit} onChange={e => setColMap(m => ({ ...m, debit: e.target.value }))} style={{ width:'100%' }}>
                   <option value="">— select —</option>
                   {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
               </div>
               <div style={{ flex:1 }}>
-                <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:3 }}>Credit (income)</label>
+                <label style={{ fontSize:11, color:'var(--text-secondary)', display:'block', marginBottom:3 }}>Credit (income)</label>
                 <select value={colMap.credit} onChange={e => setColMap(m => ({ ...m, credit: e.target.value }))} style={{ width:'100%' }}>
                   <option value="">— select —</option>
                   {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
@@ -404,17 +404,17 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
         </div>
 
         {sampleCols.length > 0 && (
-          <div style={{ background:'#0f172a', borderRadius:6, padding:'8px 12px', marginBottom:14, fontSize:12 }}>
-            <div style={{ color:'#475569', marginBottom:4 }}>Sample (row 1):</div>
+          <div style={{ background:'var(--bg-page)', borderRadius:6, padding:'8px 12px', marginBottom:14, fontSize:12 }}>
+            <div style={{ color:'var(--text-muted)', marginBottom:4 }}>Sample (row 1):</div>
             {csvHeaders.map((h, i) => (
-              <div key={h} style={{ color: mappedSet.has(h) ? '#c4b5fd' : '#64748b' }}>
-                <span style={{ color:'#475569' }}>{h}:</span> {sampleCols[i] || ''}
+              <div key={h} style={{ color: mappedSet.has(h) ? 'var(--accent-2)' : 'var(--text-secondary)' }}>
+                <span style={{ color:'var(--text-muted)' }}>{h}:</span> {sampleCols[i] || ''}
               </div>
             ))}
           </div>
         )}
 
-        {error && <p style={{ color:'#c2735a', fontSize:13 }}>{error}</p>}
+        {error && <p style={{ color:'var(--red)', fontSize:13 }}>{error}</p>}
         <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
           <button className="btn btn-secondary" onClick={() => { setStep('upload'); setError(''); }}>Back</button>
           <button className="btn btn-primary" onClick={applyColMap}>Apply and Preview</button>
@@ -429,17 +429,17 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
       <div>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span style={{ fontWeight:600, color:'#e2e8f0' }}>{rows.length} transactions found</span>
+            <span style={{ fontWeight:600, color:'var(--text-primary)' }}>{rows.length} transactions found</span>
             {fileType === 'ofx' && (
-              <span style={{ fontSize:11, color:'#818cf8', background:'#6366f122', padding:'2px 7px', borderRadius:20 }}>OFX/QFX</span>
+              <span style={{ fontSize:11, color:'var(--accent-2)', background:'#6366f122', padding:'2px 7px', borderRadius:20 }}>OFX/QFX</span>
             )}
             {uncatRows.length > 0 && (
-              <span style={{ fontSize:12, color:'#f59e0b', background:'#f59e0b22', padding:'2px 8px', borderRadius:20 }}>
+              <span style={{ fontSize:12, color:'var(--amber)', background:'#f59e0b22', padding:'2px 8px', borderRadius:20 }}>
                 {uncatRows.length} uncategorized
               </span>
             )}
             {dupCount > 0 && (
-              <span style={{ fontSize:12, color:'#c2735a', background:'#c2735a22', padding:'2px 8px', borderRadius:20 }}>
+              <span style={{ fontSize:12, color:'var(--red)', background:'#c2735a22', padding:'2px 8px', borderRadius:20 }}>
                 {dupCount} duplicate{dupCount !== 1 ? 's' : ''}
               </span>
             )}
@@ -449,11 +449,11 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
 
         {dupCount > 0 && (
           <div style={{ background:'#f59e0b11', border:'1px solid #f59e0b44', borderRadius:8, padding:'8px 12px', marginBottom:12, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, color:'#e2e8f0' }}>
+            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, color:'var(--text-primary)' }}>
               <input type="checkbox" checked={skipDups} onChange={e => setSkipDups(e.target.checked)} />
               Skip duplicates
             </label>
-            <span style={{ fontSize:12, color:'#94a3b8' }}>
+            <span style={{ fontSize:12, color:'var(--text-secondary)' }}>
               {dupCount} of {rows.length} rows look like duplicates and will be {skipDups ? 'skipped' : 'imported'}.
               {fileType === 'ofx' ? ' Matched by bank transaction ID.' : ''}
             </span>
@@ -473,7 +473,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       <input type="text" value={r.description} onChange={e => updateRow(r.id, 'description', e.target.value)} style={{ minWidth:140 }} />
                       {r._isDuplicate && (
-                        <span style={{ fontSize:11, background:'#f59e0b22', color:'#f59e0b', padding:'1px 6px', borderRadius:10, whiteSpace:'nowrap' }}>
+                        <span style={{ fontSize:11, background:'#f59e0b22', color:'var(--amber)', padding:'1px 6px', borderRadius:10, whiteSpace:'nowrap' }}>
                           {fileType === 'ofx' ? 'Exact dup' : 'Likely dup'}
                         </span>
                       )}
@@ -485,18 +485,18 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
                         {getAllCategories(userCategories).map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
                       </select>
                       {r._memorized && (
-                        <span style={{ fontSize:10, background:'#6366f122', color:'#818cf8', padding:'1px 5px', borderRadius:8, whiteSpace:'nowrap', flexShrink:0 }}>auto</span>
+                        <span style={{ fontSize:10, background:'#6366f122', color:'var(--accent-2)', padding:'1px 5px', borderRadius:8, whiteSpace:'nowrap', flexShrink:0 }}>auto</span>
                       )}
                     </div>
                   </td>
-                  <td style={{ color: r.amount >= 0 ? '#4ade80' : '#c2735a', fontWeight:600, whiteSpace:'nowrap' }}>{fmt(r.amount)}</td>
+                  <td style={{ color: r.amount >= 0 ? 'var(--green)' : 'var(--red)', fontWeight:600, whiteSpace:'nowrap' }}>{fmt(r.amount)}</td>
                   <td>
                     <select value={r.account} onChange={e => updateRow(r.id, 'account', e.target.value)} style={{ minWidth:120 }}>
                       <option value="">None</option>
                       {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   </td>
-                  <td><button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }} onClick={() => removeRow(r.id)}>x</button></td>
+                  <td><button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={() => removeRow(r.id)}>x</button></td>
                 </tr>
               ))}
             </tbody>
@@ -525,13 +525,13 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
   const ucRow = uncatRows[ucIdx];
   if (step === 'review-uncat' && ucRow) return (
     <div style={{ textAlign:'center' }}>
-      <p style={{ color:'#94a3b8', fontSize:13, marginBottom:16 }}>
+      <p style={{ color:'var(--text-secondary)', fontSize:13, marginBottom:16 }}>
         Quickly categorize uncategorized transactions ({ucIdx + 1} of {uncatRows.length})
       </p>
       <div className="card-sm" style={{ marginBottom:20, textAlign:'left' }}>
         <div style={{ fontWeight:600, fontSize:16 }}>{ucRow.description}</div>
-        <div style={{ color:'#64748b', fontSize:13, marginTop:4 }}>
-          {fmtDate(ucRow.date)} - <span style={{ color: ucRow.amount >= 0 ? '#4ade80' : '#c2735a', fontWeight:600 }}>{fmt(ucRow.amount)}</span>
+        <div style={{ color:'var(--text-secondary)', fontSize:13, marginTop:4 }}>
+          {fmtDate(ucRow.date)} - <span style={{ color: ucRow.amount >= 0 ? 'var(--green)' : 'var(--red)', fontWeight:600 }}>{fmt(ucRow.amount)}</span>
         </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>

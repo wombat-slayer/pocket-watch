@@ -106,7 +106,7 @@ export default function Dashboard({
     }).sort((a, b) => b.pct - a.pct)
   , [budgets, catSpend, selMonth]);
 
-  const barColor = (pct) => pct >= 100 ? '#c2735a' : pct >= 80 ? '#f59e0b' : '#4ade80';
+  const barColor = (pct) => pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--green)';
 
   // ── Goals on-track ────────────────────────────────────────────────────────
   const last3Surplus = useMemo(() => {
@@ -258,10 +258,10 @@ export default function Dashboard({
   return (
     <div className="fade-in" style={{ padding:'24px 28px' }}>
       {isNewUser && (
-        <div style={{ background:'linear-gradient(135deg,#0d1f17,#0d1117)', border:'1px solid #14532d55', borderRadius:14, padding:'28px 32px', marginBottom:24 }}>
+        <div style={{ background:'var(--bg-card)', border:'1px solid #14532d55', borderRadius:14, padding:'28px 32px', marginBottom:24 }}>
           <div style={{ fontSize:36, marginBottom:10 }}>⌚</div>
-          <div style={{ fontWeight:700, fontSize:20, color:'#e2e8f0', marginBottom:6 }}>Welcome to Pocket Watch</div>
-          <div style={{ fontSize:14, color:'#64748b', marginBottom:20, lineHeight:1.7 }}>
+          <div style={{ fontWeight:700, fontSize:20, color:'var(--text-primary)', marginBottom:6 }}>Welcome to Pocket Watch</div>
+          <div style={{ fontSize:14, color:'var(--text-secondary)', marginBottom:20, lineHeight:1.7 }}>
             Your data lives only on this machine — private, fast, and yours forever. Here's how to get started:
           </div>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20 }}>
@@ -270,10 +270,10 @@ export default function Dashboard({
               { num:'2', label:'Import bank statements', desc:'Drop CSV or OFX files from your bank — years of history at once' },
               { num:'3', label:'Set a budget', desc:'Budget by category so you always know where your money is going — press 4' },
             ].map(step => (
-              <div key={step.num} style={{ flex:'1 1 180px', background:'#0d1117', border:'1px solid #1e2736', borderRadius:10, padding:'14px 16px' }}>
-                <div style={{ width:24, height:24, borderRadius:6, background:'#14532d', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#4ade80', marginBottom:10 }}>{step.num}</div>
-                <div style={{ fontWeight:600, fontSize:13, color:'#e2e8f0', marginBottom:4 }}>{step.label}</div>
-                <div style={{ fontSize:12, color:'#475569', lineHeight:1.5 }}>{step.desc}</div>
+              <div key={step.num} style={{ flex:'1 1 180px', background:'var(--bg-page)', border:'1px solid var(--bg-raised)', borderRadius:10, padding:'14px 16px' }}>
+                <div style={{ width:24, height:24, borderRadius:6, background:'#14532d', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'var(--green)', marginBottom:10 }}>{step.num}</div>
+                <div style={{ fontWeight:600, fontSize:13, color:'var(--text-primary)', marginBottom:4 }}>{step.label}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{step.desc}</div>
               </div>
             ))}
           </div>
@@ -304,28 +304,28 @@ export default function Dashboard({
             {unvestedRSU > 0 ? (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
-                  <div style={{ fontSize:12, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Vested Net Worth</div>
+                  <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Vested Net Worth</div>
                   <span
                     title="Unvested RSU value is excluded from this figure. Update in Accounts."
-                    style={{ fontSize:12, color:'#475569', cursor:'help' }}
+                    style={{ fontSize:12, color:'var(--text-muted)', cursor:'help' }}
                   >ⓘ</span>
                 </div>
-                <div style={{ fontSize:30, fontWeight:700, color: vestedNetWorth >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(vestedNetWorth)}</div>
-                <div style={{ fontSize:12, color:'#475569', marginTop:3 }}>
-                  + {fmt(unvestedRSU)} <span style={{ color:'#334155' }}>locked (unvested RSUs)</span>
+                <div style={{ fontSize:30, fontWeight:700, color: vestedNetWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(vestedNetWorth)}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>
+                  + {fmt(unvestedRSU)} <span style={{ color:'var(--text-muted)' }}>locked (unvested RSUs)</span>
                 </div>
               </>
             ) : (
               <>
-                <div style={{ fontSize:12, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
-                <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(netWorth)}</div>
+                <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
+                <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(netWorth)}</div>
               </>
             )}
           </div>
           {nwDelta != null && (
             <div style={{ textAlign:'right' }}>
-              <div style={{ fontSize:12, color:'#64748b', marginBottom:2 }}>vs last month</div>
-              <div style={{ fontSize:16, fontWeight:700, color: nwDelta >= 0 ? '#4ade80' : '#c2735a' }}>
+              <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:2 }}>vs last month</div>
+              <div style={{ fontSize:16, fontWeight:700, color: nwDelta >= 0 ? 'var(--green)' : 'var(--red)' }}>
                 {nwDelta >= 0 ? '+' : ''}{fmt(nwDelta)}
               </div>
             </div>
@@ -333,33 +333,33 @@ export default function Dashboard({
         </div>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
           {checkingBal !== 0 && (
-            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
-              <span style={{ color:'#64748b' }}>Checking </span>
-              <span style={{ color:'#e2e8f0', fontWeight:600 }}>{fmt(checkingBal)}</span>
+            <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'var(--text-secondary)' }}>Checking </span>
+              <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{fmt(checkingBal)}</span>
             </div>
           )}
           {savingsBal !== 0 && (
-            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
-              <span style={{ color:'#64748b' }}>Savings </span>
-              <span style={{ color:'#e2e8f0', fontWeight:600 }}>{fmt(savingsBal)}</span>
+            <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'var(--text-secondary)' }}>Savings </span>
+              <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{fmt(savingsBal)}</span>
             </div>
           )}
           {investBal !== 0 && (
-            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
-              <span style={{ color:'#64748b' }}>Investments </span>
-              <span style={{ color:'#8b5cf6', fontWeight:600 }}>{fmt(investBal)}</span>
+            <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'var(--text-secondary)' }}>Investments </span>
+              <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{fmt(investBal)}</span>
             </div>
           )}
           {equityValue > 0 && (
-            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
-              <span style={{ color:'#64748b' }}>Equity </span>
-              <span style={{ color:'#8b5cf6', fontWeight:600 }}>{fmt(equityValue)}</span>
+            <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'var(--text-secondary)' }}>Equity </span>
+              <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{fmt(equityValue)}</span>
             </div>
           )}
           {creditBal !== 0 && (
-            <div style={{ background:'#0d1117', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
-              <span style={{ color:'#64748b' }}>Credit </span>
-              <span style={{ color:'#c2735a', fontWeight:600 }}>{fmt(creditBal)}</span>
+            <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
+              <span style={{ color:'var(--text-secondary)' }}>Credit </span>
+              <span style={{ color:'var(--red)', fontWeight:600 }}>{fmt(creditBal)}</span>
             </div>
           )}
         </div>
@@ -367,9 +367,9 @@ export default function Dashboard({
 
       {/* ── Weekly callout ── */}
       {weekStats.count > 0 && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1e273640', borderRadius:8, padding:'8px 16px', marginBottom:16, fontSize:13 }}>
-          <span style={{ color:'#94a3b8' }}>
-            This week: <span style={{ color:'#c2735a', fontWeight:600 }}>{fmt(weekStats.total)}</span> spent across <span style={{ fontWeight:600 }}>{weekStats.cats}</span> categor{weekStats.cats===1?'y':'ies'}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--bg-raised)', borderRadius:8, padding:'8px 16px', marginBottom:16, fontSize:13 }}>
+          <span style={{ color:'var(--text-secondary)' }}>
+            This week: <span style={{ color:'var(--red)', fontWeight:600 }}>{fmt(weekStats.total)}</span> spent across <span style={{ fontWeight:600 }}>{weekStats.cats}</span> categor{weekStats.cats===1?'y':'ies'}
           </span>
           {onGoToReports && (
             <button className="btn btn-ghost btn-sm" style={{ fontSize:12 }} onClick={() => onGoToReports('week')}>
@@ -383,46 +383,46 @@ export default function Dashboard({
       <div className="card" style={{ marginBottom:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, flexWrap:'wrap', gap:8 }}>
           <div style={{ fontWeight:600, fontSize:15 }}>Monthly Pulse</div>
-          {projectedIncome > 0 && <span style={{ fontSize:12, color:'#f59e0b' }}>📅 Income projected from recurring</span>}
+          {projectedIncome > 0 && <span style={{ fontSize:12, color:'var(--amber)' }}>📅 Income projected from recurring</span>}
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
-          <div style={{ background:'#0d1117', borderRadius:10, padding:'14px 16px' }}>
-            <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Income</div>
-            <div style={{ fontSize:22, fontWeight:700, color:'#4ade80' }}>{fmt(effectiveIncome)}</div>
+          <div style={{ background:'var(--bg-page)', borderRadius:10, padding:'14px 16px' }}>
+            <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Income</div>
+            <div style={{ fontSize:22, fontWeight:700, color:'var(--green)' }}>{fmt(effectiveIncome)}</div>
             {incomeDelta && (
-              <div style={{ fontSize:11, marginTop:4, color: incomeDelta.up ? '#4ade80' : '#c2735a' }}>
+              <div style={{ fontSize:11, marginTop:4, color: incomeDelta.up ? 'var(--green)' : 'var(--red)' }}>
                 {incomeDelta.up ? '▲' : '▼'} {incomeDelta.pct}% vs prev
               </div>
             )}
           </div>
-          <div style={{ background:'#0d1117', borderRadius:10, padding:'14px 16px' }}>
-            <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Spent</div>
-            <div style={{ fontSize:22, fontWeight:700, color:'#c2735a' }}>{fmt(monthSpend)}</div>
+          <div style={{ background:'var(--bg-page)', borderRadius:10, padding:'14px 16px' }}>
+            <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Spent</div>
+            <div style={{ fontSize:22, fontWeight:700, color:'var(--red)' }}>{fmt(monthSpend)}</div>
             {spendDelta && (
-              <div style={{ fontSize:11, marginTop:4, color: spendDelta.up ? '#c2735a' : '#4ade80' }}>
+              <div style={{ fontSize:11, marginTop:4, color: spendDelta.up ? 'var(--red)' : 'var(--green)' }}>
                 {spendDelta.up ? '▲' : '▼'} {spendDelta.pct}% vs prev
               </div>
             )}
           </div>
-          <div style={{ background:'#0d1117', borderRadius:10, padding:'14px 16px' }}>
-            <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Surplus</div>
-            <div style={{ fontSize:22, fontWeight:700, color: monthSurplus >= 0 ? '#4ade80' : '#c2735a' }}>
+          <div style={{ background:'var(--bg-page)', borderRadius:10, padding:'14px 16px' }}>
+            <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Surplus</div>
+            <div style={{ fontSize:22, fontWeight:700, color: monthSurplus >= 0 ? 'var(--green)' : 'var(--red)' }}>
               {monthSurplus >= 0 ? '+' : ''}{fmt(monthSurplus)}
             </div>
             {surplusDelta && (
-              <div style={{ fontSize:11, marginTop:4, color: surplusDelta.up ? '#4ade80' : '#c2735a' }}>
+              <div style={{ fontSize:11, marginTop:4, color: surplusDelta.up ? 'var(--green)' : 'var(--red)' }}>
                 {surplusDelta.up ? '▲' : '▼'} {surplusDelta.pct}% vs prev
               </div>
             )}
           </div>
         </div>
         {trueSavingsRate != null && (
-          <div style={{ marginTop:12, padding:'10px 14px', background:'#0d1117', borderRadius:8, fontSize:13 }}>
-            <span style={{ color:'#64748b' }}>True Savings Rate </span>
-            <span style={{ fontWeight:700, color: trueSavingsRate >= 20 ? '#4ade80' : '#f59e0b', marginLeft:6 }}>
+          <div style={{ marginTop:12, padding:'10px 14px', background:'var(--bg-page)', borderRadius:8, fontSize:13 }}>
+            <span style={{ color:'var(--text-secondary)' }}>True Savings Rate </span>
+            <span style={{ fontWeight:700, color: trueSavingsRate >= 20 ? 'var(--green)' : 'var(--amber)', marginLeft:6 }}>
               {trueSavingsRate.toFixed(1)}%
             </span>
-            <span style={{ color:'#334155', fontSize:11, marginLeft:6 }}>of gross salary (including pre-tax)</span>
+            <span style={{ color:'var(--text-muted)', fontSize:11, marginLeft:6 }}>of gross salary (including pre-tax)</span>
           </div>
         )}
       </div>
@@ -445,10 +445,10 @@ export default function Dashboard({
                     style={{ cursor: onCategoryClick ? 'pointer' : 'default' }}
                   >
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
-                      <span style={{ fontSize:13, color:'#e2e8f0' }}>{catIcon(cat)} {cat}</span>
-                      <span style={{ fontSize:13, fontWeight:600, color:'#e2e8f0' }}>{fmt(amt)}</span>
+                      <span style={{ fontSize:13, color:'var(--text-primary)' }}>{catIcon(cat)} {cat}</span>
+                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{fmt(amt)}</span>
                     </div>
-                    <div style={{ background:'#1e2736', borderRadius:4, height:5, overflow:'hidden' }}>
+                    <div style={{ background:'var(--bg-raised)', borderRadius:4, height:5, overflow:'hidden' }}>
                       <div style={{ height:'100%', borderRadius:4, width:`${pct}%`, background: catColor(cat), transition:'width 0.4s ease' }} />
                     </div>
                   </div>
@@ -468,7 +468,7 @@ export default function Dashboard({
           </div>
           {monthBudgets.length === 0 ? (
             <div style={{ textAlign:'center', padding:'18px 0' }}>
-              <div style={{ fontSize:13, color:'#64748b', marginBottom:12 }}>No budgets for this month</div>
+              <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>No budgets for this month</div>
               <button className="btn btn-primary btn-sm" onClick={onGoToBudgets}>+ Create Budgets</button>
             </div>
           ) : (
@@ -476,12 +476,12 @@ export default function Dashboard({
               {monthBudgets.map(b => (
                 <div key={b.id} onClick={onGoToBudgets} style={{ cursor:'pointer' }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
-                    <span style={{ fontSize:13, color:'#e2e8f0', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    <span style={{ fontSize:13, color:'var(--text-primary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                       {catIcon(b.category)} {b.category}
                     </span>
-                    <span style={{ fontSize:11, color:'#64748b', flexShrink:0, marginLeft:8 }}>{fmt(b.spent)} / {fmt(b.amount)}</span>
+                    <span style={{ fontSize:11, color:'var(--text-secondary)', flexShrink:0, marginLeft:8 }}>{fmt(b.spent)} / {fmt(b.amount)}</span>
                   </div>
-                  <div style={{ background:'#1e2736', borderRadius:4, height:6, overflow:'hidden' }}>
+                  <div style={{ background:'var(--bg-raised)', borderRadius:4, height:6, overflow:'hidden' }}>
                     <div style={{ height:'100%', borderRadius:4, width:`${Math.min(100, b.pct)}%`, background:barColor(b.pct), transition:'width 0.4s ease' }} />
                   </div>
                 </div>
@@ -516,13 +516,13 @@ export default function Dashboard({
             <tbody>
               {transactions.slice(0, 8).map(t => (
                 <tr key={t.id}>
-                  <td style={{ color:'#64748b', fontSize:13 }}>{fmtDate(t.date)}</td>
+                  <td style={{ color:'var(--text-secondary)', fontSize:13 }}>{fmtDate(t.date)}</td>
                   <td style={{ fontWeight:500 }}>
                     {t.description}
-                    {t.recurringId && <span style={{ fontSize:10, background:'#1e2736', color:'#64748b', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>🔁</span>}
+                    {t.recurringId && <span style={{ fontSize:10, background:'var(--bg-raised)', color:'var(--text-secondary)', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>🔁</span>}
                   </td>
                   <td><span className="tag">{catIcon(t.category)} {t.category}</span></td>
-                  <td style={{ textAlign:'right', fontWeight:700, color:t.amount>=0?'#4ade80':'#c2735a' }}>
+                  <td style={{ textAlign:'right', fontWeight:700, color:t.amount>=0?'var(--green)':'var(--red)' }}>
                     {t.amount>=0?'+':''}{fmt(t.amount)}
                   </td>
                 </tr>
@@ -537,12 +537,12 @@ export default function Dashboard({
         <div className="card" style={{ marginBottom:20 }}>
           <div style={{ fontWeight:600, fontSize:14, marginBottom:12 }}>💡 Spending Insights</div>
           {insights.map(({cat, spent, avg, pct, dir}) => (
-            <div key={cat} style={{ fontSize:13, color:'#94a3b8', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+            <div key={cat} style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
               <span>{dir==='up'?'⬆️':'⬇️'}</span>
               <span>
-                <strong style={{ color:'#e2e8f0' }}>{catIcon(cat)} {cat}</strong>
+                <strong style={{ color:'var(--text-primary)' }}>{catIcon(cat)} {cat}</strong>
                 {' '}is{' '}
-                <strong style={{ color: dir==='up'?'#c2735a':'#4ade80' }}>{pct.toFixed(0)}% {dir==='up'?'above':'below'}</strong>
+                <strong style={{ color: dir==='up'?'var(--red)':'var(--green)' }}>{pct.toFixed(0)}% {dir==='up'?'above':'below'}</strong>
                 {' '}your 3-month average ({fmt(spent)} vs {fmt(avg)} avg)
               </span>
             </div>
@@ -551,63 +551,63 @@ export default function Dashboard({
       )}
 
       {/* ── Insights panel: Forecast + NW Trajectory + FIRE ── */}
-      <div style={{ border:'1px solid #1e2736', borderRadius:12, overflow:'hidden' }}>
+      <div style={{ border:'1px solid var(--bg-raised)', borderRadius:12, overflow:'hidden' }}>
         <button
           onClick={() => setInsightsOpen(o => !o)}
-          style={{ width:'100%', background:'#111827', border:'none', padding:'14px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', color:'#e2e8f0' }}>
+          style={{ width:'100%', background:'var(--bg-card)', border:'none', padding:'14px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', color:'var(--text-primary)' }}>
           <span style={{ fontWeight:600, fontSize:14 }}>Insights &amp; Forecast</span>
-          <span style={{ fontSize:12, color:'#64748b' }}>{insightsOpen ? '▲ Collapse' : '▼ Expand'}</span>
+          <span style={{ fontSize:12, color:'var(--text-secondary)' }}>{insightsOpen ? '▲ Collapse' : '▼ Expand'}</span>
         </button>
         {insightsOpen && (
           <div style={{ padding:20 }}>
             <div style={{ marginBottom:24 }}>
-              <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Spending Forecast — Next 3 Months</div>
+              <div style={{ fontWeight:600, fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>Spending Forecast — Next 3 Months</div>
               <div className="chart-container" style={{ height:200 }}><canvas ref={canvasForecast} /></div>
             </div>
             <div style={{ marginBottom:24 }}>
-              <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>Net Worth Trajectory</div>
+              <div style={{ fontWeight:600, fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>Net Worth Trajectory</div>
               <div className="chart-container" style={{ height:200 }}><canvas ref={canvasNWTrajectory} /></div>
             </div>
             {fireData.avgMonthlySpend > 0 && (
-              <div style={{ borderTop:'1px solid #1e2736', paddingTop:20 }}>
-                <div style={{ fontWeight:600, fontSize:13, color:'#94a3b8', marginBottom:12 }}>🔥 FIRE Progress</div>
+              <div style={{ borderTop:'1px solid var(--bg-raised)', paddingTop:20 }}>
+                <div style={{ fontWeight:600, fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>🔥 FIRE Progress</div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
-                  <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
-                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>FIRE Number</div>
-                    <div style={{ fontSize:18, fontWeight:700, color:'#94a3b8' }}>{fmt(fireData.fireNumber)}</div>
-                    <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>25× annual expenses</div>
+                  <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'12px 14px' }}>
+                    <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>FIRE Number</div>
+                    <div style={{ fontSize:18, fontWeight:700, color:'var(--text-secondary)' }}>{fmt(fireData.fireNumber)}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>25× annual expenses</div>
                   </div>
-                  <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
-                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Monthly Savings</div>
-                    <div style={{ fontSize:18, fontWeight:700, color: fireData.monthlySavings > 0 ? '#4ade80' : '#c2735a' }}>
+                  <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'12px 14px' }}>
+                    <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Monthly Savings</div>
+                    <div style={{ fontSize:18, fontWeight:700, color: fireData.monthlySavings > 0 ? 'var(--green)' : 'var(--red)' }}>
                       {fireData.monthlySavings >= 0 ? '+' : ''}{fmt(fireData.monthlySavings)}
                     </div>
-                    <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>3-month avg</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>3-month avg</div>
                   </div>
-                  <div style={{ background:'#0d1117', borderRadius:8, padding:'12px 14px' }}>
-                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Years to FIRE</div>
+                  <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'12px 14px' }}>
+                    <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Years to FIRE</div>
                     <div style={{ fontSize:18, fontWeight:700, color: fireData.yearsToFire !== null && fireData.yearsToFire <= 15 ? 'var(--green)' : 'var(--amber)' }}>
                       {fireData.yearsToFire === null
                         ? netWorth >= fireData.fireNumber ? '🎉 Now!' : '—'
                         : fireData.yearsToFire < 1 ? '<1 yr'
                         : `${fireData.yearsToFire.toFixed(1)} yrs`}
                     </div>
-                    <div style={{ fontSize:11, color:'#475569', marginTop:2 }}>at current savings rate</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>at current savings rate</div>
                   </div>
                 </div>
-                <div style={{ fontSize:11, color:'#64748b', marginBottom:4, display:'flex', justifyContent:'space-between' }}>
+                <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:4, display:'flex', justifyContent:'space-between' }}>
                   <span>Progress to FIRE</span>
                   <span style={{ color:'var(--green)', fontWeight:600 }}>{fireData.fireProgress.toFixed(1)}%</span>
                 </div>
-                <div style={{ background:'#1e2736', borderRadius:6, height:10, overflow:'hidden' }}>
+                <div style={{ background:'var(--bg-raised)', borderRadius:6, height:10, overflow:'hidden' }}>
                   <div style={{
                     height:'100%', borderRadius:6,
                     width:`${fireData.fireProgress}%`,
-                    background: fireData.fireProgress >= 100 ? 'var(--green)' : 'linear-gradient(90deg,#10b981,#34d399)',
+                    background: fireData.fireProgress >= 100 ? 'var(--green)' : 'linear-gradient(90deg,var(--green),var(--cyan))',
                     transition:'width 0.5s ease',
                   }} />
                 </div>
-                <div style={{ fontSize:11, color:'#475569', marginTop:6 }}>
+                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:6 }}>
                   {fmt(netWorth)} saved of {fmt(fireData.fireNumber)} target · {fmt(Math.max(0, fireData.gap))} remaining
                 </div>
               </div>

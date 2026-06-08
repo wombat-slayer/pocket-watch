@@ -44,14 +44,14 @@ function GoalForm({ goal, accounts, onSave, onClose }) {
           {(accounts ?? []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
         {form.linkedAccountId && (
-          <div style={{ fontSize:12, color:'#7fa88b', marginTop:4 }}>🔗 Progress will sync from account balance</div>
+          <div style={{ fontSize:12, color:'var(--green)', marginTop:4 }}>🔗 Progress will sync from account balance</div>
         )}
       </div>
       <div className="form-group">
         <label className="form-label">Color</label>
         <div style={{ display:'flex',gap:8 }}>
           {COLORS.map(c=>(
-            <div key={c} onClick={()=>set('color',c)} style={{ width:24,height:24,borderRadius:'50%',background:c,cursor:'pointer',outline:form.color===c?'2px solid #e2e8f0':'none',outlineOffset:2 }} />
+            <div key={c} onClick={()=>set('color',c)} style={{ width:24,height:24,borderRadius:'50%',background:c,cursor:'pointer',outline:form.color===c?'2px solid var(--text-primary)':'none',outlineOffset:2 }} />
           ))}
         </div>
       </div>
@@ -111,11 +111,11 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
         <div className="card" style={{ marginBottom:20,display:'flex',alignItems:'center',gap:20,padding:'16px 20px' }}>
           <div style={{ flex:1 }}>
             <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
-              <span style={{ fontSize:13,color:'#94a3b8' }}>Overall progress across {goals.length} goal{goals.length!==1?'s':''}</span>
-              <span style={{ fontSize:13,fontWeight:600,color:'#e2e8f0' }}>{fmt(totalSaved)} / {fmt(totalTarget)}</span>
+              <span style={{ fontSize:13,color:'var(--text-secondary)' }}>Overall progress across {goals.length} goal{goals.length!==1?'s':''}</span>
+              <span style={{ fontSize:13,fontWeight:600,color:'var(--text-primary)' }}>{fmt(totalSaved)} / {fmt(totalTarget)}</span>
             </div>
-            <div className="goal-progress"><div className="goal-fill" style={{ width:`${totalPct}%`,background:'linear-gradient(90deg,#3b82f6,#8b5cf6)' }} /></div>
-            <div style={{ fontSize:12,color:'#64748b',marginTop:4 }}>{totalPct.toFixed(0)}% funded · {fmt(totalTarget-totalSaved)} remaining</div>
+            <div className="goal-progress"><div className="goal-fill" style={{ width:`${totalPct}%`,background:'linear-gradient(90deg,var(--accent),var(--accent-2))' }} /></div>
+            <div style={{ fontSize:12,color:'var(--text-secondary)',marginTop:4 }}>{totalPct.toFixed(0)}% funded · {fmt(totalTarget-totalSaved)} remaining</div>
           </div>
         </div>
       )}
@@ -124,8 +124,8 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
         ? (
           <div className="card" style={{ textAlign:'center', padding:'48px 32px' }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🎯</div>
-            <div style={{ fontSize:17, fontWeight:600, color:'#e2e8f0', marginBottom:8 }}>No goals yet</div>
-            <div style={{ fontSize:13, color:'#64748b', marginBottom:24, maxWidth:380, margin:'0 auto 24px' }}>
+            <div style={{ fontSize:17, fontWeight:600, color:'var(--text-primary)', marginBottom:8 }}>No goals yet</div>
+            <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:24, maxWidth:380, margin:'0 auto 24px' }}>
               Set a savings goal — vacation, emergency fund, down payment — and Pocket Watch will track your progress automatically.
             </div>
             <button className="btn btn-primary" onClick={()=>setShowAdd(true)}>+ Create Your First Goal</button>
@@ -144,15 +144,15 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
                     <div style={{ display:'flex',alignItems:'center',gap:10 }}>
                       <div style={{ fontSize:28 }}>{g.emoji}</div>
                       <div>
-                        <div style={{ fontWeight:600,color:'#e2e8f0',fontSize:15 }}>
+                        <div style={{ fontWeight:600,color:'var(--text-primary)',fontSize:15 }}>
                           {g.name}
                           {linked && <span title={`Linked to ${linkedAcct?.name ?? 'account'}`} style={{ marginLeft:6,fontSize:13 }}>🔗</span>}
                         </div>
                         {linked && linkedAcct && (
-                          <div style={{ fontSize:11,color:'#7fa88b',marginTop:2 }}>Synced from {linkedAcct.name}</div>
+                          <div style={{ fontSize:11,color:'var(--green)',marginTop:2 }}>Synced from {linkedAcct.name}</div>
                         )}
                         {daysLeft !== null && (
-                          <div style={{ fontSize:11,color: daysLeft<30?'#c2735a':'#64748b',marginTop:2 }}>
+                          <div style={{ fontSize:11,color: daysLeft<30?'var(--red)':'var(--text-secondary)',marginTop:2 }}>
                             {daysLeft > 0 ? `${daysLeft} days left` : 'Past target date'}
                           </div>
                         )}
@@ -160,13 +160,13 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
                     </div>
                     <div style={{ display:'flex',gap:4 }}>
                       <button className="btn btn-ghost btn-sm" onClick={()=>setEditGoal(g)} title="Edit">✏️</button>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>onDelete(g.id)} style={{ color:'#c2735a' }} title="Delete">✕</button>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>onDelete(g.id)} style={{ color:'var(--red)' }} title="Delete">✕</button>
                     </div>
                   </div>
                   <div className="goal-progress"><div className="goal-fill" style={{ width:`${pct}%`,background:g.color }} /></div>
                   <div style={{ display:'flex',justifyContent:'space-between',fontSize:13 }}>
-                    <span style={{ color:'#94a3b8' }}>{fmt(current)} saved</span>
-                    <span style={{ color:'#64748b' }}>{pct.toFixed(0)}% of {fmt(g.target)}</span>
+                    <span style={{ color:'var(--text-secondary)' }}>{fmt(current)} saved</span>
+                    <span style={{ color:'var(--text-secondary)' }}>{pct.toFixed(0)}% of {fmt(g.target)}</span>
                   </div>
                   {!linked && (
                     <div style={{ marginTop:12,display:'flex',gap:6 }}>
@@ -183,7 +183,7 @@ export default function Goals({ goals, accounts, onAdd, onEdit, onDelete, onDepo
                     </div>
                   )}
                   <div style={{ marginTop:8 }}>
-                    <button className="btn btn-ghost btn-sm" style={{ fontSize:11, color:'#64748b', width:'100%' }}
+                    <button className="btn btn-ghost btn-sm" style={{ fontSize:11, color:'var(--text-secondary)', width:'100%' }}
                       onClick={() => toggleMortgageCalc(g.id)}>
                       {mortgageCalcIds.has(g.id) ? '▲ Hide Mortgage Calc' : '🏠 Mortgage Calculator'}
                     </button>

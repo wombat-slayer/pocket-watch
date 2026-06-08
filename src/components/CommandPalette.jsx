@@ -60,7 +60,7 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
           value={query} onChange={e=>{setQuery(e.target.value);setSelIdx(0);}} onKeyDown={handleKey} />
         <div className="palette-results">
           {items.length === 0
-            ? <div style={{ padding:'24px',textAlign:'center',color:'#475569',fontSize:14 }}>No results</div>
+            ? <div style={{ padding:'24px',textAlign:'center',color:'var(--text-muted)',fontSize:14 }}>No results</div>
             : items.map((item,i) => {
                 const showSec = item.section !== lastSection;
                 lastSection = item.section;
@@ -70,19 +70,19 @@ export default function CommandPalette({ transactions, accounts, goals, onClose,
                     <div className={`palette-item${i===selIdx?' selected':''}`} onClick={()=>activate(item)}>
                       <span style={{ fontSize:18,width:24,textAlign:'center' }}>{item.icon ?? '📄'}</span>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:14,color:'#e2e8f0',fontWeight:500 }}>{item.label}</div>
-                        {item.type==='account' && <div style={{ fontSize:12,color:'#64748b' }}>{acctLabel(item.acctType??item.type)} · {fmt(item.balance)}</div>}
-                        {item.type==='tx'      && <div style={{ fontSize:12,color:'#64748b' }}>{fmtDate(item.date)} · <span style={{ color:item.amount>=0?'#4ade80':'#c2735a' }}>{fmt(item.amount)}</span></div>}
-                        {item.type==='goal'    && <div style={{ fontSize:12,color:'#64748b' }}>{fmt(item.current)} / {fmt(item.target)}</div>}
+                        <div style={{ fontSize:14,color:'var(--text-primary)',fontWeight:500 }}>{item.label}</div>
+                        {item.type==='account' && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{acctLabel(item.acctType??item.type)} · {fmt(item.balance)}</div>}
+                        {item.type==='tx'      && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{fmtDate(item.date)} · <span style={{ color:item.amount>=0?'var(--green)':'var(--red)' }}>{fmt(item.amount)}</span></div>}
+                        {item.type==='goal'    && <div style={{ fontSize:12,color:'var(--text-secondary)' }}>{fmt(item.current)} / {fmt(item.target)}</div>}
                       </div>
-                      {item.type==='page' && <span style={{ fontSize:11,color:'#334155' }}>Go to ↵</span>}
+                      {item.type==='page' && <span style={{ fontSize:11,color:'var(--text-muted)' }}>Go to ↵</span>}
                     </div>
                   </div>
                 );
               })
           }
         </div>
-        <div style={{ padding:'8px 16px',borderTop:'1px solid #1e2736',display:'flex',gap:16,fontSize:11,color:'#334155' }}>
+        <div style={{ padding:'8px 16px',borderTop:'1px solid var(--bg-raised)',display:'flex',gap:16,fontSize:11,color:'var(--text-muted)' }}>
           <span>↑↓ navigate</span><span>↵ open</span><span>esc close</span>
         </div>
       </div>

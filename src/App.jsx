@@ -32,8 +32,8 @@ function FirstRunScreen({ onChoose, onDefault, error }) {
     <div className="firstrun-overlay">
       <div className="firstrun-box">
         <div style={{ fontSize:48, marginBottom:16 }}>⌚</div>
-        <div style={{ fontFamily:'DM Serif Display, serif', fontSize:32, color:'#7fa88b', marginBottom:8 }}>Pocket Watch</div>
-        <p style={{ color:'#64748b', fontSize:15, marginBottom:32, lineHeight:1.6 }}>
+        <div style={{ fontFamily:'DM Serif Display, serif', fontSize:32, color:'var(--green)', marginBottom:8 }}>Pocket Watch</div>
+        <p style={{ color:'var(--text-secondary)', fontSize:15, marginBottom:32, lineHeight:1.6 }}>
           Your personal long-term financial record.<br />
           Where would you like to store your data?
         </p>
@@ -46,11 +46,11 @@ function FirstRunScreen({ onChoose, onDefault, error }) {
           </button>
         </div>
         {error && (
-          <p style={{ color:'#c2735a', fontSize:12, marginTop:16, background:'#c2735a11', padding:'8px 12px', borderRadius:8 }}>
+          <p style={{ color:'var(--red)', fontSize:12, marginTop:16, background:'#c2735a11', padding:'8px 12px', borderRadius:8 }}>
             ⚠️ {error}
           </p>
         )}
-        <p style={{ color:'#334155', fontSize:12, marginTop:20 }}>
+        <p style={{ color:'var(--text-muted)', fontSize:12, marginTop:20 }}>
           You can move the file any time in Settings.
         </p>
       </div>
@@ -631,9 +631,9 @@ export default function App() {
   // ── Render: Loading ──────────────────────────────────────────────────────────
   if (appStatus === 'loading') {
     return (
-      <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0d1117' }}>
-        <div style={{ textAlign:'center', color:'#475569' }}>
-          <div style={{ fontFamily:'DM Serif Display, serif', fontSize:28, color:'#7fa88b', marginBottom:12 }}>Pocket Watch</div>
+      <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-page)' }}>
+        <div style={{ textAlign:'center', color:'var(--text-muted)' }}>
+          <div style={{ fontFamily:'DM Serif Display, serif', fontSize:28, color:'var(--green)', marginBottom:12 }}>Pocket Watch</div>
           <div style={{ fontSize:14 }}>Loading your data…</div>
         </div>
       </div>
@@ -662,14 +662,14 @@ export default function App() {
             {sidebarCollapsed ? '»' : '«'}
           </button>
         </div>
-        <div style={{ height:1,background:'#1e2736',margin:'0 16px 8px' }} />
+        <div style={{ height:1,background:'var(--bg-raised)',margin:'0 16px 8px' }} />
         <nav style={{ flex:1, padding:'4px 0' }}>
           {nav.map(n=>(
             <div key={n.id} className={`nav-item${page===n.id?' active':''}`} onClick={()=>setPage(n.id)} title={n.label}>
               <span className="nav-icon" style={{ position:'relative' }}>
                 {n.icon}
                 {n.id === 'budgets' && overBudgetCount > 0 && (
-                  <span style={{ position:'absolute', top:-5, right:-7, background:'#c2735a', color:'#fff', borderRadius:'50%', fontSize:9, fontWeight:700, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <span style={{ position:'absolute', top:-5, right:-7, background:'var(--red)', color:'#fff', borderRadius:'50%', fontSize:9, fontWeight:700, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     {overBudgetCount}
                   </span>
                 )}
@@ -695,7 +695,7 @@ export default function App() {
 
       {/* Main content */}
       <div className="main">
-        <div style={{ position:'sticky', top:0, zIndex:10, display:'flex', justifyContent:'flex-end', padding:'5px 16px', background:'#0d1117', borderBottom:'1px solid #1e273640' }}>
+        <div style={{ position:'sticky', top:0, zIndex:10, display:'flex', justifyContent:'flex-end', padding:'5px 16px', background:'var(--bg-page)', borderBottom:'1px solid #1e273640' }}>
           <button className="btn btn-ghost btn-sm" style={{ fontSize:11, opacity:0.75 }}
             title={privacyMode ? 'Show amounts' : 'Hide amounts'}
             onClick={() => { const n = !privacyMode; setPrivacyMode(n); localStorage.setItem('pw_privacy', n ? '1' : '0'); }}>
@@ -733,8 +733,8 @@ export default function App() {
       )}
       {showHelp && (
         <div style={{ position:'fixed',inset:0,background:'#00000088',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center' }} onClick={()=>setShowHelp(false)}>
-          <div style={{ background:'#161d2b',border:'1px solid #1e2736',borderRadius:12,padding:'24px 28px',minWidth:340,maxWidth:440 }} onClick={e=>e.stopPropagation()}>
-            <div style={{ fontWeight:700,fontSize:16,color:'#e2e8f0',marginBottom:16 }}>⌨️ Keyboard Shortcuts</div>
+          <div style={{ background:'var(--bg-card)',border:'1px solid var(--bg-raised)',borderRadius:12,padding:'24px 28px',minWidth:340,maxWidth:440 }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontWeight:700,fontSize:16,color:'var(--text-primary)',marginBottom:16 }}>⌨️ Keyboard Shortcuts</div>
             {[
               ['1–9',         'Navigate to page'],
               ['N',           'New transaction'],
@@ -747,9 +747,9 @@ export default function App() {
               ['?',           'Toggle this help'],
               ['Escape',      'Close modals / palette'],
             ].map(([key, label]) => (
-              <div key={key} style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid #1e273640' }}>
-                <kbd style={{ background:'#1e2736',border:'1px solid #334155',borderRadius:5,padding:'2px 8px',fontSize:12,color:'#94a3b8',fontFamily:'monospace' }}>{key}</kbd>
-                <span style={{ fontSize:13,color:'#64748b' }}>{label}</span>
+              <div key={key} style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border-subtle,#1e273640)' }}>
+                <kbd style={{ background:'var(--bg-raised)',border:'1px solid var(--text-muted)',borderRadius:5,padding:'2px 8px',fontSize:12,color:'var(--text-secondary)',fontFamily:'monospace' }}>{key}</kbd>
+                <span style={{ fontSize:13,color:'var(--text-secondary)' }}>{label}</span>
               </div>
             ))}
             <div style={{ marginTop:14,textAlign:'center' }}>
@@ -782,17 +782,17 @@ export default function App() {
       <div style={{ position:'fixed', bottom:24, right:24, display:'flex', flexDirection:'column', gap:8, zIndex:9999, pointerEvents:'none' }}>
         {toasts.map(t => (
           <div key={t.id} style={{
-            background:'#1e2736',
+            background:'var(--bg-raised)',
             border:`1px solid ${
-              t.type==='success' ? '#22c55e'
-              : t.type==='warning' ? '#f59e0b'
-              : t.type==='error'   ? '#ef4444'
-              : '#60a5fa'
+              t.type==='success' ? 'var(--green)'
+              : t.type==='warning' ? 'var(--amber)'
+              : t.type==='error'   ? 'var(--red)'
+              : 'var(--accent)'
             }`,
             borderRadius:8,
             padding:'10px 16px',
             fontSize:13,
-            color:'#e2e8f0',
+            color:'var(--text-primary)',
             boxShadow:'0 4px 12px #00000066',
             pointerEvents:'none',
             animation:'fadeIn 0.2s ease',

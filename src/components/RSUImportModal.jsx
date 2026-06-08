@@ -7,9 +7,9 @@ function Field({ label, value, onChange, type = 'number', prefix, hint }) {
   return (
     <div className="form-group">
       <label className="form-label">{label}</label>
-      {hint && <div style={{ fontSize:11, color:'#475569', marginBottom:4 }}>{hint}</div>}
+      {hint && <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>{hint}</div>}
       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-        {prefix && <span style={{ fontSize:13, color:'#64748b' }}>{prefix}</span>}
+        {prefix && <span style={{ fontSize:13, color:'var(--text-secondary)' }}>{prefix}</span>}
         <input
           type={type}
           min="0"
@@ -91,47 +91,47 @@ export default function RSUImportModal({ onConfirm, onClose }) {
       style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background:'#161d2b', border:'1px solid #334155', borderRadius:14, padding:'28px 32px', width:460, maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 16px 48px rgba(0,0,0,0.5)' }}>
+      <div style={{ background:'var(--bg-card)', border:'1px solid var(--text-muted)', borderRadius:14, padding:'28px 32px', width:460, maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 16px 48px rgba(0,0,0,0.5)' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:18, color:'#e2e8f0' }}>
+          <div style={{ fontWeight:700, fontSize:18, color:'var(--text-primary)' }}>
             {step === 'upload' ? '📄 Import RSU Statement' : '✅ Review Extracted Values'}
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:'#64748b', fontSize:20, cursor:'pointer', lineHeight:1 }}>×</button>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-secondary)', fontSize:20, cursor:'pointer', lineHeight:1 }}>×</button>
         </div>
 
         {/* ── Step 1: Upload ── */}
         {step === 'upload' && (
           <>
-            <p style={{ fontSize:13, color:'#94a3b8', marginBottom:20, lineHeight:1.6 }}>
+            <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:20, lineHeight:1.6 }}>
               Upload a Fidelity stock plan statement PDF. All values are shown for review before applying.
             </p>
             <div
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
               onClick={() => inputRef.current?.click()}
-              style={{ border:'2px dashed #334155', borderRadius:10, padding:'32px 20px', textAlign:'center', cursor:'pointer', background:'#0d1117' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#7fa88b'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#334155'}
+              style={{ border:'2px dashed var(--text-muted)', borderRadius:10, padding:'32px 20px', textAlign:'center', cursor:'pointer', background:'var(--bg-page)' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--green)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--text-muted)'}
             >
               {loading ? (
-                <div style={{ color:'#94a3b8', fontSize:14 }}>Extracting text…</div>
+                <div style={{ color:'var(--text-secondary)', fontSize:14 }}>Extracting text…</div>
               ) : (
                 <>
                   <div style={{ fontSize:32, marginBottom:10 }}>📄</div>
-                  <div style={{ fontSize:14, color:'#94a3b8', marginBottom:6 }}>Drop PDF here or click to browse</div>
-                  <div style={{ fontSize:12, color:'#475569' }}>Fidelity RSU / stock plan statement</div>
+                  <div style={{ fontSize:14, color:'var(--text-secondary)', marginBottom:6 }}>Drop PDF here or click to browse</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)' }}>Fidelity RSU / stock plan statement</div>
                 </>
               )}
             </div>
             <input ref={inputRef} type="file" accept=".pdf" style={{ display:'none' }} onChange={e => handleFile(e.target.files[0])} />
-            {error && <p style={{ color:'#c2735a', fontSize:12, marginTop:12 }}>{error}</p>}
+            {error && <p style={{ color:'var(--red)', fontSize:12, marginTop:12 }}>{error}</p>}
           </>
         )}
 
         {/* ── Step 2: Review ── */}
         {step === 'review' && draft && (
           <>
-            <p style={{ fontSize:13, color:'#94a3b8', marginBottom:16, lineHeight:1.6 }}>
+            <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:16, lineHeight:1.6 }}>
               Review the values extracted from your statement. Edit any field that looks wrong — blank fields weren't found and need manual entry.
             </p>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
@@ -184,14 +184,14 @@ export default function RSUImportModal({ onConfirm, onClose }) {
             </div>
 
             {/* Summary */}
-            <div style={{ background:'#0d1117', border:'1px solid #1e2736', borderRadius:10, padding:'14px 16px', marginBottom:20 }}>
-              <div style={{ fontSize:12, color:'#64748b', marginBottom:6 }}>Will apply to account:</div>
-              <div style={{ fontSize:20, fontWeight:700, color:'#7fa88b' }}>
+            <div style={{ background:'var(--bg-page)', border:'1px solid var(--bg-raised)', borderRadius:10, padding:'14px 16px', marginBottom:20 }}>
+              <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:6 }}>Will apply to account:</div>
+              <div style={{ fontSize:20, fontWeight:700, color:'var(--green)' }}>
                 {draft.unvestedValue != null ? fmt(draft.unvestedValue) : '—'} unvested RSU value
               </div>
-              {draft.ticker && <div style={{ fontSize:12, color:'#94a3b8', marginTop:4 }}>Ticker: {draft.ticker}</div>}
+              {draft.ticker && <div style={{ fontSize:12, color:'var(--text-secondary)', marginTop:4 }}>Ticker: {draft.ticker}</div>}
               {draft.nextVestDate && (
-                <div style={{ fontSize:12, color:'#94a3b8', marginTop:2 }}>
+                <div style={{ fontSize:12, color:'var(--text-secondary)', marginTop:2 }}>
                   Next vest: {draft.nextVestShares != null ? `${draft.nextVestShares} shares on ` : ''}{draft.nextVestDate}
                 </div>
               )}

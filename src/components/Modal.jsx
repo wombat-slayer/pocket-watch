@@ -25,7 +25,7 @@ export default function Modal({ title, onClose, children, large }) {
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal fade-in${large ? ' modal-lg' : ''}`} ref={modalRef}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-          <h3 style={{ fontSize:17, fontWeight:700, color:'#f1f5f9' }}>{title}</h3>
+          <h3 style={{ fontSize:17, fontWeight:700, color:'var(--text-primary)' }}>{title}</h3>
           <button className="btn btn-ghost btn-sm" onClick={onClose} style={{ fontSize:18 }}>×</button>
         </div>
         {children}

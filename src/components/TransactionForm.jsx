@@ -196,10 +196,10 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
 
       {/* Split rows */}
       {splitMode && (
-        <div style={{ background:'#0d1117', borderRadius:8, padding:12, display:'flex', flexDirection:'column', gap:8 }}>
+        <div style={{ background:'var(--bg-page)', borderRadius:8, padding:12, display:'flex', flexDirection:'column', gap:8 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-            <span style={{ fontSize:13, fontWeight:600, color:'#94a3b8' }}>Split Categories</span>
-            <span style={{ fontSize:12, color: Math.abs(remaining) <= 0.01 ? '#4ade80' : '#c2735a' }}>
+            <span style={{ fontSize:13, fontWeight:600, color:'var(--text-secondary)' }}>Split Categories</span>
+            <span style={{ fontSize:12, color: Math.abs(remaining) <= 0.01 ? 'var(--green)' : 'var(--red)' }}>
               Remaining: ${remaining.toFixed(2)}
             </span>
           </div>
@@ -215,15 +215,15 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
               <input type="text" placeholder="Notes" value={sp.notes}
                 onChange={e => setSplit(sp.id, 'notes', e.target.value)}
                 style={{ width:100, fontSize:13 }} />
-              <button type="button" className="btn btn-ghost btn-sm" style={{ color:'#c2735a', padding:'4px 6px' }}
+              <button type="button" className="btn btn-ghost btn-sm" style={{ color:'var(--red)', padding:'4px 6px' }}
                 onClick={() => removeSplit(sp.id)}>✕</button>
             </div>
           ))}
           <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf:'flex-start', fontSize:12 }}
             onClick={addSplit}>+ Add Split</button>
-          <div style={{ fontSize:12, color:'#64748b', borderTop:'1px solid #1e2736', paddingTop:6, marginTop:2 }}>
+          <div style={{ fontSize:12, color:'var(--text-secondary)', borderTop:'1px solid var(--bg-raised)', paddingTop:6, marginTop:2 }}>
             Total: ${splitTotal.toFixed(2)} / ${Math.abs(totalAmount).toFixed(2)}
-            {Math.abs(remaining) <= 0.01 && <span style={{ color:'#4ade80', marginLeft:8 }}>✓ Balanced</span>}
+            {Math.abs(remaining) <= 0.01 && <span style={{ color:'var(--green)', marginLeft:8 }}>✓ Balanced</span>}
           </div>
         </div>
       )}
@@ -242,10 +242,10 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
             onDragLeave={() => setDragOver(false)}
             onDrop={handleReceiptDrop}
             onClick={() => receiptFileRef.current?.click()}
-            style={{ border: `2px dashed ${dragOver ? '#7fa88b' : '#334155'}`, borderRadius: 8, padding: '8px 14px', cursor: 'pointer', background: dragOver ? '#7fa88b11' : 'transparent', transition: 'border-color 0.15s', textAlign: 'center' }}
+            style={{ border: `2px dashed ${dragOver ? 'var(--green)' : 'var(--text-muted)'}`, borderRadius: 8, padding: '8px 14px', cursor: 'pointer', background: dragOver ? '#7fa88b11' : 'transparent', transition: 'border-color 0.15s', textAlign: 'center' }}
           >
             <input ref={receiptFileRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleReceiptSelect} multiple />
-            <span style={{ fontSize: 12, color: '#64748b' }}>📎 Drop file or click to attach</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>📎 Drop file or click to attach</span>
           </div>
           {(form.receipts ?? []).length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
@@ -253,10 +253,10 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
                 const label = r.name.split('-').slice(2).join('-') || r.name;
                 return (
                   <span key={r.name}
-                    style={{ fontSize: 11, background: '#1e2736', color: '#94a3b8', padding: '3px 10px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                    style={{ fontSize: 11, background: 'var(--bg-raised)', color: 'var(--text-secondary)', padding: '3px 10px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
                     onClick={e => { e.stopPropagation(); invoke('open_receipt', { dataPath, filename: r.name }).catch(() => {}); }}>
                     📄 {label}
-                    <button type="button" style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, fontSize: 12 }}
+                    <button type="button" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, fontSize: 12 }}
                       onClick={e => { e.stopPropagation(); handleDeleteReceipt(r.name); }}>✕</button>
                   </span>
                 );
@@ -271,9 +271,9 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
         <label className="form-label">Tags (optional)</label>
         <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:4 }}>
           {(form.tags ?? []).map(t => (
-            <span key={t} style={{ fontSize:11, background:'#1e2736', color:'#94a3b8', padding:'2px 8px', borderRadius:20, display:'flex', alignItems:'center', gap:4 }}>
+            <span key={t} style={{ fontSize:11, background:'var(--bg-raised)', color:'var(--text-secondary)', padding:'2px 8px', borderRadius:20, display:'flex', alignItems:'center', gap:4 }}>
               {t}
-              <button type="button" onClick={() => removeTag(t)} style={{ background:'none', border:'none', color:'#64748b', cursor:'pointer', padding:0, fontSize:12 }}>✕</button>
+              <button type="button" onClick={() => removeTag(t)} style={{ background:'none', border:'none', color:'var(--text-secondary)', cursor:'pointer', padding:0, fontSize:12 }}>✕</button>
             </span>
           ))}
         </div>
@@ -287,8 +287,8 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
       <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2 }}>
         <input type="checkbox" id="taxDeductible" checked={!!form.taxDeductible}
           onChange={e => set('taxDeductible', e.target.checked)}
-          style={{ width:15, height:15, accentColor:'#7fa88b', cursor:'pointer' }} />
-        <label htmlFor="taxDeductible" style={{ fontSize:13, color:'#94a3b8', cursor:'pointer', userSelect:'none' }}>
+          style={{ width:15, height:15, accentColor:'var(--green)', cursor:'pointer' }} />
+        <label htmlFor="taxDeductible" style={{ fontSize:13, color:'var(--text-secondary)', cursor:'pointer', userSelect:'none' }}>
           🧾 Tax deductible
         </label>
       </div>

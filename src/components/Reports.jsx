@@ -424,14 +424,14 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
           <div className="section-sub">Spending trends and historical insights</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, color: '#64748b' }}>Range:</span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Range:</span>
           {[3, 6, 12, 24].map(n => (
             <button key={n} className={`btn btn-sm ${months === n ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMonths(n)}>{n}mo</button>
           ))}
           <button className={`btn btn-sm ${months === null ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMonths(null)}>All</button>
           {allTags.length > 1 && (
             <select value={tagFilter} onChange={e => setTagFilter(e.target.value)}
-              style={{ fontSize: 13, background: '#1e2736', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', padding: '4px 8px' }}>
+              style={{ fontSize: 13, background: 'var(--bg-raised)', border: '1px solid var(--text-muted)', borderRadius: 6, color: 'var(--text-secondary)', padding: '4px 8px' }}>
               {allTags.map(tag => <option key={tag} value={tag}>{tag === 'All' ? '🏷 All Tags' : `#${tag}`}</option>)}
             </select>
           )}
@@ -440,8 +440,8 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       </div>
 
       {tagFilter !== 'All' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: '#94a3b8' }}>
-          <span style={{ background: '#1e2736', border: '1px solid #334155', borderRadius: 12, padding: '2px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
+          <span style={{ background: 'var(--bg-raised)', border: '1px solid var(--text-muted)', borderRadius: 12, padding: '2px 10px' }}>
             Filtered by <span style={{ color: 'var(--accent)', fontWeight: 600 }}>#{tagFilter}</span>
           </span>
           <button className="btn btn-ghost btn-sm" onClick={() => setTagFilter('All')} style={{ fontSize: 12, padding: '2px 8px' }}>· Clear</button>
@@ -450,16 +450,16 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
         <div className="stat-card">
-          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Monthly Spend</div>
-          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: '#c2735a' }}>{fmt(avgSpend)}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Monthly Spend</div>
+          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: 'var(--red)' }}>{fmt(avgSpend)}</div>
         </div>
         <div className="stat-card">
-          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Monthly Income</div>
-          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: '#4ade80' }}>{fmt(avgIncome)}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Monthly Income</div>
+          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: 'var(--green)' }}>{fmt(avgIncome)}</div>
         </div>
         <div className="stat-card">
-          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Net / Month</div>
-          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: avgSavings >= 0 ? '#4ade80' : '#c2735a' }}>{avgSavings >= 0 ? '+' : ''}{fmt(avgSavings)}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avg Net / Month</div>
+          <div className="hero-num" style={{ fontSize: 24, fontWeight: 400, color: avgSavings >= 0 ? 'var(--green)' : 'var(--red)' }}>{avgSavings >= 0 ? '+' : ''}{fmt(avgSavings)}</div>
         </div>
       </div>
 
@@ -475,22 +475,22 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
 
       {tab === 'week' && (
         <div>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>Week of {weekRange.label}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>Week of {weekRange.label}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
             <div className="stat-card">
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Spent</div>
-              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: '#c2735a' }}>{fmt(weekTotal)}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total Spent</div>
+              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: 'var(--red)' }}>{fmt(weekTotal)}</div>
             </div>
             <div className="stat-card">
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Largest Category</div>
-              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: '#94a3b8' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Largest Category</div>
+              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: 'var(--text-secondary)' }}>
                 {weekLargestCat ? `${catIcon(weekLargestCat[0])} ${weekLargestCat[0]}` : '—'}
               </div>
-              {weekLargestCat && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{fmt(weekLargestCat[1])}</div>}
+              {weekLargestCat && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{fmt(weekLargestCat[1])}</div>}
             </div>
             <div className="stat-card">
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Transactions</div>
-              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: '#94a3b8' }}>{weekExpenses.length}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Transactions</div>
+              <div className="hero-num" style={{ fontSize: 22, fontWeight: 400, color: 'var(--text-secondary)' }}>{weekExpenses.length}</div>
             </div>
           </div>
 
@@ -507,14 +507,14 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
                 return (
                   <div key={cat} style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, color: '#94a3b8' }}>{catIcon(cat)} {cat}</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{catIcon(cat)} {cat}</span>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{fmt(weekSpent)}</span>
-                        {budget && <span style={{ fontSize: 11, color: '#64748b', marginLeft: 8 }}>MTD {fmt(mtdSpent)} / {fmt(budget)}</span>}
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(weekSpent)}</span>
+                        {budget && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>MTD {fmt(mtdSpent)} / {fmt(budget)}</span>}
                       </div>
                     </div>
                     {budget && (
-                      <div style={{ height: 4, background: '#1e2736', borderRadius: 2 }}>
+                      <div style={{ height: 4, background: 'var(--bg-raised)', borderRadius: 2 }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 2, transition: 'width 0.3s' }} />
                       </div>
                     )}
@@ -529,21 +529,21 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Transactions This Week</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #1e2736' }}>
-                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Date</th>
-                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Description</th>
-                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Category</th>
-                    <th style={{ textAlign: 'right', padding: '4px 8px', color: '#64748b', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Amount</th>
+                  <tr style={{ borderBottom: '1px solid var(--bg-raised)' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Description</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Category</th>
+                    <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {weekExpenses.slice().sort((a,b) => b.date.localeCompare(a.date)).map(t => (
-                    <tr key={t.id} style={{ borderBottom: '1px solid #0d1117', cursor: 'pointer' }}
+                    <tr key={t.id} style={{ borderBottom: '1px solid var(--bg-page)', cursor: 'pointer' }}
                       onClick={() => onCategoryDrillDown?.(t.category)}>
-                      <td style={{ padding: '6px 8px', color: '#64748b', whiteSpace: 'nowrap' }}>{t.date}</td>
-                      <td style={{ padding: '6px 8px', color: '#94a3b8' }}>{t.description}</td>
-                      <td style={{ padding: '6px 8px', color: '#64748b' }}>{catIcon(t.category)} {t.category}</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'right', color: '#c2735a', fontWeight: 600 }}>{fmt(Math.abs(t.amount))}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t.date}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}>{t.description}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}>{catIcon(t.category)} {t.category}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--red)', fontWeight: 600 }}>{fmt(Math.abs(t.amount))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -556,7 +556,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       {tab === 'trend' && (
         <div className="card">
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Monthly Income vs Spending</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
             {last.length} months · dashed line = net cash flow
           </div>
           <div className="chart-container" style={{ height: 320 }}><canvas ref={canvasTrend} /></div>
@@ -576,7 +576,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       {tab === 'cat-trend' && (
         <div className="card">
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Category Spending Over Time</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
             Monthly spend for your top 5 categories across {last.length} months
           </div>
           {catTrendData.series.length === 0
@@ -589,7 +589,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       {tab === 'yoy' && (
         <div className="card">
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Year-over-Year Spending</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
             Monthly spending comparison across {yoyYears.length > 1 ? yoyYears.join(', ') : 'available years'}
           </div>
           <div className="chart-container" style={{ height: 320 }}><canvas ref={canvasYoY} /></div>
@@ -601,12 +601,12 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
             <div>
               <div style={{ fontWeight:600, fontSize:14, marginBottom:2 }}>🧾 Tax Year Summary</div>
-              <div style={{ fontSize:12, color:'#64748b' }}>All transactions marked as tax deductible</div>
+              <div style={{ fontSize:12, color:'var(--text-secondary)' }}>All transactions marked as tax deductible</div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:13, color:'#64748b' }}>Year:</span>
+              <span style={{ fontSize:13, color:'var(--text-secondary)' }}>Year:</span>
               <select value={taxYear} onChange={e => setTaxYear(Number(e.target.value))}
-                style={{ fontSize:13, background:'#1e2736', border:'1px solid #334155', borderRadius:6, color:'#94a3b8', padding:'4px 8px' }}>
+                style={{ fontSize:13, background:'var(--bg-raised)', border:'1px solid var(--text-muted)', borderRadius:6, color:'var(--text-secondary)', padding:'4px 8px' }}>
                 {taxYears.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
@@ -616,7 +616,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
             <div className="empty-state">
               <div className="empty-icon">🧾</div>
               <p>No tax-deductible transactions in {taxYear}</p>
-              <p style={{ fontSize:12, color:'#475569', marginTop:6 }}>
+              <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:6 }}>
                 Mark transactions as "Tax deductible" when adding or editing them.
               </p>
             </div>
@@ -624,61 +624,61 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
             <>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
                 <div className="stat-card">
-                  <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Total Deductible</div>
+                  <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Total Deductible</div>
                   <div style={{ fontSize:22, fontWeight:700, color:'var(--green)' }}>{fmt(taxData.grandTotal)}</div>
                 </div>
                 <div className="stat-card">
-                  <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Transactions</div>
-                  <div style={{ fontSize:22, fontWeight:700, color:'#94a3b8' }}>{taxData.deductible.length}</div>
+                  <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Transactions</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'var(--text-secondary)' }}>{taxData.deductible.length}</div>
                 </div>
                 <div className="stat-card">
-                  <div style={{ fontSize:11, color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Categories</div>
-                  <div style={{ fontSize:22, fontWeight:700, color:'#94a3b8' }}>{taxData.rows.length}</div>
+                  <div style={{ fontSize:11, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Categories</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'var(--text-secondary)' }}>{taxData.rows.length}</div>
                 </div>
               </div>
 
-              <div style={{ fontSize:13, fontWeight:600, color:'#64748b', marginBottom:8 }}>By Category</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-secondary)', marginBottom:8 }}>By Category</div>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, marginBottom:24 }}>
                 <thead>
-                  <tr style={{ borderBottom:'1px solid #1e2736' }}>
-                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Category</th>
-                    <th style={{ textAlign:'right', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Transactions</th>
-                    <th style={{ textAlign:'right', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Total</th>
+                  <tr style={{ borderBottom:'1px solid var(--bg-raised)' }}>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'var(--text-secondary)', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Category</th>
+                    <th style={{ textAlign:'right', padding:'6px 10px', color:'var(--text-secondary)', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Transactions</th>
+                    <th style={{ textAlign:'right', padding:'6px 10px', color:'var(--text-secondary)', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {taxData.rows.map(([cat, data]) => (
-                    <tr key={cat} style={{ borderBottom:'1px solid #1e2736' }}>
-                      <td style={{ padding:'8px 10px', color:'#94a3b8' }}>{catIcon(cat)} {cat}</td>
-                      <td style={{ padding:'8px 10px', textAlign:'right', color:'#64748b' }}>{data.txs.length}</td>
+                    <tr key={cat} style={{ borderBottom:'1px solid var(--bg-raised)' }}>
+                      <td style={{ padding:'8px 10px', color:'var(--text-secondary)' }}>{catIcon(cat)} {cat}</td>
+                      <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--text-secondary)' }}>{data.txs.length}</td>
                       <td style={{ padding:'8px 10px', textAlign:'right', color:'var(--green)', fontWeight:600 }}>{fmt(data.total)}</td>
                     </tr>
                   ))}
-                  <tr style={{ borderTop:'2px solid #334155' }}>
-                    <td colSpan={2} style={{ padding:'10px 10px', fontWeight:700, color:'#94a3b8' }}>Total</td>
+                  <tr style={{ borderTop:'2px solid var(--text-muted)' }}>
+                    <td colSpan={2} style={{ padding:'10px 10px', fontWeight:700, color:'var(--text-secondary)' }}>Total</td>
                     <td style={{ padding:'10px 10px', textAlign:'right', fontWeight:700, color:'var(--green)', fontSize:16 }}>{fmt(taxData.grandTotal)}</td>
                   </tr>
                 </tbody>
               </table>
 
-              <div style={{ fontSize:13, fontWeight:600, color:'#64748b', marginBottom:8 }}>All Transactions</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'var(--text-secondary)', marginBottom:8 }}>All Transactions</div>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                 <thead>
-                  <tr style={{ borderBottom:'1px solid #1e2736' }}>
-                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Date</th>
-                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Description</th>
-                    <th style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Category</th>
-                    <th style={{ textAlign:'right', padding:'6px 10px', color:'#64748b', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Amount</th>
+                  <tr style={{ borderBottom:'1px solid var(--bg-raised)' }}>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'var(--text-secondary)', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Date</th>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'var(--text-secondary)', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Description</th>
+                    <th style={{ textAlign:'left', padding:'6px 10px', color:'var(--text-secondary)', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Category</th>
+                    <th style={{ textAlign:'right', padding:'6px 10px', color:'var(--text-secondary)', fontWeight:600, fontSize:11, textTransform:'uppercase' }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {taxData.deductible
                     .slice().sort((a, b) => a.date.localeCompare(b.date))
                     .map(t => (
-                      <tr key={t.id} style={{ borderBottom:'1px solid #0d1117' }}>
-                        <td style={{ padding:'6px 10px', color:'#64748b', whiteSpace:'nowrap' }}>{t.date}</td>
-                        <td style={{ padding:'6px 10px', color:'#94a3b8' }}>{t.description}</td>
-                        <td style={{ padding:'6px 10px', color:'#64748b' }}>{catIcon(t.category)} {t.category}</td>
+                      <tr key={t.id} style={{ borderBottom:'1px solid var(--bg-page)' }}>
+                        <td style={{ padding:'6px 10px', color:'var(--text-secondary)', whiteSpace:'nowrap' }}>{t.date}</td>
+                        <td style={{ padding:'6px 10px', color:'var(--text-secondary)' }}>{t.description}</td>
+                        <td style={{ padding:'6px 10px', color:'var(--text-secondary)' }}>{catIcon(t.category)} {t.category}</td>
                         <td style={{ padding:'6px 10px', textAlign:'right', color:'var(--green)' }}>{fmt(Math.abs(t.amount))}</td>
                       </tr>
                     ))
@@ -693,7 +693,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       {tab === 'nw-hist' && (
         <div className="card">
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Net Worth History</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
             Solid line = recorded daily snapshots · Dashed = reconstructed from imported transactions
           </div>
           {nwHistoryData.length === 0
@@ -701,14 +701,14 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
               <div className="empty-state">
                 <div className="empty-icon">🏦</div>
                 <p>No history yet</p>
-                <p style={{ fontSize: 12, color: '#475569', marginTop: 6 }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
                   Import bank statements to reconstruct historical net worth, or use the app daily to build up snapshots.
                 </p>
               </div>
             ) : (
               <>
                 <div className="chart-container" style={{ height: 320 }}><canvas ref={canvasNWHist} /></div>
-                <div style={{ fontSize: 11, color: '#475569', marginTop: 10 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
                   {nwHistoryData.filter(d => !d.isActual).length > 0 && (
                     <span>⚠ Reconstructed months are estimates based on transaction totals and current account balances. Import complete statements for better accuracy.</span>
                   )}

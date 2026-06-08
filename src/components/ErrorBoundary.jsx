@@ -37,12 +37,12 @@ export default class ErrorBoundary extends Component {
           height: '100%', gap: 12,
         }}>
           <div style={{ fontSize: 40 }}>⚠️</div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: '#e2e8f0' }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>
             Something went wrong
           </div>
           <div style={{
-            fontSize: 13, color: '#64748b', maxWidth: 420,
-            background: '#1e2736', border: '1px solid #334155',
+            fontSize: 13, color: 'var(--text-secondary)', maxWidth: 420,
+            background: 'var(--bg-raised)', border: '1px solid var(--text-muted)',
             borderRadius: 8, padding: '10px 16px',
             fontFamily: 'monospace', textAlign: 'left', wordBreak: 'break-word',
           }}>
@@ -62,7 +62,7 @@ export default class ErrorBoundary extends Component {
               Reload app
             </button>
           </div>
-          <p style={{ fontSize: 12, color: '#334155', marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
             Your data is safe. Navigate to another page or reload to continue.
           </p>
         </div>

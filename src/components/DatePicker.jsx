@@ -56,13 +56,13 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
         onClick={() => setOpen(o => !o)}
         style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'8px 12px', background:'#0d1117', border:`1px solid ${open ? '#7fa88b' : '#334155'}`,
+          padding:'8px 12px', background:'var(--bg-page)', border:`1px solid ${open ? 'var(--green)' : 'var(--text-muted)'}`,
           borderRadius:6, cursor:'pointer', fontSize:14, userSelect:'none',
-          color: value ? '#e2e8f0' : '#475569', transition:'border-color 0.15s',
+          color: value ? 'var(--text-primary)' : 'var(--text-muted)', transition:'border-color 0.15s',
         }}
       >
         <span>{displayLabel || placeholder}</span>
-        <span style={{ fontSize:13, color:'#475569', marginLeft:8 }}>📅</span>
+        <span style={{ fontSize:13, color:'var(--text-muted)', marginLeft:8 }}>📅</span>
       </div>
 
       {/* Clear button inside trigger */}
@@ -71,7 +71,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
           onClick={e => { e.stopPropagation(); onChange(''); }}
           style={{
             position:'absolute', right:34, top:'50%', transform:'translateY(-50%)',
-            background:'none', border:'none', color:'#64748b', cursor:'pointer',
+            background:'none', border:'none', color:'var(--text-secondary)', cursor:'pointer',
             fontSize:15, lineHeight:1, padding:'2px 4px',
           }}
           title="Clear date"
@@ -82,28 +82,28 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
       {open && (
         <div style={{
           position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:1000,
-          background:'#161d2b', border:'1px solid #334155', borderRadius:10,
+          background:'var(--bg-card)', border:'1px solid var(--text-muted)', borderRadius:10,
           padding:16, width:260, boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
         }}>
           {/* Month nav */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
             <button
               onClick={prevMonth}
-              style={{ background:'none', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:18, padding:'2px 8px', borderRadius:4, lineHeight:1 }}
+              style={{ background:'none', border:'none', color:'var(--text-secondary)', cursor:'pointer', fontSize:18, padding:'2px 8px', borderRadius:4, lineHeight:1 }}
             >‹</button>
-            <span style={{ fontWeight:600, fontSize:14, color:'#e2e8f0' }}>
+            <span style={{ fontWeight:600, fontSize:14, color:'var(--text-primary)' }}>
               {MONTHS[viewMonth]} {viewYear}
             </span>
             <button
               onClick={nextMonth}
-              style={{ background:'none', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:18, padding:'2px 8px', borderRadius:4, lineHeight:1 }}
+              style={{ background:'none', border:'none', color:'var(--text-secondary)', cursor:'pointer', fontSize:18, padding:'2px 8px', borderRadius:4, lineHeight:1 }}
             >›</button>
           </div>
 
           {/* Day-of-week headers */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:6 }}>
             {DAY_HEADERS.map(d => (
-              <div key={d} style={{ textAlign:'center', fontSize:11, color:'#475569', fontWeight:600 }}>{d}</div>
+              <div key={d} style={{ textAlign:'center', fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>{d}</div>
             ))}
           </div>
 
@@ -134,8 +134,8 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
             <button
               onClick={() => { onChange(''); setOpen(false); }}
               style={{
-                marginTop:12, width:'100%', background:'none', border:'1px solid #1e2736',
-                color:'#64748b', borderRadius:5, padding:'5px 0', fontSize:12, cursor:'pointer',
+                marginTop:12, width:'100%', background:'none', border:'1px solid var(--bg-raised)',
+                color:'var(--text-secondary)', borderRadius:5, padding:'5px 0', fontSize:12, cursor:'pointer',
               }}
             >
               Clear date
@@ -156,9 +156,9 @@ function DayCell({ label, selected, isToday, onClick }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         textAlign:'center', fontSize:13, padding:'5px 0', borderRadius:5, cursor:'pointer',
-        border: isToday && !selected ? '1px solid #334155' : '1px solid transparent',
-        background: selected ? '#7fa88b' : hovered ? '#1e2736' : 'transparent',
-        color: selected ? '#0d1117' : isToday ? '#7fa88b' : '#94a3b8',
+        border: isToday && !selected ? '1px solid var(--text-muted)' : '1px solid transparent',
+        background: selected ? 'var(--green)' : hovered ? 'var(--bg-raised)' : 'transparent',
+        color: selected ? 'var(--bg-page)' : isToday ? 'var(--green)' : 'var(--text-secondary)',
         fontWeight: selected || isToday ? 700 : 400,
         transition:'background 0.1s',
       }}

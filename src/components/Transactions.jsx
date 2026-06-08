@@ -267,8 +267,8 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
       {/* Archive banner */}
       {archivedTransactions.length > 0 && (
         <div style={{ background:'#8b5cf611', border:'1px solid #8b5cf633', borderRadius:8, padding:'8px 14px', marginBottom:12, display:'flex', alignItems:'center', gap:12, fontSize:13 }}>
-          <span style={{ color:'#a78bfa' }}>🗃 {archivedTransactions.length.toLocaleString()} transaction{archivedTransactions.length!==1?'s':''} are archived and hidden from this view.</span>
-          <button className="btn btn-ghost btn-sm" style={{ fontSize:11, color:'#a78bfa', border:'1px solid #8b5cf644', marginLeft:'auto' }}
+          <span style={{ color:'var(--accent-2)' }}>🗃 {archivedTransactions.length.toLocaleString()} transaction{archivedTransactions.length!==1?'s':''} are archived and hidden from this view.</span>
+          <button className="btn btn-ghost btn-sm" style={{ fontSize:11, color:'var(--accent-2)', border:'1px solid #8b5cf644', marginLeft:'auto' }}
             onClick={() => { if (window.confirm(`Restore ${archivedTransactions.length} archived transactions?`)) onRestoreArchive?.(); }}>
             ↩ Restore
           </button>
@@ -278,20 +278,20 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
       {/* Post-sync review banner */}
       {lastSyncResult && lastSyncResult.uncategorized > 0 && uncategorizedCount > 0 && (
         <div style={{ background:'#14532d22', border:'1px solid #14532d66', borderRadius:8, padding:'8px 14px', marginBottom:12, display:'flex', alignItems:'center', gap:12, fontSize:13 }}>
-          <span style={{ color:'#4ade80' }}>
+          <span style={{ color:'var(--green)' }}>
             ✓ {lastSyncResult.count} transaction{lastSyncResult.count !== 1 ? 's' : ''} synced
             {' '}· <strong>{uncategorizedCount}</strong> need{uncategorizedCount === 1 ? 's' : ''} a category
           </span>
           <button
             className="btn btn-ghost btn-sm"
-            style={{ fontSize:11, color:'#4ade80', border:'1px solid #14532d88', marginLeft:'auto' }}
+            style={{ fontSize:11, color:'var(--green)', border:'1px solid #14532d88', marginLeft:'auto' }}
             onClick={() => { setReviewMode(true); setPage(0); }}
           >
             Review
           </button>
           <button
             className="btn btn-ghost btn-sm"
-            style={{ fontSize:11, color:'#64748b' }}
+            style={{ fontSize:11, color:'var(--text-secondary)' }}
             title="Dismiss"
             onClick={() => { setReviewMode(false); onDismissSyncResult?.(); }}
           >
@@ -326,7 +326,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           {recurrences.length > 0 && (
             <button
               className="btn btn-ghost btn-sm"
-              style={{ fontSize:12, color: recurringOnly ? '#7fa88b' : '#64748b', border: recurringOnly ? '1px solid #7fa88b55' : undefined }}
+              style={{ fontSize:12, color: recurringOnly ? 'var(--green)' : 'var(--text-secondary)', border: recurringOnly ? '1px solid #7fa88b55' : undefined }}
               onClick={() => { setRecurringOnly(v => !v); setPage(0); }}
               title="Show only transactions matching a recurring rule"
             >
@@ -336,7 +336,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           {reviewMode && (
             <button
               className="btn btn-ghost btn-sm"
-              style={{ fontSize:12, color:'#4ade80', border:'1px solid #14532d88' }}
+              style={{ fontSize:12, color:'var(--green)', border:'1px solid #14532d88' }}
               onClick={() => { setReviewMode(false); setPage(0); }}
               title="Showing only synced transactions that need a category"
             >
@@ -345,21 +345,21 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
           )}
           <button
             className={`btn btn-ghost btn-sm${hasAdvancedFilters ? '' : ''}`}
-            style={{ fontSize:12, color: hasAdvancedFilters ? '#7fa88b' : '#64748b', border: hasAdvancedFilters ? '1px solid #7fa88b55' : undefined }}
+            style={{ fontSize:12, color: hasAdvancedFilters ? 'var(--green)' : 'var(--text-secondary)', border: hasAdvancedFilters ? '1px solid #7fa88b55' : undefined }}
             onClick={() => setShowAdvanced(v => !v)}
             title="Date range and tag filters"
           >
             {showAdvanced ? '▲' : '▼'} Advanced{hasAdvancedFilters ? ' ●' : ''}
           </button>
-          {hasFilters && <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }} onClick={clearFilters}>✕ Clear</button>}
+          {hasFilters && <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={clearFilters}>✕ Clear</button>}
         </div>
 
         {/* Advanced filter row (collapsible) */}
         {(showAdvanced || hasAdvancedFilters) && (
-          <div className="filter-bar" style={{ flexWrap:'wrap', gap:8, marginTop:8, paddingTop:8, borderTop:'1px solid #1e2736' }}>
+          <div className="filter-bar" style={{ flexWrap:'wrap', gap:8, marginTop:8, paddingTop:8, borderTop:'1px solid var(--bg-raised)' }}>
             <input type="date" title="From date" value={dateFrom}
               onChange={e=>{ setDateFrom(e.target.value); setPage(0); }} style={{ width:145 }} />
-            <span style={{ color:'#475569', fontSize:13, alignSelf:'center' }}>→</span>
+            <span style={{ color:'var(--text-muted)', fontSize:13, alignSelf:'center' }}>→</span>
             <input type="date" title="To date" value={dateTo}
               onChange={e=>{ setDateTo(e.target.value); setPage(0); }} style={{ width:145 }} />
             {allTags.length > 1 && (
@@ -378,8 +378,8 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
             ? (
               <div style={{ padding:'48px 32px', textAlign:'center' }}>
                 <div style={{ fontSize:48, marginBottom:12 }}>💳</div>
-                <div style={{ fontSize:17, fontWeight:600, color:'#e2e8f0', marginBottom:8 }}>No transactions yet</div>
-                <div style={{ fontSize:13, color:'#64748b', marginBottom:24, maxWidth:360, margin:'0 auto 24px' }}>
+                <div style={{ fontSize:17, fontWeight:600, color:'var(--text-primary)', marginBottom:8 }}>No transactions yet</div>
+                <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:24, maxWidth:360, margin:'0 auto 24px' }}>
                   Add transactions manually, or import bank statements from the Accounts page to load months or years of history at once.
                 </div>
                 <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
@@ -422,7 +422,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                     onChange={e=>setCellVal(e.target.value)} onBlur={()=>commitCell(t)}
                                     onKeyDown={e=>{if(e.key==='Enter')commitCell(t);if(e.key==='Escape')cancelCell();}}
                                     onClick={e=>e.stopPropagation()} style={{ width:130 }} />
-                                : <span style={{ color:'#64748b',fontSize:13,whiteSpace:'nowrap' }}>{fmtDate(t.date)}</span>}
+                                : <span style={{ color:'var(--text-secondary)',fontSize:13,whiteSpace:'nowrap' }}>{fmtDate(t.date)}</span>}
                             </td>
                             <td className="cell-editable" onClick={()=>startEdit(t,'description')}>
                               {isEditing(t,'description')
@@ -435,33 +435,33 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                       <span>{t.description}</span>
                                       {t.recurringId && (
                                         <span title="Auto-generated by recurring rule"
-                                          style={{ fontSize:10, background:'#1e2736', color:'#64748b', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>
+                                          style={{ fontSize:10, background:'var(--bg-raised)', color:'var(--text-secondary)', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>
                                           🔁
                                         </span>
                                       )}
                                       {isTransfer && (
-                                        <span style={{ fontSize:10, background:'#64748b22', color:'#94a3b8', padding:'1px 6px', borderRadius:10 }}>
+                                        <span style={{ fontSize:10, background:'#64748b22', color:'var(--text-secondary)', padding:'1px 6px', borderRadius:10 }}>
                                           {t.transferDirection === 'from' ? '→' : '←'}
                                         </span>
                                       )}
                                       {t.taxDeductible && (
                                         <span title="Tax deductible"
-                                          style={{ fontSize:10, background:'#7fa88b22', color:'#7fa88b', padding:'1px 6px', borderRadius:10 }}>
+                                          style={{ fontSize:10, background:'#7fa88b22', color:'var(--green)', padding:'1px 6px', borderRadius:10 }}>
                                           🧾
                                         </span>
                                       )}
                                       {(t.receipts?.length > 0) && (
                                         <span title={`${t.receipts.length} receipt${t.receipts.length>1?'s':''} attached`}
-                                          style={{ fontSize:10, background:'#1e2736', color:'#94a3b8', padding:'1px 6px', borderRadius:10 }}>
+                                          style={{ fontSize:10, background:'var(--bg-raised)', color:'var(--text-secondary)', padding:'1px 6px', borderRadius:10 }}>
                                           📎
                                         </span>
                                       )}
                                     </div>
-                                    {t.notes && <div style={{ fontSize:12,color:'#475569' }}>{t.notes}</div>}
+                                    {t.notes && <div style={{ fontSize:12,color:'var(--text-muted)' }}>{t.notes}</div>}
                                     {(t.tags ?? []).length > 0 && (
                                       <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginTop:3 }}>
                                         {t.tags.map(tag => (
-                                          <span key={tag} style={{ fontSize:10, background:'#1e2736', color:'#7fa88b', padding:'1px 6px', borderRadius:10 }}>{tag}</span>
+                                          <span key={tag} style={{ fontSize:10, background:'var(--bg-raised)', color:'var(--green)', padding:'1px 6px', borderRadius:10 }}>{tag}</span>
                                         ))}
                                       </div>
                                     )}
@@ -483,19 +483,19 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                     : <span className="tag">{catIcon(t.category)} {t.category}</span>
                               }
                             </td>
-                            <td style={{ color:'#64748b',fontSize:13 }}>{acctName(t.account)}</td>
+                            <td style={{ color:'var(--text-secondary)',fontSize:13 }}>{acctName(t.account)}</td>
                             <td className="cell-editable" style={{ textAlign:'right' }} onClick={()=>startEdit(t,'amount')}>
                               {isEditing(t,'amount')
                                 ? <input className="inline-input" type="number" autoFocus min="0" step="0.01" value={cellVal}
                                     onChange={e=>setCellVal(e.target.value)} onBlur={()=>commitCell(t)}
                                     onKeyDown={e=>{if(e.key==='Enter')commitCell(t);if(e.key==='Escape')cancelCell();}}
                                     onClick={e=>e.stopPropagation()} style={{ width:100,textAlign:'right' }} />
-                                : <span style={{ fontWeight:700,color:t.amount>=0?'#4ade80':'#c2735a',whiteSpace:'nowrap' }}>
+                                : <span style={{ fontWeight:700,color:t.amount>=0?'var(--green)':'var(--red)',whiteSpace:'nowrap' }}>
                                     {t.amount>=0?'+':''}{fmt(t.amount)}
                                   </span>}
                             </td>
                             {runningBalances && (
-                              <td style={{ textAlign:'right',color:'#94a3b8',fontSize:13,whiteSpace:'nowrap' }}>
+                              <td style={{ textAlign:'right',color:'var(--text-secondary)',fontSize:13,whiteSpace:'nowrap' }}>
                                 {runningBalances[t.id] !== undefined ? fmt(runningBalances[t.id]) : '—'}
                               </td>
                             )}
@@ -507,7 +507,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                                   }
                                   setEditTx(t);
                                 }}>✏️</button>
-                              <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }} title="Delete"
+                              <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} title="Delete"
                                 onClick={()=>{
                                   const msg = t.transferId
                                     ? 'Delete this transfer? Both sides (debit and credit) will be removed.'
@@ -517,17 +517,17 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                             </td>
                           </tr>
                           {isSplit && isExpanded && t.splits.map((sp, si) => (
-                            <tr key={si} style={{ background:'#0d111788' }}>
+                            <tr key={si} style={{ background:'var(--bg-raised)' }}>
                               <td />
                               <td />
-                              <td style={{ paddingLeft:28, fontSize:13, color:'#94a3b8' }}>
+                              <td style={{ paddingLeft:28, fontSize:13, color:'var(--text-secondary)' }}>
                                 └ {sp.notes || sp.category}
                               </td>
                               <td>
                                 <span className="tag" style={{ fontSize:11 }}>{catIcon(sp.category)} {sp.category}</span>
                               </td>
                               <td />
-                              <td style={{ textAlign:'right', fontSize:13, color:'#c2735a', fontWeight:600 }}>
+                              <td style={{ textAlign:'right', fontSize:13, color:'var(--red)', fontWeight:600 }}>
                                 -{fmt(sp.amount)}
                               </td>
                               {runningBalances && <td />}
@@ -541,16 +541,16 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                 </table>
               </div>
               {pages > 1 && (
-                <div style={{ display:'flex',gap:6,justifyContent:'center',padding:14,borderTop:'1px solid #1e2736' }}>
+                <div style={{ display:'flex',gap:6,justifyContent:'center',padding:14,borderTop:'1px solid var(--bg-raised)' }}>
                   <button className="btn btn-ghost btn-sm" onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={safePage===0}>← Prev</button>
-                  <span style={{ fontSize:13,color:'#64748b',padding:'5px 10px' }}>Page {safePage+1} of {pages}</span>
+                  <span style={{ fontSize:13,color:'var(--text-secondary)',padding:'5px 10px' }}>Page {safePage+1} of {pages}</span>
                   <button className="btn btn-ghost btn-sm" onClick={()=>setPage(p=>Math.min(pages-1,p+1))} disabled={safePage>=pages-1}>Next →</button>
                 </div>
               )}
               {selectedCount > 0 && (
                 <div className="bulk-bar">
                   <span className="bulk-bar-count">{selectedCount} transaction{selectedCount>1?'s':''} selected</span>
-                  <button className="btn btn-ghost btn-sm" style={{ color:'#0d1117' }} onClick={clearSel}>Clear selection</button>
+                  <button className="btn btn-ghost btn-sm" style={{ color:'var(--bg-page)' }} onClick={clearSel}>Clear selection</button>
                   <button className="btn btn-sm" style={{ background:'#7f1d1d',color:'#fca5a5',border:'none' }} onClick={handleBulkDelete}>
                     🗑 Delete {selectedCount} selected
                   </button>

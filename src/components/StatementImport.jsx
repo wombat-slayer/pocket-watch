@@ -196,9 +196,9 @@ export default function StatementImport({ account, existingTransactions, onImpor
   if (step === 'done') return (
     <div style={{ textAlign:'center', padding:'40px 24px' }}>
       <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
-      <div style={{ fontSize:16, fontWeight:700, color:'#e2e8f0', marginBottom:6 }}>Import complete</div>
-      <div style={{ fontSize:13, color:'#64748b', marginBottom:28 }}>
-        {selectedRows.length} transaction{selectedRows.length !== 1 ? 's' : ''} added to <strong style={{ color:'#94a3b8' }}>{account.name}</strong>
+      <div style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)', marginBottom:6 }}>Import complete</div>
+      <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:28 }}>
+        {selectedRows.length} transaction{selectedRows.length !== 1 ? 's' : ''} added to <strong style={{ color:'var(--text-secondary)' }}>{account.name}</strong>
         {fileNames.length > 1 && <span> from {fileNames.length} files</span>}
       </div>
       <button className="btn btn-primary" onClick={onClose}>Done</button>
@@ -208,30 +208,30 @@ export default function StatementImport({ account, existingTransactions, onImpor
   // ── Upload screen ─────────────────────────────────────────────────────────
   if (step === 'upload') return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <p style={{ fontSize:13, color:'#94a3b8', margin:0 }}>
-        Import transactions into <strong style={{ color:'#e2e8f0' }}>{account.name}</strong>.
+      <p style={{ fontSize:13, color:'var(--text-secondary)', margin:0 }}>
+        Import transactions into <strong style={{ color:'var(--text-primary)' }}>{account.name}</strong>.
         Select one file or multiple years of statements at once.
       </p>
       <div
         style={{
-          border:'2px dashed #2d3748', borderRadius:12, padding:'36px 24px',
+          border:'2px dashed var(--border-default)', borderRadius:12, padding:'36px 24px',
           textAlign:'center', cursor: processing ? 'wait' : 'pointer', transition:'border-color 0.2s',
           opacity: processing ? 0.7 : 1,
         }}
         onClick={() => !processing && fileRef.current?.click()}
-        onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#7fa88b'; }}
-        onDragLeave={e => { e.currentTarget.style.borderColor = '#2d3748'; }}
+        onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--green)'; }}
+        onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
         onDrop={e => {
           e.preventDefault();
-          e.currentTarget.style.borderColor = '#2d3748';
+          e.currentTarget.style.borderColor = 'var(--border-default)';
           handleFiles(e.dataTransfer.files);
         }}
       >
         <div style={{ fontSize:40, marginBottom:10 }}>{processing ? '⏳' : '📄'}</div>
-        <div style={{ fontSize:14, fontWeight:600, color:'#e2e8f0', marginBottom:4 }}>
+        <div style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', marginBottom:4 }}>
           {processing ? 'Processing files…' : 'Drop statements here'}
         </div>
-        <div style={{ fontSize:12, color:'#64748b' }}>
+        <div style={{ fontSize:12, color:'var(--text-secondary)' }}>
           {processing ? 'Reading transactions from all files' : 'or click to browse · CSV, OFX, QFX · multiple files OK'}
         </div>
         <input
@@ -240,11 +240,11 @@ export default function StatementImport({ account, existingTransactions, onImpor
           onChange={e => handleFiles(e.target.files)}
         />
       </div>
-      <div style={{ fontSize:12, color:'#475569', background:'#0d1117', borderRadius:8, padding:'10px 14px' }}>
-        💡 <strong style={{ color:'#64748b' }}>Tip:</strong> Select all your statement files at once — the importer will merge and deduplicate them automatically. Great for loading 1–2 years of history.
+      <div style={{ fontSize:12, color:'var(--text-muted)', background:'var(--bg-page)', borderRadius:8, padding:'10px 14px' }}>
+        💡 <strong style={{ color:'var(--text-secondary)' }}>Tip:</strong> Select all your statement files at once — the importer will merge and deduplicate them automatically. Great for loading 1–2 years of history.
       </div>
       {error && (
-        <div style={{ color:'#c2735a', fontSize:13, background:'#c2735a11', borderRadius:8, padding:'10px 14px' }}>
+        <div style={{ color:'var(--red)', fontSize:13, background:'#c2735a11', borderRadius:8, padding:'10px 14px' }}>
           {error}
         </div>
       )}
@@ -260,24 +260,24 @@ export default function StatementImport({ account, existingTransactions, onImpor
       {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
         <div>
-          <div style={{ fontSize:14, fontWeight:700, color:'#e2e8f0' }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)' }}>
             {rows.length} transactions found
             {fileNames.length > 1 && (
-              <span style={{ marginLeft:10, fontSize:12, fontWeight:400, color:'#64748b' }}>
+              <span style={{ marginLeft:10, fontSize:12, fontWeight:400, color:'var(--text-secondary)' }}>
                 from {fileNames.length} files
               </span>
             )}
           </div>
-          <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>
-            Account: <strong style={{ color:'#94a3b8' }}>{account.name}</strong>
+          <div style={{ fontSize:12, color:'var(--text-secondary)', marginTop:2 }}>
+            Account: <strong style={{ color:'var(--text-secondary)' }}>{account.name}</strong>
             {dupCount > 0 && (
-              <span style={{ marginLeft:12, color:'#f59e0b' }}>
+              <span style={{ marginLeft:12, color:'var(--amber)' }}>
                 ⚠ {dupCount} likely duplicate{dupCount !== 1 ? 's' : ''} (pre-deselected)
               </span>
             )}
           </div>
           {fileNames.length > 1 && (
-            <div style={{ fontSize:11, color:'#475569', marginTop:4 }}>
+            <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
               {fileNames.join(' · ')}
             </div>
           )}
@@ -286,11 +286,11 @@ export default function StatementImport({ account, existingTransactions, onImpor
       </div>
 
       {/* Table */}
-      <div style={{ maxHeight:320, overflowY:'auto', border:'1px solid #1e2736', borderRadius:8 }}>
+      <div style={{ maxHeight:320, overflowY:'auto', border:'1px solid var(--bg-raised)', borderRadius:8 }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-          <thead style={{ position:'sticky', top:0, background:'#161d2b', zIndex:1 }}>
+          <thead style={{ position:'sticky', top:0, background:'var(--bg-card)', zIndex:1 }}>
             <tr>
-              <th style={{ padding:'8px 10px', textAlign:'left', color:'#64748b', fontWeight:600, borderBottom:'1px solid #1e2736' }}>
+              <th style={{ padding:'8px 10px', textAlign:'left', color:'var(--text-secondary)', fontWeight:600, borderBottom:'1px solid var(--bg-raised)' }}>
                 <input
                   type="checkbox"
                   onChange={toggleAll}
@@ -299,7 +299,7 @@ export default function StatementImport({ account, existingTransactions, onImpor
                 />
               </th>
               {['Date','Description','Category','Amount'].map(h => (
-                <th key={h} style={{ padding:'8px 10px', textAlign: h==='Amount'?'right':'left', color:'#64748b', fontWeight:600, borderBottom:'1px solid #1e2736' }}>{h}</th>
+                <th key={h} style={{ padding:'8px 10px', textAlign: h==='Amount'?'right':'left', color:'var(--text-secondary)', fontWeight:600, borderBottom:'1px solid var(--bg-raised)' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -315,13 +315,13 @@ export default function StatementImport({ account, existingTransactions, onImpor
                 <td style={{ padding:'6px 10px', borderBottom:'1px solid #1e273630' }}>
                   <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
                 </td>
-                <td style={{ padding:'6px 10px', color:'#94a3b8', borderBottom:'1px solid #1e273630', whiteSpace:'nowrap' }}>{r.date}</td>
-                <td style={{ padding:'6px 10px', color:'#cbd5e1', borderBottom:'1px solid #1e273630', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                <td style={{ padding:'6px 10px', color:'var(--text-secondary)', borderBottom:'1px solid #1e273630', whiteSpace:'nowrap' }}>{r.date}</td>
+                <td style={{ padding:'6px 10px', color:'var(--text-primary)', borderBottom:'1px solid #1e273630', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {r.description}
-                  {r.isDup && <span style={{ marginLeft:6, fontSize:10, color:'#f59e0b', background:'#f59e0b22', borderRadius:4, padding:'1px 5px' }}>DUP</span>}
+                  {r.isDup && <span style={{ marginLeft:6, fontSize:10, color:'var(--amber)', background:'#f59e0b22', borderRadius:4, padding:'1px 5px' }}>DUP</span>}
                 </td>
-                <td style={{ padding:'6px 10px', color:'#64748b', borderBottom:'1px solid #1e273630' }}>{r.category}</td>
-                <td style={{ padding:'6px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #1e273630', whiteSpace:'nowrap', color: r.amount >= 0 ? '#4ade80' : '#c2735a' }}>
+                <td style={{ padding:'6px 10px', color:'var(--text-secondary)', borderBottom:'1px solid #1e273630' }}>{r.category}</td>
+                <td style={{ padding:'6px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #1e273630', whiteSpace:'nowrap', color: r.amount >= 0 ? 'var(--green)' : 'var(--red)' }}>
                   {r.amount >= 0 ? '+' : ''}{fmt(r.amount)}
                 </td>
               </tr>
@@ -331,11 +331,11 @@ export default function StatementImport({ account, existingTransactions, onImpor
       </div>
 
       {/* Summary bar */}
-      <div style={{ background:'#0d1117', borderRadius:8, padding:'10px 14px', fontSize:12, display:'flex', gap:20, flexWrap:'wrap', color:'#64748b' }}>
-        <span>Selected: <strong style={{ color:'#e2e8f0' }}>{selected.size}</strong></span>
-        <span>Net change: <strong style={{ color: importTotal >= 0 ? '#4ade80' : '#c2735a' }}>{importTotal >= 0 ? '+' : ''}{fmt(importTotal)}</strong></span>
-        <span>Current balance: <strong style={{ color:'#e2e8f0' }}>{fmt(account.balance)}</strong></span>
-        <span>After import: <strong style={{ color: newBalance >= 0 ? '#4ade80' : '#c2735a' }}>{fmt(newBalance)}</strong></span>
+      <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'10px 14px', fontSize:12, display:'flex', gap:20, flexWrap:'wrap', color:'var(--text-secondary)' }}>
+        <span>Selected: <strong style={{ color:'var(--text-primary)' }}>{selected.size}</strong></span>
+        <span>Net change: <strong style={{ color: importTotal >= 0 ? 'var(--green)' : 'var(--red)' }}>{importTotal >= 0 ? '+' : ''}{fmt(importTotal)}</strong></span>
+        <span>Current balance: <strong style={{ color:'var(--text-primary)' }}>{fmt(account.balance)}</strong></span>
+        <span>After import: <strong style={{ color: newBalance >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(newBalance)}</strong></span>
       </div>
 
       {/* Actions */}

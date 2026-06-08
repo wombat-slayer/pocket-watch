@@ -133,10 +133,10 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* API Keys */}
       <div className="settings-section">
         <div className="settings-section-title">🔑 API Keys</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
-          Add a <strong style={{ color:'#e2e8f0' }}>Finnhub</strong> API key to enable live stock price fetching in the Investments section below.
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
+          Add a <strong style={{ color:'var(--text-primary)' }}>Finnhub</strong> API key to enable live stock price fetching in the Investments section below.
           {' '}<a href="https://finnhub.io/register" target="_blank" rel="noreferrer"
-            style={{ color:'#7fa88b', textDecoration:'none', borderBottom:'1px dashed #7fa88b44' }}>
+            style={{ color:'var(--green)', textDecoration:'none', borderBottom:'1px dashed #7fa88b44' }}>
             Get a free key at finnhub.io
           </a>{' '}(free tier: 60 req/min). Crypto prices via CoinGecko require no key.
         </p>
@@ -158,14 +158,14 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
             Save
           </button>
           {finnhubInput.trim() && (
-            <button className="btn btn-ghost btn-sm" style={{ color:'#c2735a' }}
+            <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }}
               onClick={() => { setFinnhubInput(''); if (onSaveApiKeys) onSaveApiKeys({ finnhub: '' }); setApiKeySaved(false); }}>
               Clear
             </button>
           )}
         </div>
-        {apiKeySaved && <p style={{ color:'#4ade80', fontSize:12, marginTop:6 }}>✅ API key saved.</p>}
-        <p style={{ fontSize:11, color:'#475569', marginTop:8 }}>Keys are stored locally in your data file — never uploaded or shared.</p>
+        {apiKeySaved && <p style={{ color:'var(--green)', fontSize:12, marginTop:6 }}>✅ API key saved.</p>}
+        <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>Keys are stored locally in your data file — never uploaded or shared.</p>
       </div>
 
 
@@ -182,7 +182,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
               📄 Import from Pay Stub
             </button>
           </div>
-          <p style={{ fontSize:13, color:'#94a3b8', marginBottom:14 }}>
+          <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:14 }}>
             Used to calculate your True Savings Rate on the Dashboard. All values stay local — never uploaded.
           </p>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, maxWidth:520 }}>
@@ -232,17 +232,17 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
               onChange={e => onSetCompensationProfile({ ...compensationProfile, notes: e.target.value })}
             />
           </div>
-          <p style={{ fontSize:11, color:'#475569', marginTop:8 }}>Changes auto-save with the rest of your data.</p>
+          <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:8 }}>Changes auto-save with the rest of your data.</p>
         </div>
       )}
 
       {/* Bank Sync */}
       <div className="settings-section">
         <div className="settings-section-title">🏦 Bank Sync (Plaid)</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:16 }}>
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:16 }}>
           Connect your bank accounts to automatically import transactions via Plaid.
           You'll need a free <a href="https://dashboard.plaid.com/signup" target="_blank" rel="noreferrer"
-            style={{ color:'#7fa88b', textDecoration:'none', borderBottom:'1px dashed #7fa88b44' }}>
+            style={{ color:'var(--green)', textDecoration:'none', borderBottom:'1px dashed #7fa88b44' }}>
             Plaid developer account
           </a> (Trial plan: free, up to 10 linked items, no credit card).
           Enter your sandbox credentials to test, or switch to production when ready.
@@ -264,26 +264,26 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <div className="settings-section-title">🩺 Data Health</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
           {/* Total transactions */}
-          <div style={{ background:'#0d1117', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#4ade80', border:'1px solid #14532d44' }}>
+          <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color:'var(--green)', border:'1px solid #14532d44' }}>
             ✅ {dataHealth.totalTxs} transactions
             {dataHealth.oldestTx && dataHealth.newestTx && (
-              <span style={{ color:'#64748b', marginLeft:6 }}>({dataHealth.oldestTx} → {dataHealth.newestTx})</span>
+              <span style={{ color:'var(--text-secondary)', marginLeft:6 }}>({dataHealth.oldestTx} → {dataHealth.newestTx})</span>
             )}
           </div>
           {/* Uncleared old */}
-          <div style={{ background:'#0d1117', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.unclearedOld > 0 ? '#f59e0b' : '#4ade80', border: dataHealth.unclearedOld > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
+          <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.unclearedOld > 0 ? 'var(--amber)' : 'var(--green)', border: dataHealth.unclearedOld > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
             {dataHealth.unclearedOld > 0 ? '⚠' : '✅'} {dataHealth.unclearedOld} uncleared expense{dataHealth.unclearedOld !== 1 ? 's' : ''} older than 30 days
           </div>
           {/* Accounts with no activity */}
-          <div style={{ background:'#0d1117', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.accountsNoActivity > 0 ? '#f59e0b' : '#4ade80', border: dataHealth.accountsNoActivity > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
+          <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.accountsNoActivity > 0 ? 'var(--amber)' : 'var(--green)', border: dataHealth.accountsNoActivity > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
             {dataHealth.accountsNoActivity > 0 ? '⚠' : '✅'} {dataHealth.accountsNoActivity} account{dataHealth.accountsNoActivity !== 1 ? 's' : ''} with no activity in 60 days
           </div>
           {/* Budgets with no spending */}
-          <div style={{ background:'#0d1117', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.budgetsNoSpend > 0 ? '#f59e0b' : '#4ade80', border: dataHealth.budgetsNoSpend > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
+          <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color: dataHealth.budgetsNoSpend > 0 ? 'var(--amber)' : 'var(--green)', border: dataHealth.budgetsNoSpend > 0 ? '1px solid #f59e0b44' : '1px solid #14532d44' }}>
             {dataHealth.budgetsNoSpend > 0 ? '⚠' : '✅'} {dataHealth.budgetsNoSpend} budget{dataHealth.budgetsNoSpend !== 1 ? 's' : ''} with no spending this month
           </div>
           {/* Untagged expenses */}
-          <div style={{ background:'#0d1117', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#94a3b8', border:'1px solid #1e2736' }}>
+          <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'8px 14px', fontSize:12, color:'var(--text-secondary)', border:'1px solid var(--bg-raised)' }}>
             📌 {dataHealth.untagged} expense transaction{dataHealth.untagged !== 1 ? 's' : ''} without tags
           </div>
         </div>
@@ -292,16 +292,16 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Data file location */}
       <div className="settings-section">
         <div className="settings-section-title">📁 Data File</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           All Pocket Watch data is stored locally in a single JSON file you control. You can put it in Dropbox, iCloud Drive, or any folder — it stays on your devices.
         </p>
-        <div style={{ background:'#0d1117', borderRadius:8, padding:'10px 14px', fontFamily:'monospace', fontSize:12, color:'#7fa88b', marginBottom:12, wordBreak:'break-all' }}>
+        <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'10px 14px', fontFamily:'monospace', fontSize:12, color:'var(--green)', marginBottom:12, wordBreak:'break-all' }}>
           {dataPath ?? 'Loading…'}
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <button className="btn btn-secondary" onClick={handleMoveDataFile}>📂 Move Data File…</button>
         </div>
-        <p style={{ fontSize:12,color:'#475569',marginTop:10 }}>Moving the data file copies all data to the new location and updates the remembered path.</p>
+        <p style={{ fontSize:12,color:'var(--text-muted)',marginTop:10 }}>Moving the data file copies all data to the new location and updates the remembered path.</p>
       </div>
 
       {/* Storage stats */}
@@ -310,8 +310,8 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <div style={{ display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12 }}>
           {[['Transactions',transactions.length],['Accounts',accounts.length],['Budgets',budgets.length],['Goals',(goals??[]).length],['NW Snapshots',netWorthHistory.length]].map(([label,count])=>(
             <div key={label} className="card-sm" style={{ textAlign:'center',padding:14 }}>
-              <div style={{ fontSize:22,fontWeight:800,color:'#e2e8f0' }}>{count}</div>
-              <div style={{ fontSize:12,color:'#64748b',marginTop:4 }}>{label}</div>
+              <div style={{ fontSize:22,fontWeight:800,color:'var(--text-primary)' }}>{count}</div>
+              <div style={{ fontSize:12,color:'var(--text-secondary)',marginTop:4 }}>{label}</div>
             </div>
           ))}
         </div>
@@ -320,10 +320,10 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Net Worth History Import */}
       <div className="settings-section">
         <div className="settings-section-title">📈 Import Historical Net Worth</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Upload a CSV file with past net worth snapshots to populate the historical chart.
-          Accepted columns (case-insensitive): <code style={{ fontSize:11, color:'#7fa88b' }}>date, net_worth</code> or
-          {' '}<code style={{ fontSize:11, color:'#7fa88b' }}>date, assets, debts</code>.
+          Accepted columns (case-insensitive): <code style={{ fontSize:11, color:'var(--green)' }}>date, net_worth</code> or
+          {' '}<code style={{ fontSize:11, color:'var(--green)' }}>date, assets, debts</code>.
           Date format: YYYY-MM-DD. Duplicate dates are skipped.
         </p>
         <label className="file-label" htmlFor="nw-csv-import">📂 Choose Net Worth CSV</label>
@@ -367,9 +367,9 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           reader.readAsText(file);
           e.target.value = '';
         }} />
-        {nwImportError  && <p style={{ color:'#c2735a',fontSize:13,marginTop:8 }}>❌ {nwImportError}</p>}
-        {nwImportResult && <p style={{ color:'#4ade80',fontSize:13,marginTop:8 }}>{nwImportResult}</p>}
-        <p style={{ fontSize:11,color:'#475569',marginTop:8 }}>
+        {nwImportError  && <p style={{ color:'var(--red)',fontSize:13,marginTop:8 }}>❌ {nwImportError}</p>}
+        {nwImportResult && <p style={{ color:'var(--green)',fontSize:13,marginTop:8 }}>{nwImportResult}</p>}
+        <p style={{ fontSize:11,color:'var(--text-muted)',marginTop:8 }}>
           Currently {netWorthHistory.length} snapshots stored.
           {netWorthHistory.length > 0 && ` Oldest: ${netWorthHistory[0]?.date}. Latest: ${netWorthHistory[netWorthHistory.length-1]?.date}.`}
         </p>
@@ -378,11 +378,11 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Archive */}
       <div className="settings-section">
         <div className="settings-section-title">🗃️ Transaction Archive</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Move old transactions to an archive to keep your active dataset small and fast. Archived transactions are still saved in your data file and can be restored at any time.
         </p>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:10 }}>
-          <label style={{ fontSize:13, color:'#94a3b8' }}>Archive transactions before:</label>
+          <label style={{ fontSize:13, color:'var(--text-secondary)' }}>Archive transactions before:</label>
           <input type="date" value={archiveBefore} onChange={e => setArchiveBefore(e.target.value)}
             style={{ fontSize:13, padding:'4px 8px', width:'auto' }} />
           <button className="btn btn-secondary"
@@ -393,18 +393,18 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
             Archive Old Transactions
           </button>
         </div>
-        {archiveResult && <p style={{ fontSize:12, color:'#94a3b8', marginBottom:8 }}>{archiveResult}</p>}
+        {archiveResult && <p style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:8 }}>{archiveResult}</p>}
         {archivedTransactions.length > 0 && (
-          <div style={{ display:'flex', alignItems:'center', gap:10, background:'#0d1117', borderRadius:8, padding:'8px 12px', fontSize:13 }}>
-            <span style={{ color:'#94a3b8' }}>{archivedTransactions.length.toLocaleString()} transaction{archivedTransactions.length!==1?'s':''} archived</span>
-            <button className="btn btn-ghost btn-sm" style={{ color:'#f59e0b', fontSize:11 }}
+          <div style={{ display:'flex', alignItems:'center', gap:10, background:'var(--bg-page)', borderRadius:8, padding:'8px 12px', fontSize:13 }}>
+            <span style={{ color:'var(--text-secondary)' }}>{archivedTransactions.length.toLocaleString()} transaction{archivedTransactions.length!==1?'s':''} archived</span>
+            <button className="btn btn-ghost btn-sm" style={{ color:'var(--amber)', fontSize:11 }}
               onClick={() => { if (window.confirm(`Restore ${archivedTransactions.length} archived transactions to active view?`)) { onRestoreArchive?.(); setArchiveResult(''); } }}>
               ↩ Restore All
             </button>
           </div>
         )}
         {archivedTransactions.length === 0 && (
-          <div style={{ fontSize:12, color:'#475569' }}>No archived transactions.</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)' }}>No archived transactions.</div>
         )}
       </div>
 
@@ -415,7 +415,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           <button className="btn btn-secondary" onClick={exportTransactionsCSV}>⬇ Transactions CSV</button>
           <button className="btn btn-secondary" onClick={exportJSON}>⬇ Full Backup (JSON)</button>
         </div>
-        <p style={{ fontSize:12,color:'#475569',marginTop:10 }}>The CSV export works with Excel and Google Sheets. The JSON backup includes everything and can be restored below.</p>
+        <p style={{ fontSize:12,color:'var(--text-muted)',marginTop:10 }}>The CSV export works with Excel and Google Sheets. The JSON backup includes everything and can be restored below.</p>
       </div>
 
       {/* Import */}
@@ -423,40 +423,40 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <div className="settings-section-title">📥 Restore from Backup</div>
         <label className="file-label" htmlFor="json-restore">📂 Choose JSON Backup File</label>
         <input id="json-restore" type="file" accept=".json" onChange={handleImport} />
-        {importError && <p style={{ color:'#c2735a',fontSize:13,marginTop:8 }}>❌ {importError}</p>}
-        {importOk    && <p style={{ color:'#4ade80',fontSize:13,marginTop:8 }}>✅ Backup restored successfully.</p>}
-        <p style={{ fontSize:12,color:'#475569',marginTop:10 }}>⚠️ Restoring replaces all current data with the backup contents.</p>
+        {importError && <p style={{ color:'var(--red)',fontSize:13,marginTop:8 }}>❌ {importError}</p>}
+        {importOk    && <p style={{ color:'var(--green)',fontSize:13,marginTop:8 }}>✅ Backup restored successfully.</p>}
+        <p style={{ fontSize:12,color:'var(--text-muted)',marginTop:10 }}>⚠️ Restoring replaces all current data with the backup contents.</p>
       </div>
 
       {/* Updates */}
       <div className="settings-section">
         <div className="settings-section-title">🔄 Updates</div>
-        <p style={{ fontSize:13,color:'#94a3b8',marginBottom:12 }}>
+        <p style={{ fontSize:13,color:'var(--text-secondary)',marginBottom:12 }}>
           Check for the latest version of Pocket Watch.
-          {' '}<span style={{ color:'#334155', fontSize:11 }}>
-            Endpoint: <code style={{ fontSize:10, color:'#475569' }}>https://releases.pocketwatch.app/...</code>
-            {' '}— deploy a GitHub Release with a signed <code style={{ fontSize:10, color:'#475569' }}>latest.json</code> manifest to activate.
+          {' '}<span style={{ color:'var(--text-muted)', fontSize:11 }}>
+            Endpoint: <code style={{ fontSize:10, color:'var(--text-muted)' }}>https://releases.pocketwatch.app/...</code>
+            {' '}— deploy a GitHub Release with a signed <code style={{ fontSize:10, color:'var(--text-muted)' }}>latest.json</code> manifest to activate.
           </span>
         </p>
         <div style={{ display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
           <button className="btn btn-secondary" onClick={handleCheckUpdate} disabled={updateStatus==='checking'}>
             {updateStatus==='checking' ? '⏳ Checking…' : '🔍 Check for Updates'}
           </button>
-          {updateStatus === 'uptodate' && <span style={{ color:'#4ade80',fontSize:13 }}>✅ You're up to date!</span>}
+          {updateStatus === 'uptodate' && <span style={{ color:'var(--green)',fontSize:13 }}>✅ You're up to date!</span>}
           {updateStatus === 'available' && updateInfo && (
             <>
-              <span style={{ color:'#f59e0b',fontSize:13 }}>🆕 Update available: v{updateInfo.version}</span>
+              <span style={{ color:'var(--amber)',fontSize:13 }}>🆕 Update available: v{updateInfo.version}</span>
               <button className="btn btn-primary" onClick={handleInstallUpdate}>⬇ Install Update</button>
             </>
           )}
           {updateStatus === 'installing' && (
-            <span style={{ color:'#60a5fa',fontSize:13 }}>⏳ Downloading and installing…</span>
+            <span style={{ color:'var(--accent)',fontSize:13 }}>⏳ Downloading and installing…</span>
           )}
           {updateStatus === 'restart' && (
-            <span style={{ color:'#4ade80',fontSize:13 }}>✅ Update installed — please restart Pocket Watch to finish.</span>
+            <span style={{ color:'var(--green)',fontSize:13 }}>✅ Update installed — please restart Pocket Watch to finish.</span>
           )}
           {updateStatus === 'error' && (
-            <span style={{ color:'#c2735a',fontSize:13 }}>❌ Update check failed. Check your internet connection.</span>
+            <span style={{ color:'var(--red)',fontSize:13 }}>❌ Update check failed. Check your internet connection.</span>
           )}
         </div>
       </div>
@@ -465,15 +465,15 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {demoTotal > 0 && (
         <div className="settings-section">
           <div className="settings-section-title">🧹 Clear Demo Data</div>
-          <p style={{ fontSize:14,color:'#94a3b8',marginBottom:12 }}>
-            You have <strong style={{ color:'#e2e8f0' }}>{demoTxCount}</strong> demo transactions,{' '}
-            <strong style={{ color:'#e2e8f0' }}>{demoAccCount}</strong> demo accounts, and{' '}
-            <strong style={{ color:'#e2e8f0' }}>{demoBgCount}</strong> demo budgets loaded.
+          <p style={{ fontSize:14,color:'var(--text-secondary)',marginBottom:12 }}>
+            You have <strong style={{ color:'var(--text-primary)' }}>{demoTxCount}</strong> demo transactions,{' '}
+            <strong style={{ color:'var(--text-primary)' }}>{demoAccCount}</strong> demo accounts, and{' '}
+            <strong style={{ color:'var(--text-primary)' }}>{demoBgCount}</strong> demo budgets loaded.
           </p>
           {!confirmDemo
             ? <button className="btn btn-secondary" onClick={()=>setConfirmDemo(true)}>Remove Demo Data</button>
             : <div style={{ display:'flex',gap:8,alignItems:'center' }}>
-                <span style={{ fontSize:13,color:'#c2735a' }}>Remove all demo/sample data?</span>
+                <span style={{ fontSize:13,color:'var(--red)' }}>Remove all demo/sample data?</span>
                 <button className="btn btn-danger btn-sm" onClick={()=>{ onClearDemo(); setConfirmDemo(false); }}>Yes, Remove</button>
                 <button className="btn btn-secondary btn-sm" onClick={()=>setConfirmDemo(false)}>Cancel</button>
               </div>
@@ -484,17 +484,17 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Category Management */}
       <div className="settings-section">
         <div className="settings-section-title">🏷️ Custom Categories</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Add your own categories. Built-in categories cannot be removed.
         </p>
         {/* Existing user categories */}
         {(userCategories ?? []).length > 0 && (
           <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:12 }}>
             {userCategories.map(c => (
-              <div key={c.name} style={{ display:'flex', alignItems:'center', gap:6, background:'#1e2736', borderRadius:8, padding:'5px 10px' }}>
+              <div key={c.name} style={{ display:'flex', alignItems:'center', gap:6, background:'var(--bg-raised)', borderRadius:8, padding:'5px 10px' }}>
                 <span>{c.icon}</span>
-                <span style={{ fontSize:13, color:'#e2e8f0' }}>{c.name}</span>
-                <button onClick={() => onDeleteUserCategory(c.name)} style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', fontSize:13 }}>✕</button>
+                <span style={{ fontSize:13, color:'var(--text-primary)' }}>{c.name}</span>
+                <button onClick={() => onDeleteUserCategory(c.name)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:13 }}>✕</button>
               </div>
             ))}
           </div>
@@ -503,7 +503,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
           <input type="text" placeholder="Category name" maxLength={30} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ width:160 }} />
           <input type="text" placeholder="Icon" maxLength={4} value={newCatIcon} onChange={e => setNewCatIcon(e.target.value)} style={{ width:56, textAlign:'center' }} />
-          <input type="color" value={newCatColor} onChange={e => setNewCatColor(e.target.value)} style={{ width:40, height:34, padding:2, borderRadius:6, border:'1px solid #1e2736', background:'transparent', cursor:'pointer' }} />
+          <input type="color" value={newCatColor} onChange={e => setNewCatColor(e.target.value)} style={{ width:40, height:34, padding:2, borderRadius:6, border:'1px solid var(--bg-raised)', background:'transparent', cursor:'pointer' }} />
           <button className="btn btn-secondary" onClick={() => {
             const name = newCatName.trim();
             if (!name) return;
@@ -518,7 +518,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Recurring Rules (moved from its own nav page) */}
       <div className="settings-section">
         <div className="settings-section-title">🔁 Recurring Rules</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Rules that auto-generate transactions on a schedule (rent, salary, subscriptions).
           Generated transactions appear on the Transactions page with a 🔁 marker.
         </p>
@@ -543,7 +543,7 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           onClick={() => setInvestmentsOpen(o => !o)}
         >
           <span>📈 Investments</span>
-          <span style={{ fontSize:12, color:'#64748b', fontWeight:400 }}>{investmentsOpen ? '▲ Collapse' : '▼ Expand'}</span>
+          <span style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:400 }}>{investmentsOpen ? '▲ Collapse' : '▼ Expand'}</span>
         </div>
         {investmentsOpen && (
           <div style={{ marginTop:12 }}>
@@ -566,15 +566,15 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Notifications */}
       <div className="settings-section">
         <div className="settings-section-title">🔔 Budget Notifications</div>
-        <p style={{ fontSize:13, color:'#94a3b8', marginBottom:12 }}>
+        <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:12 }}>
           Get OS notifications when spending approaches or exceeds your monthly budget limits.
         </p>
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
             <input type="checkbox" checked={budgetAlerts.enabled}
               onChange={e => onSaveBudgetAlerts?.({ enabled: e.target.checked })}
-              style={{ width:15, height:15, accentColor:'#7fa88b', cursor:'pointer' }} />
-            <span style={{ fontSize:14, color:'#e2e8f0' }}>Enable budget notifications</span>
+              style={{ width:15, height:15, accentColor:'var(--green)', cursor:'pointer' }} />
+            <span style={{ fontSize:14, color:'var(--text-primary)' }}>Enable budget notifications</span>
           </label>
           {budgetAlerts.enabled && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, maxWidth:400 }}>
@@ -583,14 +583,14 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
                 <input type="number" min={1} max={99} value={budgetAlerts.warnAt}
                   onChange={e => onSaveBudgetAlerts?.({ warnAt: Math.max(1, Math.min(99, Number(e.target.value))) })}
                   style={{ fontSize:13 }} />
-                <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>Notify at this % of budget (e.g. 80)</div>
+                <div style={{ fontSize:11, color:'var(--text-secondary)', marginTop:3 }}>Notify at this % of budget (e.g. 80)</div>
               </div>
               <div className="form-group" style={{ margin:0 }}>
                 <label className="form-label">Alert threshold (%)</label>
                 <input type="number" min={1} max={200} value={budgetAlerts.alertAt}
                   onChange={e => onSaveBudgetAlerts?.({ alertAt: Math.max(1, Number(e.target.value)) })}
                   style={{ fontSize:13 }} />
-                <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>Notify at this % (e.g. 100 = exceeded)</div>
+                <div style={{ fontSize:11, color:'var(--text-secondary)', marginTop:3 }}>Notify at this % (e.g. 100 = exceeded)</div>
               </div>
             </div>
           )}
@@ -600,11 +600,11 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
       {/* Full reset */}
       <div className="settings-section" style={{ borderColor:'#7f1d1d44' }}>
         <div className="settings-section-title" style={{ color:'#fca5a5' }}>⚠️ Danger Zone</div>
-        <p style={{ fontSize:14,color:'#94a3b8',marginBottom:12 }}>Full reset deletes all transactions, accounts, budgets, and history. This cannot be undone.</p>
+        <p style={{ fontSize:14,color:'var(--text-secondary)',marginBottom:12 }}>Full reset deletes all transactions, accounts, budgets, and history. This cannot be undone.</p>
         {!confirmReset
           ? <button className="btn btn-danger" onClick={()=>setConfirmReset(true)}>Full Reset — Delete Everything</button>
           : <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
-              <span style={{ fontSize:13,color:'#c2735a' }}>⚠️ This is permanent and cannot be undone.</span>
+              <span style={{ fontSize:13,color:'var(--red)' }}>⚠️ This is permanent and cannot be undone.</span>
               <button className="btn btn-danger" onClick={()=>{onReset();setConfirmReset(false);}}>Yes, delete everything</button>
               <button className="btn btn-secondary" onClick={()=>setConfirmReset(false)}>Cancel</button>
             </div>

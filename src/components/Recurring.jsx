@@ -96,7 +96,7 @@ function NextDueBadge({ recurrence }) {
     ? getNextRecurDate(recurrence.lastGenerated, recurrence.frequency)
     : recurrence.startDate;
 
-  if (!recurrence.active) return <span style={{ fontSize: 12, color: '#475569' }}>Paused</span>;
+  if (!recurrence.active) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Paused</span>;
 
   const daysUntil = Math.ceil((new Date(next + 'T00:00:00') - new Date()) / 86400000);
   const overdue   = next < todayStr;
@@ -105,8 +105,8 @@ function NextDueBadge({ recurrence }) {
   return (
     <span style={{
       fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-      background: overdue ? '#c2735a22' : soon ? '#f59e0b22' : '#1e2736',
-      color: overdue ? '#c2735a' : soon ? '#f59e0b' : '#64748b',
+      background: overdue ? '#c2735a22' : soon ? '#f59e0b22' : 'var(--bg-raised)',
+      color: overdue ? 'var(--red)' : soon ? 'var(--amber)' : 'var(--text-secondary)',
     }}>
       {overdue ? `Overdue ${fmtDate(next)}` : daysUntil === 0 ? 'Due today' : `Due ${fmtDate(next)}`}
     </span>
@@ -194,17 +194,17 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
   return (
     <div className={embedded ? '' : 'fade-in'} style={{ padding: embedded ? 0 : '24px 28px' }}>
       {recurSuggestions.length > 0 && (
-        <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid #7fa88b' }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: '#7fa88b' }}>
+        <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid var(--green)' }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: 'var(--green)' }}>
             💡 Detected recurring patterns — want to add rules?
           </div>
           {recurSuggestions.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0', borderBottom: '1px solid #1e2736', fontSize: 13 }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0', borderBottom: '1px solid var(--bg-raised)', fontSize: 13 }}>
               <div style={{ flex: 1 }}>
-                <span style={{ color: '#e2e8f0' }}>{s.description}</span>
-                <span style={{ color: '#64748b', marginLeft: 8 }}>{s.frequency} · {s.occurrences}× seen</span>
+                <span style={{ color: 'var(--text-primary)' }}>{s.description}</span>
+                <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>{s.frequency} · {s.occurrences}× seen</span>
               </div>
-              <span style={{ color: '#c2735a' }}>~${Math.abs(s.amount).toFixed(2)}</span>
+              <span style={{ color: 'var(--red)' }}>~${Math.abs(s.amount).toFixed(2)}</span>
               <button className="btn btn-sm btn-secondary" onClick={() => {
                 setShowAdd(true);
                 setSuggestionPrefill(s);
@@ -226,19 +226,19 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
       {recurrences.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
           <div className="stat-card">
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Active Rules</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: '#e2e8f0' }}>{active}</div>
-            <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>{recurrences.length} total</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Active Rules</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--text-primary)' }}>{active}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{recurrences.length} total</div>
           </div>
           <div className="stat-card">
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Monthly Expenses</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: '#c2735a' }}>{fmt(expenses)}</div>
-            <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>estimated / month</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Monthly Expenses</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--red)' }}>{fmt(expenses)}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>estimated / month</div>
           </div>
           <div className="stat-card">
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Monthly Income</div>
-            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: '#4ade80' }}>{fmt(income)}</div>
-            <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>estimated / month</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Monthly Income</div>
+            <div className="hero-num" style={{ fontSize: 28, fontWeight: 400, color: 'var(--green)' }}>{fmt(income)}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>estimated / month</div>
           </div>
         </div>
       )}
@@ -273,14 +273,14 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
             {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 600, fontSize: 14, color: '#e2e8f0' }}>{r.description}</span>
+                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{r.description}</span>
                 <span style={{
                   fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 20,
-                  background: '#1e2736', color: '#64748b',
+                  background: 'var(--bg-raised)', color: 'var(--text-secondary)',
                 }}>{freqLabel(r.frequency)}</span>
                 <NextDueBadge recurrence={r} />
               </div>
-              <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
                 {r.category}
                 {r.lastGenerated && ` · Last generated ${fmtDate(r.lastGenerated)}`}
                 {r.notes && ` · ${r.notes}`}
@@ -290,7 +290,7 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
             {/* Amount */}
             <div style={{
               fontSize: 17, fontWeight: 700,
-              color: r.amount >= 0 ? '#4ade80' : '#c2735a',
+              color: r.amount >= 0 ? 'var(--green)' : 'var(--red)',
               whiteSpace: 'nowrap', marginRight: 8,
             }}>
               {r.amount >= 0 ? '+' : ''}{fmt(r.amount)}
@@ -308,7 +308,7 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
                 {r.active ? '⏸ Pause' : '▶ Resume'}
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setEditRec(r)} title="Edit">✏️</button>
-              <button className="btn btn-ghost btn-sm" style={{ color: '#c2735a' }}
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }}
                 onClick={() => { if (confirm(`Delete "${r.description}"?`)) onDelete(r.id); }} title="Delete">🗑</button>
             </div>
           </div>
@@ -317,9 +317,9 @@ export default function Recurring({ recurrences, accounts, onAdd, onEdit, onDele
 
       {/* How it works note */}
       {recurrences.length > 0 && (
-        <div style={{ marginTop: 16, fontSize: 12, color: '#334155', textAlign: 'center', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.6 }}>
           🔁 Transactions are auto-generated when you open the app. Past-due entries are created automatically.<br />
-          <span style={{ color: '#475569' }}>
+          <span style={{ color: 'var(--text-muted)' }}>
             If you manually delete a generated transaction, it will not be regenerated — the rule remembers the last date it ran.
             To force a regeneration, edit the rule and clear its start date.
           </span>
