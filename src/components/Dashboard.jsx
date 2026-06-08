@@ -79,7 +79,13 @@ export default function Dashboard({
     if (!snapshots.length) return null;
     return snapshots[snapshots.length - 1].netWorth;
   }, [netWorthHistory, prevMonth]);
-  const nwDelta = prevMonthNW != null ? netWorth - prevMonthNW : null;
+  const isCurrentMonth = selMonth === thisMonth();
+  const selMonthNWSnap = useMemo(() => {
+    const snaps = netWorthHistory.filter(h => h.date.slice(0,7) === selMonth);
+    return snaps.length ? snaps[snaps.length - 1].netWorth : null;
+  }, [netWorthHistory, selMonth]);
+  const displayedNW = isCurrentMonth ? netWorth : selMonthNWSnap;
+  const nwDelta = (displayedNW != null && prevMonthNW != null) ? displayedNW - prevMonthNW : null;
 
   // ── True Savings Rate ─────────────────────────────────────────────────────
   const trueSavingsRate = useMemo(() => {
@@ -310,7 +316,7 @@ export default function Dashboard({
       <div className="card" style={{ marginBottom:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12, flexWrap:'wrap', gap:8 }}>
           <div>
-            {unvestedRSU > 0 ? (
+            {unvestedRSU > 0 && isCurrentMonth ? (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
                   <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Vested Net Worth</div>
@@ -324,10 +330,16 @@ export default function Dashboard({
                   + {cfmt(unvestedRSU)} <span style={{ color:'var(--text-muted)' }}>locked (unvested RSUs)</span>
                 </div>
               </>
+            ) : displayedNW === null ? (
+              <>
+                <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
+                <div style={{ fontSize:30, fontWeight:700, color:'var(--text-secondary)' }}>—</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>No snapshot for this month</div>
+              </>
             ) : (
               <>
                 <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
-                <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{cfmt(netWorth)}</div>
+                <div style={{ fontSize:30, fontWeight:700, color: displayedNW >= 0 ? 'var(--green)' : 'var(--red)' }}>{cfmt(displayedNW)}</div>
               </>
             )}
           </div>
@@ -345,30 +357,35 @@ export default function Dashboard({
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Checking </span>
               <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{cfmt(checkingBal)}</span>
+              {!isCurrentMonth && <span style={{ color:'var(--text-muted)', fontSize:10, marginLeft:4 }}>current</span>}
             </div>
           )}
           {savingsBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Savings </span>
               <span style={{ color:'var(--text-primary)', fontWeight:600 }}>{cfmt(savingsBal)}</span>
+              {!isCurrentMonth && <span style={{ color:'var(--text-muted)', fontSize:10, marginLeft:4 }}>current</span>}
             </div>
           )}
           {investBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Investments </span>
               <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{cfmt(investBal)}</span>
+              {!isCurrentMonth && <span style={{ color:'var(--text-muted)', fontSize:10, marginLeft:4 }}>current</span>}
             </div>
           )}
           {equityValue > 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Equity </span>
               <span style={{ color:'var(--accent-2)', fontWeight:600 }}>{cfmt(equityValue)}</span>
+              {!isCurrentMonth && <span style={{ color:'var(--text-muted)', fontSize:10, marginLeft:4 }}>current</span>}
             </div>
           )}
           {creditBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>
               <span style={{ color:'var(--text-secondary)' }}>Credit </span>
               <span style={{ color:'var(--red)', fontWeight:600 }}>{cfmt(creditBal)}</span>
+              {!isCurrentMonth && <span style={{ color:'var(--text-muted)', fontSize:10, marginLeft:4 }}>current</span>}
             </div>
           )}
         </div>
