@@ -168,6 +168,7 @@ export default function App() {
       recurringId: undefined,
       transferId: undefined,
       transferDirection: undefined,
+      transferPairId: undefined,
       type: t.amount >= 0 ? 'income' : 'expense',
       cleared: false,
       receipts: [],
@@ -187,7 +188,7 @@ export default function App() {
       ...data, accounts, transactions, budgets, goals,
       compensationProfile: { ...DEFAULT_COMPENSATION_PROFILE, ...(data.compensationProfile ?? {}) },
       budgetAlerts: data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 },
-      version: 9,
+      version: 10,
     };
   };
 
@@ -283,13 +284,21 @@ export default function App() {
     });
   }, [appStatus]); // eslint-disable-line
 
+  const handleScanTransfers = () => {
+    setTransactions(prev => {
+      const marked = detectAndMarkTransferPairs(prev);
+      const changed = marked.some((t, i) => t.category !== prev[i]?.category || t.transferPairId !== prev[i]?.transferPairId);
+      return changed ? marked : prev;
+    });
+  };
+
   // ── Auto-save: debounced 600ms whenever state changes ────────────────────
   const saveTimer = useRef(null);
   useEffect(() => {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 9 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
@@ -297,7 +306,7 @@ export default function App() {
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 9 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, apiKeys, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -708,7 +717,7 @@ export default function App() {
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} budgets={budgets} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} initialTab={reportsInitialTab} />}
         {page==='business'     && <Business     accounts={accounts} transactions={transactions} onUpdateTransaction={editTx} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} budgetAlerts={budgetAlerts} onSaveBudgetAlerts={handleSaveBudgetAlerts} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} budgetAlerts={budgetAlerts} onSaveBudgetAlerts={handleSaveBudgetAlerts} onScanTransfers={handleScanTransfers} />}
       </div>
 
       {showAdd && (

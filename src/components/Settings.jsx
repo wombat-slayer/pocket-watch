@@ -6,7 +6,7 @@ import Recurring from './Recurring.jsx';
 import Equity from './Equity.jsx';
 import PayStubImportModal from './PayStubImportModal.jsx';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile, budgetAlerts = { enabled: true, warnAt: 80, alertAt: 100 }, onSaveBudgetAlerts }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile, budgetAlerts = { enabled: true, warnAt: 80, alertAt: 100 }, onSaveBudgetAlerts, onScanTransfers }) {
   const [confirmReset,     setConfirmReset]     = useState(false);
   const [confirmDemo,      setConfirmDemo]      = useState(false);
   const [showPayStubModal, setShowPayStubModal] = useState(false);
@@ -455,6 +455,11 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
         <div style={{ display:'flex',gap:10,flexWrap:'wrap' }}>
           <button className="btn btn-secondary" onClick={exportTransactionsCSV}>⬇ Transactions CSV</button>
           <button className="btn btn-secondary" onClick={exportJSON}>⬇ Full Backup (JSON)</button>
+          {onScanTransfers && (
+            <button className="btn btn-secondary" onClick={onScanTransfers} title="Re-detect transfer pairs across all transactions">
+              ⇄ Scan for transfers
+            </button>
+          )}
         </div>
         <p style={{ fontSize:12,color:'var(--text-muted)',marginTop:10 }}>The CSV export works with Excel and Google Sheets. The JSON backup includes everything and can be restored below.</p>
       </div>

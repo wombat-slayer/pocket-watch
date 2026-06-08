@@ -62,7 +62,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
   const catTotals = useMemo(() => {
     const map = {};
     filteredTransactions
-      .filter(t => t.type === 'expense' && t.date.slice(0, 7) >= cutoff)
+      .filter(t => t.type === 'expense' && t.date.slice(0, 7) >= cutoff && t.category !== 'Transfer')
       .forEach(t => { map[t.category] = (map[t.category] || 0) + Math.abs(t.amount); });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [filteredTransactions, cutoff]);
@@ -70,8 +70,8 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
   // ── Monthly trend ──────────────────────────────────────────────────────────
   const trendData = useMemo(() => last.map(({ m, label }) => ({
     label,
-    spend:  filteredTransactions.filter(t => t.type === 'expense' && t.date.startsWith(m)).reduce((s, t) => s + Math.abs(t.amount), 0),
-    income: filteredTransactions.filter(t => t.type === 'income'  && t.date.startsWith(m)).reduce((s, t) => s + t.amount, 0),
+    spend:  filteredTransactions.filter(t => t.type === 'expense' && t.date.startsWith(m) && t.category !== 'Transfer').reduce((s, t) => s + Math.abs(t.amount), 0),
+    income: filteredTransactions.filter(t => t.type === 'income'  && t.date.startsWith(m) && t.category !== 'Transfer').reduce((s, t) => s + t.amount, 0),
   })), [filteredTransactions, last]);
 
   const n          = trendData.length || 1;

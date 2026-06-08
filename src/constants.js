@@ -253,11 +253,14 @@ export function detectAndMarkTransferPairs(transactions) {
       const daysDiff = Math.abs(
         new Date(txs[i].date + 'T00:00:00') - new Date(txs[j].date + 'T00:00:00')
       ) / 86400000;
-      if (daysDiff > 3) continue;
-      txs[i].category = 'Transfer';
+      if (daysDiff > 4) continue;
+      const pairId = uid();
+      txs[i].category      = 'Transfer';
       txs[i]._transferPair = true;
-      txs[j].category = 'Transfer';
+      txs[i].transferPairId = pairId;
+      txs[j].category      = 'Transfer';
       txs[j]._transferPair = true;
+      txs[j].transferPairId = pairId;
       matched.add(i);
       matched.add(j);
       break;
@@ -334,7 +337,7 @@ export function checkBudgetAlerts(budgets, transactions, month, warnAt = 80, ale
   if (!monthBudgets.length) return [];
   const spend = {};
   transactions
-    .filter(t => t.type === 'expense' && t.date.startsWith(month))
+    .filter(t => t.type === 'expense' && t.date.startsWith(month) && t.category !== 'Transfer')
     .forEach(t => { spend[t.category] = (spend[t.category] || 0) + Math.abs(t.amount); });
   const results = [];
   for (const b of monthBudgets) {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory, detectHeaderRow, shouldFlipImportAmounts } from '../constants.js';
+import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory, detectHeaderRow, shouldFlipImportAmounts, detectAndMarkTransferPairs } from '../constants.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 
 const CSV_PRESETS = {
@@ -301,7 +301,9 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
   const doImport  = () => {
     const toImport = skipDups ? rows.filter(r => !r._isDuplicate) : rows;
     const clean    = toImport.map(({ _csv, _isDuplicate, _memorized, ...r }) => r);
-    onImport(clean);
+    const combined = detectAndMarkTransferPairs([...(existingTxs || []), ...clean]);
+    const newIds   = new Set(clean.map(t => t.id));
+    onImport(combined.filter(t => newIds.has(t.id)));
   };
 
   if (step === 'upload') return (

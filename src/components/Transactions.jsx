@@ -410,7 +410,7 @@ export default function Transactions({ transactions, accounts, onAdd, onEdit, on
                   <tbody>
                     {paged.map(t => {
                       const isSplit    = t.splits?.length > 0;
-                      const isTransfer = t.category === 'Transfer';
+                      const isTransfer = t.category === 'Transfer' || !!t.transferPairId;
                       const isExpanded = expandedSplit.has(t.id);
                       return (
                         <Fragment key={t.id}>

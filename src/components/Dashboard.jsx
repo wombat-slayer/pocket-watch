@@ -26,8 +26,8 @@ export default function Dashboard({
 
   // ── Month data ────────────────────────────────────────────────────────────
   const monthTxs      = useMemo(() => transactions.filter(t => t.date.startsWith(selMonth) && t.type !== 'adjustment'), [transactions, selMonth]);
-  const monthExpenses = useMemo(() => monthTxs.filter(t => t.type === 'expense'), [monthTxs]);
-  const monthIncome   = useMemo(() => monthTxs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0), [monthTxs]);
+  const monthExpenses = useMemo(() => monthTxs.filter(t => t.type === 'expense' && t.category !== 'Transfer'), [monthTxs]);
+  const monthIncome   = useMemo(() => monthTxs.filter(t => t.type === 'income' && t.category !== 'Transfer').reduce((s,t) => s + t.amount, 0), [monthTxs]);
   const monthSpend    = useMemo(() => monthExpenses.reduce((s,t) => s + Math.abs(t.amount), 0), [monthExpenses]);
   const monthSurplus  = monthIncome - monthSpend;
 

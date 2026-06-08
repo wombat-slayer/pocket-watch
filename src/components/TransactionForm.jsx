@@ -186,15 +186,29 @@ export default function TransactionForm({ initial, accounts, onSave, onClose, us
         </div>
       )}
 
-      {/* Split toggle button */}
-      {form.type === 'expense' && (
-        <div>
+      {/* Transfer mark/unmark + split toggle */}
+      <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+        {form.type === 'expense' && (
           <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize:12 }}
             onClick={() => setSplitMode(m => !m)}>
             {splitMode ? '✕ Cancel Split' : '🔀 Split transaction'}
           </button>
-        </div>
-      )}
+        )}
+        <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:12, color:'var(--text-secondary)' }}>
+          <input
+            type="checkbox"
+            checked={form.category === 'Transfer'}
+            onChange={e => {
+              if (e.target.checked) {
+                set('category', 'Transfer');
+              } else {
+                setForm(f => ({ ...f, category: f.type === 'income' ? 'Income' : 'Other', transferPairId: undefined }));
+              }
+            }}
+          />
+          ⇄ Transfer (exclude from spending)
+        </label>
+      </div>
 
       {/* Split rows */}
       {splitMode && (

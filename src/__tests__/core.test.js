@@ -38,6 +38,7 @@ import {
   computeMortgagePI,
   fmt,
   shouldFlipImportAmounts,
+  checkBudgetAlerts,
 } from '../constants.js';
 
 import { parsePayStub, toMonthly, calcEffectiveTaxRate } from '../utils/parsePayStub.js';
@@ -349,10 +350,10 @@ describe('detectAndMarkTransferPairs()', () => {
     expect(result[1].category).toBe('Other');
   });
 
-  it('does not match when dates are more than 3 days apart', () => {
+  it('does not match when dates are more than 4 days apart', () => {
     const txs = [
       { id: '1', date: '2025-01-01', amount: -300, account: 'checking', category: 'Other' },
-      { id: '2', date: '2025-01-05', amount:  300, account: 'credit',   category: 'Other' },
+      { id: '2', date: '2025-01-06', amount:  300, account: 'credit',   category: 'Other' },
     ];
     const result = detectAndMarkTransferPairs(txs);
     expect(result[0].category).toBe('Other');
@@ -1024,6 +1025,86 @@ describe('Receipt filename format', () => {
   it('jpg extension is preserved', () => {
     const filename = `tx1-${Date.now()}.jpg`;
     expect(filename.endsWith('.jpg')).toBe(true);
+  });
+});
+
+// ─── detectAndMarkTransferPairs v2 (4-day window + transferPairId) ───────────
+describe('detectAndMarkTransferPairs — 4-day window + transferPairId', () => {
+  const acct = (id, date, amount) => ({
+    id: `tx-${id}`, date, amount, account: `acct-${id % 2}`, category: 'Food & Dining', type: amount >= 0 ? 'income' : 'expense',
+  });
+
+  it('matches pairs within 3 days (existing behaviour)', () => {
+    const txs = [acct(0, '2026-06-01', -100), acct(1, '2026-06-04', 100)];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].category).toBe('Transfer');
+    expect(result[1].category).toBe('Transfer');
+  });
+
+  it('matches pairs exactly 4 days apart (new behaviour)', () => {
+    const txs = [acct(0, '2026-06-01', -100), acct(1, '2026-06-05', 100)];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].category).toBe('Transfer');
+    expect(result[1].category).toBe('Transfer');
+  });
+
+  it('does NOT match pairs 5 days apart', () => {
+    const txs = [acct(0, '2026-06-01', -100), acct(1, '2026-06-06', 100)];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].category).toBe('Food & Dining');
+    expect(result[1].category).toBe('Food & Dining');
+  });
+
+  it('assigns the same transferPairId to both members of a pair', () => {
+    const txs = [acct(0, '2026-06-01', -50), acct(1, '2026-06-01', 50)];
+    const result = detectAndMarkTransferPairs(txs);
+    expect(result[0].transferPairId).toBeTruthy();
+    expect(result[0].transferPairId).toBe(result[1].transferPairId);
+  });
+
+  it('assigns distinct transferPairIds to different pairs', () => {
+    const txs = [
+      acct(0, '2026-06-01', -50), acct(1, '2026-06-01', 50),
+      { id: 'tx-a', date: '2026-06-10', amount: -200, account: 'acct-2', category: 'Food & Dining', type: 'expense' },
+      { id: 'tx-b', date: '2026-06-10', amount:  200, account: 'acct-3', category: 'Food & Dining', type: 'income' },
+    ];
+    const result = detectAndMarkTransferPairs(txs);
+    const pairId0 = result.find(t => t.id === 'tx-0')?.transferPairId;
+    const pairIdA = result.find(t => t.id === 'tx-a')?.transferPairId;
+    expect(pairId0).toBeTruthy();
+    expect(pairIdA).toBeTruthy();
+    expect(pairId0).not.toBe(pairIdA);
+  });
+
+  it('does not mutate the input array', () => {
+    const txs = [acct(0, '2026-06-01', -100), acct(1, '2026-06-01', 100)];
+    const origCat = txs[0].category;
+    detectAndMarkTransferPairs(txs);
+    expect(txs[0].category).toBe(origCat);
+  });
+});
+
+// ─── checkBudgetAlerts transfer filter ───────────────────────────────────────
+describe('checkBudgetAlerts — excludes Transfer category', () => {
+  const budgets = [{ month: '2026-06', category: 'Food & Dining', amount: 200 }];
+
+  it('does not count Transfer-category transactions toward budget spend', () => {
+    const txs = [
+      { type: 'expense', date: '2026-06-10', amount: -150, category: 'Food & Dining' },
+      { type: 'expense', date: '2026-06-10', amount: -300, category: 'Transfer' },
+    ];
+    const alerts = checkBudgetAlerts(budgets, txs, '2026-06', 80, 100);
+    expect(alerts).toHaveLength(0);
+  });
+
+  it('still alerts when non-transfer spend exceeds threshold', () => {
+    const txs = [
+      { type: 'expense', date: '2026-06-10', amount: -210, category: 'Food & Dining' },
+      { type: 'expense', date: '2026-06-10', amount: -500, category: 'Transfer' },
+    ];
+    const alerts = checkBudgetAlerts(budgets, txs, '2026-06', 80, 100);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].type).toBe('alert');
   });
 });
 
