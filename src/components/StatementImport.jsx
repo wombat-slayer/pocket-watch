@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { autoCategory, parseCSVLine, parseAmount, uid, sanitizeText, safeDate } from '../constants.js';
+import { autoCategory, parseCSVLine, parseAmount, uid, sanitizeText, safeDate, shouldFlipImportAmounts } from '../constants.js';
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(n ?? 0);
 
@@ -102,6 +102,7 @@ export default function StatementImport({ account, existingTransactions, onImpor
   const [error,     setError]     = useState('');
   const [fileNames, setFileNames] = useState([]);
   const [processing,setProcessing]= useState(false);
+  const [flipSign,  setFlipSign]  = useState(() => shouldFlipImportAmounts(account.type));
   const fileRef = useRef(null);
 
   const acctTxs = existingTransactions.filter(t => t.account === account.id);
@@ -168,27 +169,32 @@ export default function StatementImport({ account, existingTransactions, onImpor
     setSelected(selected.size === nonDupIds.length ? new Set() : new Set(nonDupIds));
 
   // ── Commit ────────────────────────────────────────────────────────────────
+  const effectiveAmt = (r) => flipSign ? -r.amount : r.amount;
+
   const handleImport = () => {
     const toImport = rows
       .filter(r => selected.has(r.id))
-      .map(r => ({
-        id:          r.id,
-        date:        r.date,
-        description: r.description,
-        amount:      r.amount,
-        category:    r.category,
-        account:     account.id,
-        type:        r.amount >= 0 ? 'income' : 'expense',
-        notes:       '',
-        tags:        [],
-        cleared:     false,
-      }));
+      .map(r => {
+        const amt = effectiveAmt(r);
+        return {
+          id:          r.id,
+          date:        r.date,
+          description: r.description,
+          amount:      amt,
+          category:    r.category,
+          account:     account.id,
+          type:        amt >= 0 ? 'income' : 'expense',
+          notes:       '',
+          tags:        [],
+          cleared:     false,
+        };
+      });
     onImport(toImport);
     setStep('done');
   };
 
   const selectedRows = rows.filter(r => selected.has(r.id));
-  const importTotal  = selectedRows.reduce((s, r) => s + r.amount, 0);
+  const importTotal  = selectedRows.reduce((s, r) => s + effectiveAmt(r), 0);
   const newBalance   = account.balance + importTotal;
   const dupCount     = rows.filter(r => r.isDup).length;
 
@@ -282,7 +288,13 @@ export default function StatementImport({ account, existingTransactions, onImpor
             </div>
           )}
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={() => { setStep('upload'); setFileNames([]); setError(''); }}>← Different files</button>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:12, color:'var(--text-secondary)' }}>
+            <input type="checkbox" checked={flipSign} onChange={e => setFlipSign(e.target.checked)} />
+            Flip signs
+          </label>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setStep('upload'); setFileNames([]); setError(''); }}>← Different files</button>
+        </div>
       </div>
 
       {/* Table */}
@@ -321,8 +333,8 @@ export default function StatementImport({ account, existingTransactions, onImpor
                   {r.isDup && <span style={{ marginLeft:6, fontSize:10, color:'var(--amber)', background:'#f59e0b22', borderRadius:4, padding:'1px 5px' }}>DUP</span>}
                 </td>
                 <td style={{ padding:'6px 10px', color:'var(--text-secondary)', borderBottom:'1px solid #1e273630' }}>{r.category}</td>
-                <td style={{ padding:'6px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #1e273630', whiteSpace:'nowrap', color: r.amount >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  {r.amount >= 0 ? '+' : ''}{fmt(r.amount)}
+                <td style={{ padding:'6px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #1e273630', whiteSpace:'nowrap', color: effectiveAmt(r) >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                  {effectiveAmt(r) >= 0 ? '+' : ''}{fmt(effectiveAmt(r))}
                 </td>
               </tr>
             ))}

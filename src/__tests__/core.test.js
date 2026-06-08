@@ -37,6 +37,7 @@ import {
   checkBudgetAlerts,
   computeMortgagePI,
   fmt,
+  shouldFlipImportAmounts,
 } from '../constants.js';
 
 import { parsePayStub, toMonthly, calcEffectiveTaxRate } from '../utils/parsePayStub.js';
@@ -1023,6 +1024,34 @@ describe('Receipt filename format', () => {
   it('jpg extension is preserved', () => {
     const filename = `tx1-${Date.now()}.jpg`;
     expect(filename.endsWith('.jpg')).toBe(true);
+  });
+});
+
+// ─── shouldFlipImportAmounts ─────────────────────────────────────────────────
+describe('shouldFlipImportAmounts()', () => {
+  it('returns true for credit account (AMEX charges are positive)', () => {
+    expect(shouldFlipImportAmounts('credit')).toBe(true);
+  });
+
+  it('returns true for loan account', () => {
+    expect(shouldFlipImportAmounts('loan')).toBe(true);
+  });
+
+  it('returns false for checking account', () => {
+    expect(shouldFlipImportAmounts('checking')).toBe(false);
+  });
+
+  it('returns false for savings account', () => {
+    expect(shouldFlipImportAmounts('savings')).toBe(false);
+  });
+
+  it('returns false for investment account', () => {
+    expect(shouldFlipImportAmounts('investment')).toBe(false);
+  });
+
+  it('returns false for unknown/undefined account type', () => {
+    expect(shouldFlipImportAmounts(undefined)).toBe(false);
+    expect(shouldFlipImportAmounts('bogus')).toBe(false);
   });
 });
 

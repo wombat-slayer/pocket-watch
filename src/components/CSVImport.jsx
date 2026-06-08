@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory, detectHeaderRow } from '../constants.js';
+import { getAllCategories, uid, fmt, fmtDate, parseCSVLine, parseAmount, autoCategory, detectHeaderRow, shouldFlipImportAmounts } from '../constants.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 
 const CSV_PRESETS = {
@@ -179,7 +179,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
       amtIdx    = col('amount', 'transaction amount', 'amount (usd)');
       creditIdx = col('credit');
       debitIdx  = col('debit');
-      flip      = false;
+      flip      = shouldFlipImportAmounts(accounts.find(a => a.id === accountId)?.type);
     } else {
       const p     = CSV_PRESETS[preset];
       const exact = (name) => name == null ? -1 : rawHeaders.findIndex(h => h.trim().toLowerCase() === name.toLowerCase());
@@ -205,7 +205,7 @@ export default function CSVImport({ accounts, existingTxs, onImport, onClose, us
         credit:      p && p.creditCol ? (rawHeaders.find(h => h.toLowerCase() === p.creditCol.toLowerCase())  || '') : '',
       });
       setAmtMode(p && p.debitCol ? 'debitcredit' : 'single');
-      setFlipSign(!!(p && p.flip));
+      setFlipSign(!!(p && p.flip) || shouldFlipImportAmounts(accounts.find(a => a.id === accountId)?.type));
       setStep('col-map');
       return null;
     }

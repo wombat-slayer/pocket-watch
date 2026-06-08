@@ -61,6 +61,7 @@ export const catIcon   = (n) => CATEGORIES.find(c => c.name === n)?.icon    ?? '
 export const acctColor = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.color ?? '#94a3b8';
 export const acctLabel = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.label ?? t;
 export const isDebtType= (t) => ACCOUNT_TYPES.find(a => a.value === t)?.isDebt ?? false;
+export const shouldFlipImportAmounts = (accountType) => isDebtType(accountType);
 export const acctEmoji = (t) => ({ checking:'🏦', savings:'💰', credit:'💳', investment:'📈', asset:'🏠', loan:'📋', other:'💼' }[t] ?? '💼');
 
 // ─── Formatting helpers ───────────────────────────────────────────────────────
