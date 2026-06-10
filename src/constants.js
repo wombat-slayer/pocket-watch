@@ -135,14 +135,18 @@ export function parseCSVLine(line) {
 }
 
 // Handles: 1234.56, -1234.56, (1234.56), $1,234.56, ($1,234.56)
+// Always returns a value rounded to 2 decimal places so float artifacts from
+// CSV data (e.g. '$29.990000001') never propagate into stored amounts or keys.
 export function parseAmount(str) {
-  if (!str) return NaN;
+  if (!str && str !== 0) return NaN;
   const s = String(str).trim();
+  if (s === '') return NaN;
   const neg = s.startsWith('-') || s.startsWith('(');
   const clean = s.replace(/[$\s,()\-]/g, '');
   const val = parseFloat(clean);
   if (isNaN(val)) return NaN;
-  return neg ? -Math.abs(val) : val;
+  const signed = neg ? -Math.abs(val) : val;
+  return Math.round(signed * 100) / 100;
 }
 
 // ─── Recurring transaction helpers ───────────────────────────────────────────
@@ -259,9 +263,10 @@ export function monthlyEquivalent(r) {
  */
 export function computeBalance(accountId, transactions, accountType) {
   if (accountType === 'investment' || accountType === 'asset') return null;
-  return transactions
+  const raw = transactions
     .filter(t => t.account === accountId && t.type !== 'adjustment')
     .reduce((s, t) => s + t.amount, 0);
+  return Math.round(raw * 100) / 100;
 }
 
 // ─── Dynamic category helpers ────────────────────────────────────────────

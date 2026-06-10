@@ -4,6 +4,42 @@ Items too small for a sprint ticket but worth tracking. Severity: Critical / Hig
 
 ---
 
+## Low
+
+### Reconcile hint misfires on debt accounts (M8 — cosmetic)
+
+**File:** `src/components/Accounts.jsx` — lines 720, 837, 639
+
+**Context:** `computeBalance` sums signed transaction amounts (charges are negative), while `a.balance` stores debt as a positive value (net worth = assets − debts). For any credit or loan account the two will always differ, so the amber "tx total differs — reconcile" hint fires permanently. No balance is ever wrong — the displayed balance is always `a.balance`, which is correct.
+
+**Fix direction:** Before showing the reconcile hint, skip debt accounts (`isDebtType(a.type)`) or apply the sign flip so the comparison uses the same convention.
+
+**Introduced:** present since reconcile hint was added; identified in v0.15.2 audit.
+
+---
+
+### `postMessage` send-side uses `'*'` origin (L12 — defense-in-depth)
+
+**File:** `src-tauri/src/lib.rs` — line 555 (popup-bridge script injected into the OAuth popup)
+
+**Context:** The injected script sends `postMessage({…, url}, '*')`. The payload contains only a flag and the Plaid OAuth redirect URL (non-secret). The receiver in `PlaidSync.jsx:169` validates the origin. The `'*'` on the send side is a defense-in-depth gap, not an exploitable leak.
+
+**Fix direction:** Restrict to `window.opener.location.origin` (or the known Tauri custom-protocol origin) on the send side.
+
+**Target:** v0.15.4
+
+---
+
+### Two divergent duplicate-detection engines (L1)
+
+**File:** `src/components/CSVImport.jsx:59-79` (`findDuplicates`) vs `src/constants.js` (`detectImportDuplicates`)
+
+**Context:** The Transactions-page generic CSV importer (`CSVImport.jsx`) uses a description token-overlap heuristic (60% overlap within 2 days). The per-account Statement importer (`StatementImport.jsx`) uses the date+amount keyed `detectImportDuplicates`. Users see different dedup behavior depending on which importer they open. The v0.15.2 prompt described the description matcher as removed, but it persists on the CSVImport path.
+
+**Fix direction:** Consolidate CSVImport.jsx onto `detectImportDuplicates`, or explicitly document the split (CSVImport has no account context so description overlap may be the right fallback there).
+
+---
+
 ## Medium
 
 ### Per-file flip in mixed OFX+CSV import batches
