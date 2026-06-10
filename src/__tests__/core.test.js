@@ -40,6 +40,7 @@ import {
   computeMortgagePI,
   fmt,
   shouldFlipImportAmounts,
+  detectImportDuplicates,
   checkBudgetAlerts,
 } from '../constants.js';
 
@@ -1261,5 +1262,56 @@ describe('migrateData v8 — receipts backfill', () => {
     const migrated = rawTxs.map(t => ({ receipts: [], ...t }));
     expect(migrated[0].receipts).toEqual([]);
     expect(migrated[1].receipts).toEqual([{ name:'b-1.pdf' }]);
+  });
+});
+
+// ─── detectImportDuplicates ──────────────────────────────────────────────────
+describe('detectImportDuplicates()', () => {
+  const existing = [
+    { id:'e1', date:'2026-01-15', amount:-42.50, account:'acct1', description:'Starbucks' },
+    { id:'e2', date:'2026-01-20', amount:-100.00, account:'acct1', description:'Whole Foods' },
+    { id:'e3', date:'2026-01-20', amount:-100.00, account:'acct2', description:'Other acct' },
+  ];
+
+  it('returns rows that match an existing tx by date and amount on the same account', () => {
+    const imported = [{ id:'i1', date:'2026-01-15', amount:-42.50, description:'STARBUCKS #123' }];
+    const dupes = detectImportDuplicates(imported, existing, 'acct1');
+    expect(dupes).toHaveLength(1);
+    expect(dupes[0].id).toBe('i1');
+  });
+
+  it('ignores matches on a different account', () => {
+    const imported = [{ id:'i1', date:'2026-01-20', amount:-100.00, description:'Whole Foods' }];
+    const dupes = detectImportDuplicates(imported, existing, 'acct2');
+    // acct2 only has e3 at that date/amount — still a match
+    expect(dupes).toHaveLength(1);
+  });
+
+  it('does not flag a row whose amount differs by more than a cent', () => {
+    const imported = [{ id:'i1', date:'2026-01-15', amount:-42.75, description:'Starbucks' }];
+    const dupes = detectImportDuplicates(imported, existing, 'acct1');
+    expect(dupes).toHaveLength(0);
+  });
+
+  it('does not flag a row with same amount but different date', () => {
+    const imported = [{ id:'i1', date:'2026-02-15', amount:-42.50, description:'Starbucks' }];
+    const dupes = detectImportDuplicates(imported, existing, 'acct1');
+    expect(dupes).toHaveLength(0);
+  });
+
+  it('returns empty array when no duplicates exist', () => {
+    const imported = [{ id:'i1', date:'2026-03-01', amount:-9.99, description:'Netflix' }];
+    const dupes = detectImportDuplicates(imported, existing, 'acct1');
+    expect(dupes).toHaveLength(0);
+  });
+
+  it('returns empty array for empty imported list', () => {
+    expect(detectImportDuplicates([], existing, 'acct1')).toHaveLength(0);
+  });
+
+  it('matches by date+amount regardless of description (unlike old isDuplicate)', () => {
+    const imported = [{ id:'i1', date:'2026-01-15', amount:-42.50, description:'COMPLETELY DIFFERENT DESCRIPTION' }];
+    const dupes = detectImportDuplicates(imported, existing, 'acct1');
+    expect(dupes).toHaveLength(1);
   });
 });

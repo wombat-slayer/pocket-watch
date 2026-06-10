@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { autoCategory, parseCSVLine, parseAmount, uid, sanitizeText, safeDate, shouldFlipImportAmounts } from '../constants.js';
+import { AlertTriangle } from 'lucide-react';
+import { autoCategory, parseCSVLine, parseAmount, uid, sanitizeText, safeDate, shouldFlipImportAmounts, detectImportDuplicates } from '../constants.js';
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(n ?? 0);
 
@@ -85,19 +86,11 @@ function parseStatementCSV(text) {
   return rows;
 }
 
-// ─── Duplicate check ──────────────────────────────────────────────────────────
-function isDuplicate(tx, existing) {
-  return existing.some(e =>
-    e.date === tx.date &&
-    Math.abs(e.amount - tx.amount) < 0.01 &&
-    e.description.toLowerCase().slice(0, 20) === tx.description.toLowerCase().slice(0, 20)
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StatementImport({ account, existingTransactions, onImport, onClose }) {
-  const [step,      setStep]      = useState('upload'); // upload | preview | done
+  const [step,      setStep]      = useState('upload'); // upload | dupes | preview | done
   const [rows,      setRows]      = useState([]);
+  const [dupes,     setDupes]     = useState([]);
   const [selected,  setSelected]  = useState(new Set());
   const [error,     setError]     = useState('');
   const [fileNames, setFileNames] = useState([]);
@@ -151,13 +144,17 @@ export default function StatementImport({ account, existingTransactions, onImpor
       ...r,
       id:       uid(),
       category: autoCategory(r.description, r.amount),
-      isDup:    isDuplicate(r, acctTxs),
     }));
 
-    setRows(annotated);
-    setSelected(new Set(annotated.filter(r => !r.isDup).map(r => r.id)));
+    const effectiveForDup = annotated.map(r => ({ ...r, amount: flipSign ? -r.amount : r.amount }));
+    const dupIds = new Set(detectImportDuplicates(effectiveForDup, existingTransactions, account.id).map(r => r.id));
+    const withDups = annotated.map(r => ({ ...r, isDup: dupIds.has(r.id) }));
+
+    setRows(withDups);
+    setDupes(withDups.filter(r => r.isDup));
+    setSelected(new Set(withDups.filter(r => !r.isDup).map(r => r.id)));
     if (skipped.length) setError(`⚠ Could not read ${skipped.length} file(s): ${skipped.join(', ')}`);
-    setStep('preview');
+    setStep(dupIds.size > 0 ? 'dupes' : 'preview');
   };
 
   // ── Selection helpers ─────────────────────────────────────────────────────
@@ -259,6 +256,49 @@ export default function StatementImport({ account, existingTransactions, onImpor
       </div>
     </div>
   );
+
+  // ── Dupes screen ─────────────────────────────────────────────────────────
+  if (step === 'dupes') {
+    const uniqueCount = rows.filter(r => !r.isDup).length;
+    return (
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{ display:'flex', gap:12, alignItems:'flex-start', background:'#f59e0b11', border:'1px solid #f59e0b44', borderRadius:10, padding:'14px 16px' }}>
+          <AlertTriangle size={20} style={{ color:'var(--amber)', flexShrink:0, marginTop:2 }} />
+          <div>
+            <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>
+              {dupes.length} likely duplicate{dupes.length !== 1 ? 's' : ''} found
+            </div>
+            <div style={{ fontSize:13, color:'var(--text-secondary)' }}>
+              {dupes.length} transaction{dupes.length !== 1 ? 's' : ''} in this file match{dupes.length === 1 ? 'es' : ''} existing transactions by date and amount. These were likely already imported.
+            </div>
+          </div>
+        </div>
+        <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid var(--bg-raised)', borderRadius:8 }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+            <tbody>
+              {dupes.map(r => (
+                <tr key={r.id}>
+                  <td style={{ padding:'6px 10px', color:'var(--text-secondary)', borderBottom:'1px solid #1e273630', whiteSpace:'nowrap' }}>{r.date}</td>
+                  <td style={{ padding:'6px 10px', color:'var(--text-primary)', borderBottom:'1px solid #1e273630', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.description}</td>
+                  <td style={{ padding:'6px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #1e273630', whiteSpace:'nowrap', color: effectiveAmt(r) >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    {effectiveAmt(r) >= 0 ? '+' : ''}{fmt(effectiveAmt(r))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+          <button className="btn btn-secondary" onClick={() => { setSelected(new Set(rows.map(r => r.id))); setStep('preview'); }}>
+            Import all {rows.length} anyway
+          </button>
+          <button className="btn btn-primary" onClick={() => setStep('preview')}>
+            Skip duplicates — import {uniqueCount} unique
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Preview screen ────────────────────────────────────────────────────────
   return (

@@ -62,6 +62,13 @@ export const acctColor = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.color ??
 export const acctLabel = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.label ?? t;
 export const isDebtType= (t) => ACCOUNT_TYPES.find(a => a.value === t)?.isDebt ?? false;
 export const shouldFlipImportAmounts = (accountType) => isDebtType(accountType);
+
+export function detectImportDuplicates(importedRows, existingTxs, accountId) {
+  const acctTxs = existingTxs.filter(t => t.account === accountId);
+  return importedRows.filter(row =>
+    acctTxs.some(e => e.date === row.date && Math.abs(e.amount - row.amount) < 0.01)
+  );
+}
 export const acctEmoji = (t) => ({ checking:'🏦', savings:'💰', credit:'💳', investment:'📈', asset:'🏠', loan:'📋', other:'💼' }[t] ?? '💼');
 
 // ─── Formatting helpers ───────────────────────────────────────────────────────
