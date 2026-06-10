@@ -104,13 +104,13 @@ fn set_allowed_data_dir(dir: String, state: State<DataDirState>) -> Result<(), S
     if depth < 1 {
         return Err("directory path must not be a filesystem root".to_string());
     }
-    *state.0.lock().unwrap() = p;
+    *state.0.lock().unwrap_or_else(|p| p.into_inner()) = p;
     Ok(())
 }
 
 #[tauri::command]
 fn load_data(path: String, state: State<DataDirState>) -> Result<String, String> {
-    let allowed = state.0.lock().unwrap().clone();
+    let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
     let resolved = resolve_data_path(&path, &allowed)?;
     fs::read_to_string(&resolved).map_err(|e| e.to_string())
 }
@@ -136,7 +136,22 @@ fn scrub_finnhub_from_json(raw: &str) -> String {
 }
 
 fn rotate_backups(main: &PathBuf) {
-    // Drop generation 7, then shift 6→7, 5→6, …, 1→2, main→1
+    if !main.exists() { return; }
+
+    // Write scrubbed backup first (to a .tmp), THEN rotate existing generations.
+    // This ordering means a failed write never leaves the rotation in a half-moved
+    // state and a failed rotation still preserves the new backup at its temp path.
+    let raw = match fs::read_to_string(main) {
+        Ok(s)  => s,
+        Err(e) => { eprintln!("[pocket-watch] backup read failed: {e}"); return; }
+    };
+    let tmp = backup_path(main, 1).with_extension("json.tmp");
+    if let Err(e) = fs::write(&tmp, scrub_finnhub_from_json(&raw)) {
+        eprintln!("[pocket-watch] backup write to .tmp failed: {e}");
+        return;
+    }
+
+    // Rotate: drop generation 7, shift 6→7, 5→6, …, 1→2.
     let _ = fs::remove_file(backup_path(main, 7));
     for n in (1..=6).rev() {
         let src = backup_path(main, n);
@@ -146,18 +161,10 @@ fn rotate_backups(main: &PathBuf) {
             }
         }
     }
-    // Write backup with Finnhub API key scrubbed so rotation copies never
-    // expose the key if the backup directory is shared or accidentally leaked.
-    if main.exists() {
-        match fs::read_to_string(main) {
-            Ok(raw) => {
-                let scrubbed = scrub_finnhub_from_json(&raw);
-                if let Err(e) = fs::write(backup_path(main, 1), scrubbed) {
-                    eprintln!("[pocket-watch] backup write to .backup.1.json failed: {e}");
-                }
-            }
-            Err(e) => eprintln!("[pocket-watch] backup read of main data failed: {e}"),
-        }
+
+    // Commit the new generation 1.
+    if let Err(e) = fs::rename(&tmp, backup_path(main, 1)) {
+        eprintln!("[pocket-watch] backup rename .tmp→.backup.1.json failed: {e}");
     }
 }
 
@@ -169,7 +176,7 @@ fn save_data(path: String, data: String, state: State<DataDirState>) -> Result<(
     if let Some(parent) = path_buf.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    let allowed = state.0.lock().unwrap().clone();
+    let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
     let resolved = resolve_data_path(&path, &allowed)?;
     rotate_backups(&resolved);
     // Atomic write: serialize to .tmp then rename
@@ -187,7 +194,7 @@ fn data_file_exists(path: String, state: State<DataDirState>) -> Result<bool, St
     if !parent.exists() {
         return Ok(false);
     }
-    let allowed = state.0.lock().unwrap().clone();
+    let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
     let canonical_parent = friendly_canonical(parent)?;
     let canonical_allowed = friendly_canonical(&allowed)
         .map_err(|_| "configured data directory cannot be resolved".to_string())?;
@@ -371,11 +378,12 @@ fn secret_delete(key: String) -> Result<(), String> {
 
 // ── Plaid helpers ────────────────────────────────────────────────────────────
 
-fn plaid_base_url(env: &str) -> String {
+fn plaid_base_url(env: &str) -> Result<String, String> {
     match env {
-        "production"  => "https://production.plaid.com".to_string(),
-        "development" => "https://development.plaid.com".to_string(),
-        _             => "https://sandbox.plaid.com".to_string(),
+        "production"  => Ok("https://production.plaid.com".to_string()),
+        "development" => Ok("https://development.plaid.com".to_string()),
+        "sandbox"     => Ok("https://sandbox.plaid.com".to_string()),
+        other         => Err(format!("unrecognized Plaid env: {other:?}; must be sandbox, development, or production")),
     }
 }
 
@@ -388,7 +396,7 @@ async fn plaid_create_link_token(
     redirect_uri: Option<String>,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let base = plaid_base_url(&env);
+    let base = plaid_base_url(&env)?;
     let mut payload = json!({
         "client_id": client_id,
         "secret":    secret,
@@ -431,7 +439,7 @@ async fn plaid_exchange_token(
     public_token: String,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let base = plaid_base_url(&env);
+    let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/item/public_token/exchange", base))
         .json(&json!({
@@ -464,7 +472,7 @@ async fn plaid_fetch_transactions(
     end_date:     String,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let base = plaid_base_url(&env);
+    let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/transactions/get", base))
         .json(&json!({
@@ -501,7 +509,7 @@ async fn plaid_fetch_accounts(
     access_token: String,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let base = plaid_base_url(&env);
+    let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/accounts/get", base))
         .json(&json!({
@@ -536,7 +544,7 @@ async fn plaid_sync_transactions(
     cursor:       Option<String>,
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let base = plaid_base_url(&env);
+    let base = plaid_base_url(&env)?;
     let mut payload = json!({
         "client_id":    client_id,
         "secret":       secret,
@@ -570,7 +578,7 @@ async fn plaid_remove_item(
     access_token: String,
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
-    let base = plaid_base_url(&env);
+    let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/item/remove", base))
         .json(&json!({

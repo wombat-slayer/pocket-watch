@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { ACCOUNT_TYPES, acctColor, acctLabel, acctEmoji, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent, sanitizeText, safeNum, CHART } from '../constants.js';
+import { ACCOUNT_TYPES, acctColor, acctLabel, isDebtType, fmt, uid, parseAmount, computeBalance, monthlyEquivalent, sanitizeText, safeNum, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { usePrivacy } from '../context/PrivacyContext.jsx';

@@ -32,7 +32,7 @@ Persistence chain:
 1. A `useEffect` in App.jsx watches all state slices and auto-saves with a **600ms debounce**.
 2. `src/dataLayer.js` remembers the user-chosen data-file path in a `config.json` Tauri store, then calls Rust commands via `invoke()`.
 3. `src-tauri/src/lib.rs` implements `load_data` / `save_data` / `data_file_exists` / `get_default_data_path`. Paths are validated (absolute, no `..`, must end in `.json`).
-4. On load, App.jsx runs `migrateData` (data model is versioned, currently v4) and writes a `.backup.json` alongside the data file.
+4. On load, App.jsx runs `migrateData` (data model is versioned, currently v10) and writes a `.backup.json` alongside the data file.
 
 Undo/redo is a 40-level snapshot stack in `useRef` covering transactions/accounts/budgets/goals.
 

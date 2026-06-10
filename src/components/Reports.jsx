@@ -377,11 +377,12 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
 
   // ── PDF export ─────────────────────────────────────────────────────────────
   const exportPDF = () => {
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const rangeLabel = months === null ? 'All Time' : `Last ${months} Months`;
     const generatedAt = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const rows = catTotals.slice(0, 12).map(([cat, amt]) => {
       const pct = avgSpend > 0 ? ((amt / (months ?? n)) / avgSpend * 100).toFixed(0) : 0;
-      return `<tr><td>${cat}</td><td style="text-align:right">${fmt(amt)}</td><td style="text-align:right">${fmt(amt / (months ?? n))}/mo</td><td style="text-align:right">${pct}%</td></tr>`;
+      return `<tr><td>${esc(cat)}</td><td style="text-align:right">${fmt(amt)}</td><td style="text-align:right">${fmt(amt / (months ?? n))}/mo</td><td style="text-align:right">${pct}%</td></tr>`;
     }).join('');
     const trendRows = trendData.map(r => {
       const net = r.income - r.spend;

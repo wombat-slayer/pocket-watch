@@ -107,6 +107,7 @@ export const download = (filename, content, type = 'text/plain') => {
 };
 
 // ─── Security helpers ─────────────────────────────────────────────────────────
+// Strips HTML tags only; does NOT decode entities (&amp; stays &amp;). Not a safety boundary.
 export const sanitizeText = (s, maxLen = 500) => String(s ?? '')
   .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '') // drop script/style elements incl. content
   .replace(/<[^>]*>/g, '')
@@ -274,7 +275,7 @@ export function getAllCategories(userCategories = []) {
  * Auto-detect credit-card-payment transfer pairs and silently mark both sides
  * as "Transfer". A pair matches when:
  *   - abs(amount) matches within $0.01
- *   - dates within 3 calendar days of each other
+ *   - dates within 4 calendar days of each other
  *   - different account IDs
  *   - neither side already has category "Transfer"
  * Returns a new transactions array; does not mutate the input.
@@ -378,7 +379,7 @@ export function checkBudgetAlerts(budgets, transactions, month, warnAt = 80, ale
   const spend = {};
   transactions
     .filter(t => t.type === 'expense' && t.date.startsWith(month) && t.category !== 'Transfer')
-    .forEach(t => { spend[t.category] = (spend[t.category] || 0) + Math.abs(t.amount); });
+    .forEach(t => { spend[t.category] = (spend[t.category] || 0) + (-t.amount); });
   const results = [];
   for (const b of monthBudgets) {
     if (!b.amount || b.amount <= 0) continue;
@@ -436,7 +437,7 @@ export function suggestBudgetsFromActuals(transactions, referenceMonths) {
     transactions
       .filter(t => t.type === 'expense' && t.date.startsWith(m))
       .forEach(t => {
-        totals[t.category] = (totals[t.category] || 0) + Math.abs(t.amount);
+        totals[t.category] = (totals[t.category] || 0) + (-t.amount);
       });
   });
   return Object.entries(totals)
