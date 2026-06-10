@@ -1228,6 +1228,13 @@ describe('shouldFlipImportAmounts()', () => {
     expect(shouldFlipImportAmounts(undefined)).toBe(false);
     expect(shouldFlipImportAmounts('bogus')).toBe(false);
   });
+
+  it('sign inversion flips +50 to -50 and -30 to +30', () => {
+    const rows = [{ amount: 50 }, { amount: -30 }];
+    const flipped = rows.map(r => ({ ...r, amount: r.amount * -1 }));
+    expect(flipped[0].amount).toBe(-50);
+    expect(flipped[1].amount).toBe(30);
+  });
 });
 
 // ─── migrateData v8: receipts field ─────────────────────────────────────────

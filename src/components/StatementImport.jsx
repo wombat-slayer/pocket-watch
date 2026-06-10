@@ -289,10 +289,17 @@ export default function StatementImport({ account, existingTransactions, onImpor
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:12, color:'var(--text-secondary)' }}>
-            <input type="checkbox" checked={flipSign} onChange={e => setFlipSign(e.target.checked)} />
-            Flip signs
-          </label>
+          <div>
+            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:12, color:'var(--text-secondary)' }}>
+              <input type="checkbox" checked={flipSign} onChange={e => setFlipSign(e.target.checked)} />
+              Invert signs (use for credit card CSVs)
+            </label>
+            {account.type === 'credit' && (
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
+                Chase, Citi, and most credit card CSV exports show charges as positive numbers.
+              </div>
+            )}
+          </div>
           <button className="btn btn-ghost btn-sm" onClick={() => { setStep('upload'); setFileNames([]); setError(''); }}>← Different files</button>
         </div>
       </div>
