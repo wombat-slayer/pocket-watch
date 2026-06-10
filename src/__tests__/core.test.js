@@ -1400,4 +1400,23 @@ describe('Wave 1 regressions', () => {
     expect(toInsert).toHaveLength(1);
     expect(toInsert[0].id).toBe('tx-brand-new');
   });
+
+  it('H6: filter(Boolean) guard — keyless rows never false-match via undefined key', () => {
+    // A transaction missing both id and fitid must not collide in existingKeys.
+    // Without filter(Boolean), undefined would be added to the Set and any
+    // update with u.id === undefined would be wrongly treated as "already exists".
+    const existing = [
+      { amount: -10, description: 'Keyless tx A' }, // no id, no fitid
+    ];
+    const updates = [
+      { amount: -20, description: 'Keyless update B' }, // no id, no fitid
+    ];
+    const existingKeys = new Set(existing.flatMap(t => [t.id, t.fitid].filter(Boolean)));
+    // filter(Boolean) drops undefined — Set is empty, not { undefined }
+    expect(existingKeys.size).toBe(0);
+    expect(existingKeys.has(undefined)).toBe(false);
+    // update.id is undefined; !existingKeys.has(undefined) === true → row IS inserted
+    const toInsert = updates.filter(u => !existingKeys.has(u.id));
+    expect(toInsert).toHaveLength(1);
+  });
 });

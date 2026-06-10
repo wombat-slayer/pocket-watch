@@ -139,6 +139,9 @@ export default function StatementImport({ account, existingTransactions, onImpor
     // Only auto-enable flip for CSV imports on debt accounts. Use a local variable so
     // autoCategory and dupe detection are consistent within this call (setFlipSign is
     // async and won't update flipSign until the next render).
+    // Known limitation: when a batch mixes OFX and CSV files, effectiveFlip falls back
+    // to flipSign and applies to ALL rows — including OFX rows that don't need it.
+    // Per-file-flip is tracked in BACKLOG.md as a Medium improvement.
     const effectiveFlip = anyOFX && !anyCSV ? false : flipSign;
     if (effectiveFlip !== flipSign) setFlipSign(effectiveFlip);
 

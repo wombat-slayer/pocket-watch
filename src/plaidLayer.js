@@ -199,6 +199,8 @@ export async function removeLinkedItem(itemId) {
  * Returns null for pending transactions (no transaction_id yet guaranteed).
  */
 export function mapPlaidTransaction(plaidTx, accountMap = {}) {
+  // Pending transactions are intentionally excluded here; they arrive in 'modified'
+  // when they post and are inserted at that point via the plaidModifyTxs upsert.
   if (plaidTx.pending) return null;
 
   // Plaid: positive = debit (money out). Pocket Watch stores SIGNED amounts
