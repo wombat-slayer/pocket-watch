@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { autoCategory, parseCSVLine, parseAmount, uid, sanitizeText, safeDate, shouldFlipImportAmounts, detectImportDuplicates } from '../constants.js';
 
@@ -89,14 +89,34 @@ function parseStatementCSV(text) {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StatementImport({ account, existingTransactions, onImport, onClose }) {
   const [step,      setStep]      = useState('upload'); // upload | dupes | preview | done
-  const [rows,      setRows]      = useState([]);
-  const [dupes,     setDupes]     = useState([]);
+  const [rows,      setRows]      = useState([]);       // base parsed rows (raw amounts, no isDup)
   const [selected,  setSelected]  = useState(new Set());
   const [error,     setError]     = useState('');
   const [fileNames, setFileNames] = useState([]);
   const [processing,setProcessing]= useState(false);
   const [flipSign,  setFlipSign]  = useState(() => shouldFlipImportAmounts(account.type));
   const fileRef = useRef(null);
+
+  // M2/M3: recompute dup pairs whenever rows or flipSign changes (memo keyed on both).
+  // Returns [{imported: row, existing: matchedTx}] surplus-only (one match consumed per pair).
+  const dupPairs = useMemo(() => {
+    if (!rows.length) return [];
+    const effective = rows.map(r => ({ ...r, amount: flipSign ? -r.amount : r.amount }));
+    return detectImportDuplicates(effective, existingTransactions, account.id);
+  }, [rows, flipSign, existingTransactions, account.id]);
+
+  const dupImportedIds = useMemo(() => new Set(dupPairs.map(p => p.imported.id)), [dupPairs]);
+
+  // M3: when dupImportedIds changes (flipSign toggle on preview), deselect newly-flagged dups.
+  useEffect(() => {
+    if (step === 'preview' || step === 'dupes') {
+      setSelected(prev => {
+        const next = new Set(prev);
+        dupImportedIds.forEach(id => next.delete(id));
+        return next;
+      });
+    }
+  }, [dupImportedIds]); // eslint-disable-line
 
   const acctTxs = existingTransactions.filter(t => t.account === account.id);
 
@@ -162,22 +182,22 @@ export default function StatementImport({ account, existingTransactions, onImpor
       category: autoCategory(r.description, effectiveFlip ? -r.amount : r.amount),
     }));
 
+    // Compute initial dupPairs synchronously (using effectiveFlip, same as the memo will use).
     const effectiveForDup = annotated.map(r => ({ ...r, amount: effectiveFlip ? -r.amount : r.amount }));
-    const dupIds = new Set(detectImportDuplicates(effectiveForDup, existingTransactions, account.id).map(r => r.id));
-    const withDups = annotated.map(r => ({ ...r, isDup: dupIds.has(r.id) }));
+    const initialDupPairs = detectImportDuplicates(effectiveForDup, existingTransactions, account.id);
+    const initialDupIds = new Set(initialDupPairs.map(p => p.imported.id));
 
-    setRows(withDups);
-    setDupes(withDups.filter(r => r.isDup));
-    setSelected(new Set(withDups.filter(r => !r.isDup).map(r => r.id)));
+    setRows(annotated); // store base rows (no isDup flag — memo derives dups dynamically)
+    setSelected(new Set(annotated.filter(r => !initialDupIds.has(r.id)).map(r => r.id)));
     if (skipped.length) setError(`⚠ Could not read ${skipped.length} file(s): ${skipped.join(', ')}`);
-    setStep(dupIds.size > 0 ? 'dupes' : 'preview');
+    setStep(initialDupIds.size > 0 ? 'dupes' : 'preview');
   };
 
   // ── Selection helpers ─────────────────────────────────────────────────────
   const toggleRow = (id) =>
     setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const nonDupIds = rows.filter(r => !r.isDup).map(r => r.id);
+  const nonDupIds = rows.filter(r => !dupImportedIds.has(r.id)).map(r => r.id);
   const toggleAll = () =>
     setSelected(selected.size === nonDupIds.length ? new Set() : new Set(nonDupIds));
 
@@ -209,7 +229,7 @@ export default function StatementImport({ account, existingTransactions, onImpor
   const selectedRows = rows.filter(r => selected.has(r.id));
   const importTotal  = selectedRows.reduce((s, r) => s + effectiveAmt(r), 0);
   const newBalance   = account.balance + importTotal;
-  const dupCount     = rows.filter(r => r.isDup).length;
+  const dupCount     = dupImportedIds.size;
 
   // ── Done screen ───────────────────────────────────────────────────────────
   if (step === 'done') return (
@@ -273,43 +293,60 @@ export default function StatementImport({ account, existingTransactions, onImpor
     </div>
   );
 
-  // ── Dupes screen ─────────────────────────────────────────────────────────
+  // ── Dupes screen (per-row selectable) ───────────────────────────────────
   if (step === 'dupes') {
-    const uniqueCount = rows.filter(r => !r.isDup).length;
+    const uniqueCount  = rows.length - dupPairs.length;
+    const includedDups = dupPairs.filter(p => selected.has(p.imported.id)).length;
     return (
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
         <div style={{ display:'flex', gap:12, alignItems:'flex-start', background:'#f59e0b11', border:'1px solid #f59e0b44', borderRadius:10, padding:'14px 16px' }}>
           <AlertTriangle size={20} style={{ color:'var(--amber)', flexShrink:0, marginTop:2 }} />
           <div>
             <div style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:4 }}>
-              {dupes.length} likely duplicate{dupes.length !== 1 ? 's' : ''} found
+              {dupPairs.length} likely duplicate{dupPairs.length !== 1 ? 's' : ''} found
             </div>
             <div style={{ fontSize:13, color:'var(--text-secondary)' }}>
-              {dupes.length} transaction{dupes.length !== 1 ? 's' : ''} in this file match{dupes.length === 1 ? 'es' : ''} existing transactions by date and amount. These were likely already imported.
+              These match existing transactions by date and amount. Uncheck to include them anyway.
             </div>
           </div>
         </div>
-        <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid var(--bg-raised)', borderRadius:8 }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-            <tbody>
-              {dupes.map(r => (
-                <tr key={r.id}>
-                  <td style={{ padding:'6px 10px', color:'var(--text-secondary)', borderBottom:'1px solid #1e273630', whiteSpace:'nowrap' }}>{r.date}</td>
-                  <td style={{ padding:'6px 10px', color:'var(--text-primary)', borderBottom:'1px solid #1e273630', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.description}</td>
-                  <td style={{ padding:'6px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #1e273630', whiteSpace:'nowrap', color: effectiveAmt(r) >= 0 ? 'var(--green)' : 'var(--red)' }}>
+        <div style={{ maxHeight:240, overflowY:'auto', border:'1px solid var(--bg-raised)', borderRadius:8 }}>
+          {dupPairs.map(({ imported: r, existing: ex }) => (
+            <label key={r.id} style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'10px 12px', borderBottom:'1px solid #1e273630', cursor:'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!selected.has(r.id)}
+                onChange={() => setSelected(s => { const n = new Set(s); n.has(r.id) ? n.add(r.id) : n.delete(r.id); return n; })}
+                style={{ marginTop:2, flexShrink:0 }}
+              />
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', gap:8, fontSize:12, color:'var(--text-primary)' }}>
+                  <span style={{ color:'var(--text-secondary)', whiteSpace:'nowrap' }}>{r.date}</span>
+                  <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.description}</span>
+                  <span style={{ marginLeft:'auto', fontWeight:600, whiteSpace:'nowrap', color: effectiveAmt(r) >= 0 ? 'var(--green)' : 'var(--red)', flexShrink:0 }}>
                     {effectiveAmt(r) >= 0 ? '+' : ''}{fmt(effectiveAmt(r))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                </div>
+                {ex && (
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>
+                    Matches: {ex.date} · {ex.description} · {fmt(ex.amount)}
+                  </div>
+                )}
+              </div>
+            </label>
+          ))}
         </div>
-        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-          <button className="btn btn-secondary" onClick={() => { setSelected(new Set(rows.map(r => r.id))); setStep('preview'); }}>
-            Import all {rows.length} anyway
-          </button>
+        <div style={{ display:'flex', gap:8, justifyContent:'space-between', alignItems:'center' }}>
+          <div style={{ display:'flex', gap:6 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setSelected(s => { const n = new Set(s); dupPairs.forEach(p => n.delete(p.imported.id)); return n; })}>
+              Skip all
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setSelected(s => { const n = new Set(s); dupPairs.forEach(p => n.add(p.imported.id)); return n; })}>
+              Import all anyway
+            </button>
+          </div>
           <button className="btn btn-primary" onClick={() => setStep('preview')}>
-            Skip duplicates — import {uniqueCount} unique
+            Continue — import {uniqueCount + includedDups} of {rows.length}
           </button>
         </div>
       </div>
@@ -383,8 +420,8 @@ export default function StatementImport({ account, existingTransactions, onImpor
               <tr
                 key={r.id}
                 style={{
-                  background: r.isDup ? '#1a1400' : selected.has(r.id) ? '#0a150a' : 'transparent',
-                  opacity: r.isDup ? 0.55 : 1,
+                  background: dupImportedIds.has(r.id) ? '#1a1400' : selected.has(r.id) ? '#0a150a' : 'transparent',
+                  opacity: dupImportedIds.has(r.id) ? 0.55 : 1,
                 }}
               >
                 <td style={{ padding:'6px 10px', borderBottom:'1px solid #1e273630' }}>
@@ -393,7 +430,7 @@ export default function StatementImport({ account, existingTransactions, onImpor
                 <td style={{ padding:'6px 10px', color:'var(--text-secondary)', borderBottom:'1px solid #1e273630', whiteSpace:'nowrap' }}>{r.date}</td>
                 <td style={{ padding:'6px 10px', color:'var(--text-primary)', borderBottom:'1px solid #1e273630', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {r.description}
-                  {r.isDup && <span style={{ marginLeft:6, fontSize:10, color:'var(--amber)', background:'#f59e0b22', borderRadius:4, padding:'1px 5px' }}>DUP</span>}
+                  {dupImportedIds.has(r.id) && <span style={{ marginLeft:6, fontSize:10, color:'var(--amber)', background:'#f59e0b22', borderRadius:4, padding:'1px 5px' }}>DUP</span>}
                 </td>
                 <td style={{ padding:'6px 10px', color:'var(--text-secondary)', borderBottom:'1px solid #1e273630' }}>{r.category}</td>
                 <td style={{ padding:'6px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #1e273630', whiteSpace:'nowrap', color: effectiveAmt(r) >= 0 ? 'var(--green)' : 'var(--red)' }}>

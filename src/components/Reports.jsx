@@ -142,7 +142,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
     if (allTxMonths.length > 0) {
       // Build net flow per month from transactions
       const netFlowByMonth = {};
-      transactions.forEach(t => {
+      transactions.filter(t => t.type !== 'adjustment').forEach(t => {
         const mo = t.date.slice(0, 7);
         netFlowByMonth[mo] = (netFlowByMonth[mo] || 0) + t.amount;
       });

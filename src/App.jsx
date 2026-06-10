@@ -15,6 +15,7 @@ import {
   promptNewDataFile, promptOpenDataFile,
 } from './dataLayer.js';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 import Business       from './components/Business.jsx';
 import Dashboard      from './components/Dashboard.jsx';
@@ -328,6 +329,23 @@ export default function App() {
     }, 600);
     return () => clearTimeout(saveTimer.current);
   }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingDone, dataPath, appStatus]);
+
+  // ── Graceful quit flush (L7) ──────────────────────────────────────────────
+  // When the tray "Quit" item is clicked, Rust emits pw:before-quit. We cancel
+  // the debounce timer, flush synchronously, then call confirm_quit so Rust
+  // can exit. A 2-second fallback in Rust ensures exit even if this fails.
+  useEffect(() => {
+    if (appStatus !== 'ready' || !dataPath) return;
+    let unlisten;
+    listen('pw:before-quit', async () => {
+      clearTimeout(saveTimer.current);
+      try {
+        await saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 });
+      } catch (_) { /* non-fatal — exit regardless */ }
+      await invoke('confirm_quit').catch(() => {});
+    }).then(fn => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, [appStatus, dataPath, transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingDone]);
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {

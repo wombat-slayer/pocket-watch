@@ -20,6 +20,26 @@ Items too small for a sprint ticket but worth tracking. Severity: Critical / Hig
 
 ---
 
+### save_receipt parent-dir canonicalization (H4 optional hardening)
+
+**File:** `src-tauri/src/lib.rs` — `save_receipt`
+
+**Context:** `save_receipt` can't canonicalize the full path because the file doesn't exist yet. It relies on the extension allowlist + filename traversal check + DataDirState scope check. This is acceptable for now.
+
+**Optional hardening:** After `receipts_dir` is created via `fs::create_dir_all`, canonicalize the receipts dir itself and verify the joined path's parent equals it. Catches any traversal the filename validator might miss without requiring the file to exist first.
+
+```rust
+let dir = receipts_dir(&allowed);
+fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+let canonical_dir = friendly_canonical(&dir)?;
+let full_path = dir.join(&filename);
+if full_path.parent().map(|p| friendly_canonical(p).ok()).flatten() != Some(canonical_dir) {
+    return Err("Receipt path resolves outside receipts directory".to_string());
+}
+```
+
+---
+
 ### Plaid cursor atomicity (H2)
 
 **File:** `src/components/PlaidSync.jsx` — `syncItem`

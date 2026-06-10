@@ -63,11 +63,28 @@ export const acctLabel = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.label ??
 export const isDebtType= (t) => ACCOUNT_TYPES.find(a => a.value === t)?.isDebt ?? false;
 export const shouldFlipImportAmounts = (accountType) => isDebtType(accountType);
 
+// Returns [{imported, existing}] pairs — only the surplus duplicates (M2a).
+// If the import contains 2 rows with the same date+amount and only 1 existing
+// match exists, only the first imported row is flagged; the second is allowed through.
 export function detectImportDuplicates(importedRows, existingTxs, accountId) {
   const acctTxs = existingTxs.filter(t => t.account === accountId);
-  return importedRows.filter(row =>
-    acctTxs.some(e => e.date === row.date && Math.abs(e.amount - row.amount) < 0.01)
-  );
+  const existingByKey = {};
+  acctTxs.forEach(e => {
+    const key = `${e.date}|${e.amount.toFixed(2)}`;
+    (existingByKey[key] ??= []).push(e);
+  });
+  const usedCount = {};
+  const result = [];
+  importedRows.forEach(row => {
+    const key = `${row.date}|${row.amount.toFixed(2)}`;
+    const used = usedCount[key] ?? 0;
+    const matches = existingByKey[key];
+    if (matches && used < matches.length) {
+      result.push({ imported: row, existing: matches[used] });
+      usedCount[key] = used + 1;
+    }
+  });
+  return result;
 }
 export const acctEmoji = (t) => ({ checking:'🏦', savings:'💰', credit:'💳', investment:'📈', asset:'🏠', loan:'📋', other:'💼' }[t] ?? '💼');
 
@@ -139,10 +156,20 @@ export const FREQUENCIES = [
 export function getNextRecurDate(dateStr, frequency) {
   const d = new Date(dateStr + 'T00:00:00');
   switch (frequency) {
-    case 'weekly':    d.setDate(d.getDate() + 7);          break;
-    case 'biweekly':  d.setDate(d.getDate() + 14);         break;
-    case 'monthly':   d.setMonth(d.getMonth() + 1);        break;
-    case 'quarterly': d.setMonth(d.getMonth() + 3);        break;
+    case 'weekly':    d.setDate(d.getDate() + 7);  break;
+    case 'biweekly':  d.setDate(d.getDate() + 14); break;
+    case 'monthly':
+    case 'quarterly': {
+      // setMonth(+N) on a month-end date (e.g. Jan 31) overflows to Mar 2/3.
+      // Clamp to the last valid day of the target month instead.
+      const months = frequency === 'monthly' ? 1 : 3;
+      const origDay = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + months);
+      const maxDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(origDay, maxDay));
+      break;
+    }
     case 'yearly':    d.setFullYear(d.getFullYear() + 1);  break;
     default: break;
   }
@@ -153,21 +180,25 @@ export const freqLabel = (v) => FREQUENCIES.find(f => f.value === v)?.label ?? v
 
 // Auto-categorize by merchant keyword matching
 export function autoCategory(desc, amount) {
-  const d = desc.replace(/^aplpay\s+/i, '').toLowerCase();
+  const d = (desc ?? '').replace(/^aplpay\s*/i, '').toLowerCase();
   if (/mobile payment|online payment|autopay|payment - thank you|payment thank you|payment to [\w\s]* card ending|payment to chase|payment to amex/i.test(d)) return 'Transfer';
   if (amount > 0) return 'Income';
-  if (/rent|mortgage|hoa|apartment|condo|lease/i.test(d))                              return 'Housing';
   if (/grocery|safeway|whole foods|trader joe|kroger|publix|aldi|wegmans|instacart|buc-ee|buc ee|365 market|five star food|canteen vend/i.test(d)) return 'Food & Dining';
   if (/restaurant|cafe|pizza|burger|sushi|taco|chipotle|mcdonald|starbucks|dunkin|doordash|grubhub|uber eats|chick-fil|panera|subway|domino|public hou|panca|ihop|waffle house|cracker barrel/i.test(d)) return 'Food & Dining';
+  // Insurance before Transportation so GEICO/State Farm/etc. land in Insurance not Transportation.
+  if (/liberty mutual|state farm|allstate|geico|progressive|safeco|nationwide|farmers|usaa|aaa insurance|travelers ins|aflac|metlife|cigna|aetna|humana|anthem|blue cross|blue shield|bwi aviation|skywatch/i.test(d)) return 'Insurance';
   if (/shell|chevron|\bbp\b|exxon|mobil|sunoco|circle k|speedway|caseys|casey's general|gas station/i.test(d)) return 'Transportation';
+  // 'enterprise rent' before Housing so Enterprise Rent-A-Car → Transportation not Housing.
   if (/uber|lyft|parking|metro|transit|mta |bart |fare|toll|zipcar|enterprise rent/i.test(d)) return 'Transportation';
-  if (/auto |car insurance|geico|state farm|allstate|progressive|jiffy lube|oil change/i.test(d)) return 'Transportation';
+  if (/auto |car insurance|jiffy lube|oil change/i.test(d)) return 'Transportation';
   if (/netflix|hulu|disney|spotify|youtube premium|youtubepremi|amazon prime|hbo|apple tv|peacock|paramount|crunchyroll/i.test(d)) return 'Subscriptions';
+  // Technology (aws/amazon web) before Shopping (amazon) so AWS → Technology not Shopping.
+  if (/adobe|microsoft|apple\.com|google one|github|namecheap|godaddy|cloudflare|aws |amazon web|digitalocean|heroku|vercel|netlify|zoom |slack |notion|figma|1password|lastpass|dropbox|icloud|antivirus|norton|mcafee/i.test(d)) return 'Technology';
   if (/amazon|target|walmart|wal-mart|costco|best buy|ebay|etsy|wayfair|home depot|lowe|ikea|marshalls|tj maxx|gamestop/i.test(d)) return 'Shopping';
   if (/electric|water bill|internet|comcast|xfinity|at&t|verizon|t-mobile|utility|pg&e|con ed|spectrum/i.test(d)) return 'Utilities';
   if (/pharmacy|cvs|walgreens|rite aid|doctor|hospital|urgent care|health|dental|vision|optometrist|therapy/i.test(d)) return 'Healthcare';
-  if (/liberty mutual|state farm|allstate|geico|progressive|safeco|nationwide|farmers|usaa|aaa insurance|travelers ins|aflac|metlife|cigna|aetna|humana|anthem|blue cross|blue shield|bwi aviation|skywatch/i.test(d)) return 'Insurance';
-  if (/adobe|microsoft|apple\.com|google one|github|namecheap|godaddy|cloudflare|aws |amazon web|digitalocean|heroku|vercel|netlify|zoom |slack |notion|figma|1password|lastpass|dropbox|icloud|antivirus|norton|mcafee/i.test(d)) return 'Technology';
+  // \brent\b anchored so 'Monthly Rent' → Housing but 'Enterprise Rent-A-Car' doesn't (caught above).
+  if (/\brent\b|mortgage|hoa|apartment|condo|lease/i.test(d))                           return 'Housing';
   if (/gym|planet fitness|la fitness|24 hour|crossfit|peloton|movie|amc |regal |concert|ticketmaster|bar |club |bowling|ryman auditor|ryman auditorium/i.test(d)) return 'Entertainment';
   if (/hotel|airbnb|vrbo|flight|airline|united|delta|american air|southwest|spirit|expedia|booking.com|kayak/i.test(d)) return 'Travel';
   if (/payroll|direct deposit|salary|paycheck|employer|freelance|consulting|client payment/i.test(d)) return 'Income';

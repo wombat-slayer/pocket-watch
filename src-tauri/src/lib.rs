@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{Manager, State};
+use tauri::{Manager, State, Emitter};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -121,6 +121,20 @@ fn backup_path(main: &PathBuf, n: u32) -> PathBuf {
     parent.join(format!("{}.backup.{}.json", stem, n))
 }
 
+// Remove apiKeys.finnhub from a JSON string before writing to a backup file.
+// Returns the scrubbed JSON, or the original if parsing fails.
+fn scrub_finnhub_from_json(raw: &str) -> String {
+    if let Ok(mut v) = serde_json::from_str::<Value>(raw) {
+        if let Some(keys) = v.get_mut("apiKeys").and_then(|k| k.as_object_mut()) {
+            keys.remove("finnhub");
+        }
+        if let Ok(out) = serde_json::to_string(&v) {
+            return out;
+        }
+    }
+    raw.to_string()
+}
+
 fn rotate_backups(main: &PathBuf) {
     // Drop generation 7, then shift 6→7, 5→6, …, 1→2, main→1
     let _ = fs::remove_file(backup_path(main, 7));
@@ -132,9 +146,17 @@ fn rotate_backups(main: &PathBuf) {
             }
         }
     }
+    // Write backup with Finnhub API key scrubbed so rotation copies never
+    // expose the key if the backup directory is shared or accidentally leaked.
     if main.exists() {
-        if let Err(e) = fs::copy(main, backup_path(main, 1)) {
-            eprintln!("[pocket-watch] backup copy to .backup.1.json failed: {e}");
+        match fs::read_to_string(main) {
+            Ok(raw) => {
+                let scrubbed = scrub_finnhub_from_json(&raw);
+                if let Err(e) = fs::write(backup_path(main, 1), scrubbed) {
+                    eprintln!("[pocket-watch] backup write to .backup.1.json failed: {e}");
+                }
+            }
+            Err(e) => eprintln!("[pocket-watch] backup read of main data failed: {e}"),
         }
     }
 }
@@ -261,6 +283,16 @@ async fn open_receipt(data_path: String, filename: String, app: tauri::AppHandle
     app.opener()
         .open_path(canonical.to_str().ok_or_else(|| "Invalid path encoding".to_string())?, None::<&str>)
         .map_err(|e| e.to_string())
+}
+
+// ── Graceful quit ────────────────────────────────────────────────────────────
+//
+// Frontend emits this after flushing the debounced save when the tray
+// "Quit" item is clicked (L7). The 2-second fallback thread in the tray
+// handler ensures exit even if the frontend is unresponsive.
+#[tauri::command]
+fn confirm_quit(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 // ── OS credential manager (encrypted secret storage) ────────────────────────
@@ -625,7 +657,15 @@ pub fn run() {
                         }
                     }
                     "quit" => {
-                        app.exit(0);
+                        // Ask the frontend to flush any pending debounced save, then
+                        // call confirm_quit. A 2s fallback forces exit if the frontend
+                        // is unresponsive.
+                        let app2 = app.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            app2.exit(0);
+                        });
+                        let _ = app.emit("pw:before-quit", ());
                     }
                     _ => {}
                 })
@@ -670,6 +710,7 @@ pub fn run() {
             save_receipt,
             delete_receipt,
             open_receipt,
+            confirm_quit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

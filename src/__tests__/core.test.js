@@ -78,8 +78,32 @@ describe('getNextRecurDate()', () => {
   });
 
   it('monthly increments month', () => {
-    expect(getNextRecurDate('2025-01-31', 'monthly')).toBe('2025-03-03'); // JS Date overflow
+    expect(getNextRecurDate('2025-01-31', 'monthly')).toBe('2025-02-28'); // clamped to last day of Feb
     expect(getNextRecurDate('2025-01-15', 'monthly')).toBe('2025-02-15');
+  });
+
+  // M9 regression: month-end overflow must clamp, never spill into the next month
+  it('M9: Jan 31 + 1 month clamps to Feb 28 (non-leap year)', () => {
+    expect(getNextRecurDate('2025-01-31', 'monthly')).toBe('2025-02-28');
+  });
+
+  it('M9: Jan 31 + 1 month clamps to Feb 29 in a leap year', () => {
+    expect(getNextRecurDate('2024-01-31', 'monthly')).toBe('2024-02-29');
+  });
+
+  it('M9: Feb 28 + 1 month → Mar 28 (not Mar 31 — respects original day)', () => {
+    expect(getNextRecurDate('2025-02-28', 'monthly')).toBe('2025-03-28');
+  });
+
+  it('M9: Mar 31 + 3 months (quarterly) clamps to Jun 30', () => {
+    expect(getNextRecurDate('2025-03-31', 'quarterly')).toBe('2025-06-30');
+  });
+
+  it('M9: chaining Jan 31 → Feb 28 → Mar 28 (no spill accumulation)', () => {
+    const step1 = getNextRecurDate('2025-01-31', 'monthly'); // → Feb 28
+    const step2 = getNextRecurDate(step1, 'monthly');        // → Mar 28
+    expect(step1).toBe('2025-02-28');
+    expect(step2).toBe('2025-03-28'); // must not be Mar 31 or Apr 3
   });
 
   it('quarterly adds 3 months', () => {
@@ -211,6 +235,49 @@ describe('autoCategory()', () => {
 
   it('Chase credit card payment with positive amount (refund) → Transfer before Income check', () => {
     expect(autoCategory('Payment to Chase card ending in 1234', 5959.01)).toBe('Transfer');
+  });
+
+  // M6 regressions: ordering fixes (Insurance before Transportation, Technology before Shopping)
+  it('M6: GEICO → Insurance (not Transportation)', () => {
+    expect(autoCategory('GEICO AUTO INSURANCE', -120)).toBe('Insurance');
+  });
+
+  it('M6: State Farm → Insurance (not Transportation)', () => {
+    expect(autoCategory('STATE FARM INS DRAFT', -85)).toBe('Insurance');
+  });
+
+  it('M6: Progressive Insurance → Insurance', () => {
+    expect(autoCategory('PROGRESSIVE INSURANCE', -95)).toBe('Insurance');
+  });
+
+  it('M6: Allstate → Insurance', () => {
+    expect(autoCategory('ALLSTATE INSURANCE PMT', -200)).toBe('Insurance');
+  });
+
+  it('M6: Enterprise Rent-A-Car → Transportation (not Housing via rent)', () => {
+    expect(autoCategory('ENTERPRISE RENT-A-CAR', -150)).toBe('Transportation');
+  });
+
+  it('M6: Amazon Web Services → Technology (not Shopping via amazon)', () => {
+    expect(autoCategory('Amazon Web Services', -50)).toBe('Technology');
+  });
+
+  it('M6: AWS charge → Technology', () => {
+    expect(autoCategory('AWS charge aws.amazon.com', -120)).toBe('Technology');
+  });
+
+  // Null/undefined/empty guard
+  it('M6: null description does not throw', () => {
+    expect(() => autoCategory(null, -10)).not.toThrow();
+    expect(autoCategory(null, -10)).toBeTruthy();
+  });
+
+  it('M6: undefined description does not throw', () => {
+    expect(() => autoCategory(undefined, -10)).not.toThrow();
+  });
+
+  it('M6: empty string description falls back to Other for expenses', () => {
+    expect(autoCategory('', -10)).toBe('Other');
   });
 });
 
@@ -1283,6 +1350,7 @@ describe('migrateData v8 — receipts backfill', () => {
 });
 
 // ─── detectImportDuplicates ──────────────────────────────────────────────────
+// Returns [{imported, existing}] pairs — surplus-only (count-based) matching.
 describe('detectImportDuplicates()', () => {
   const existing = [
     { id:'e1', date:'2026-01-15', amount:-42.50, account:'acct1', description:'Starbucks' },
@@ -1290,46 +1358,72 @@ describe('detectImportDuplicates()', () => {
     { id:'e3', date:'2026-01-20', amount:-100.00, account:'acct2', description:'Other acct' },
   ];
 
-  it('returns rows that match an existing tx by date and amount on the same account', () => {
+  it('returns {imported, existing} pairs matching by date and amount on same account', () => {
     const imported = [{ id:'i1', date:'2026-01-15', amount:-42.50, description:'STARBUCKS #123' }];
-    const dupes = detectImportDuplicates(imported, existing, 'acct1');
-    expect(dupes).toHaveLength(1);
-    expect(dupes[0].id).toBe('i1');
+    const pairs = detectImportDuplicates(imported, existing, 'acct1');
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].imported.id).toBe('i1');
+    expect(pairs[0].existing.id).toBe('e1');
   });
 
   it('ignores matches on a different account', () => {
     const imported = [{ id:'i1', date:'2026-01-20', amount:-100.00, description:'Whole Foods' }];
-    const dupes = detectImportDuplicates(imported, existing, 'acct2');
-    // acct2 only has e3 at that date/amount — still a match
-    expect(dupes).toHaveLength(1);
+    const pairs = detectImportDuplicates(imported, existing, 'acct2');
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].existing.id).toBe('e3');
   });
 
   it('does not flag a row whose amount differs by more than a cent', () => {
     const imported = [{ id:'i1', date:'2026-01-15', amount:-42.75, description:'Starbucks' }];
-    const dupes = detectImportDuplicates(imported, existing, 'acct1');
-    expect(dupes).toHaveLength(0);
+    expect(detectImportDuplicates(imported, existing, 'acct1')).toHaveLength(0);
   });
 
   it('does not flag a row with same amount but different date', () => {
     const imported = [{ id:'i1', date:'2026-02-15', amount:-42.50, description:'Starbucks' }];
-    const dupes = detectImportDuplicates(imported, existing, 'acct1');
-    expect(dupes).toHaveLength(0);
+    expect(detectImportDuplicates(imported, existing, 'acct1')).toHaveLength(0);
   });
 
   it('returns empty array when no duplicates exist', () => {
     const imported = [{ id:'i1', date:'2026-03-01', amount:-9.99, description:'Netflix' }];
-    const dupes = detectImportDuplicates(imported, existing, 'acct1');
-    expect(dupes).toHaveLength(0);
+    expect(detectImportDuplicates(imported, existing, 'acct1')).toHaveLength(0);
   });
 
   it('returns empty array for empty imported list', () => {
     expect(detectImportDuplicates([], existing, 'acct1')).toHaveLength(0);
   });
 
-  it('matches by date+amount regardless of description (unlike old isDuplicate)', () => {
-    const imported = [{ id:'i1', date:'2026-01-15', amount:-42.50, description:'COMPLETELY DIFFERENT DESCRIPTION' }];
-    const dupes = detectImportDuplicates(imported, existing, 'acct1');
-    expect(dupes).toHaveLength(1);
+  it('matches by date+amount regardless of description', () => {
+    const imported = [{ id:'i1', date:'2026-01-15', amount:-42.50, description:'COMPLETELY DIFFERENT' }];
+    const pairs = detectImportDuplicates(imported, existing, 'acct1');
+    expect(pairs).toHaveLength(1);
+  });
+
+  // M2 surplus-only: importing 2 rows when only 1 exists → flag 1, not both
+  it('M2: flags only the surplus rows when import count exceeds existing count', () => {
+    const ex = [
+      { id:'e1', date:'2026-02-01', amount:-50.00, account:'acct1' },
+    ];
+    const imp = [
+      { id:'i1', date:'2026-02-01', amount:-50.00 },
+      { id:'i2', date:'2026-02-01', amount:-50.00 },
+    ];
+    const pairs = detectImportDuplicates(imp, ex, 'acct1');
+    // Only 1 existing match — second imported row is NOT a duplicate
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].imported.id).toBe('i1');
+  });
+
+  it('M2: flags neither row when 2 exist and 2 are imported (exact count match)', () => {
+    const ex = [
+      { id:'e1', date:'2026-02-01', amount:-50.00, account:'acct1' },
+      { id:'e2', date:'2026-02-01', amount:-50.00, account:'acct1' },
+    ];
+    const imp = [
+      { id:'i1', date:'2026-02-01', amount:-50.00 },
+      { id:'i2', date:'2026-02-01', amount:-50.00 },
+    ];
+    const pairs = detectImportDuplicates(imp, ex, 'acct1');
+    expect(pairs).toHaveLength(2);
   });
 });
 

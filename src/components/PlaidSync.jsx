@@ -339,7 +339,10 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
   }, [creds]);
 
   // ── Sync transactions for one item (cursor-based, no 500-tx cap) ──────────
-  const handleSync = async (item) => {
+  // M10: accepts optional accumulated dedup sets from handleSyncAll so that when
+  // multiple items are synced in sequence, item 2 doesn't dedup against a stale
+  // snapshot that pre-dates item 1's newly imported transactions.
+  const handleSync = async (item, accFitids = null, accIds = null) => {
     setSyncStatus(s => ({ ...s, [item.itemId]: 'syncing' }));
     setSyncMsg(s => ({ ...s, [item.itemId]: '' }));
 
@@ -420,9 +423,9 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
         onModifyTxs?.(updates);
       }
 
-      // Dedup added against existing transactions
-      const existingFitids = new Set(existingTxs.map(t => t.fitid).filter(Boolean));
-      const existingIds    = new Set(existingTxs.map(t => t.id));
+      // Dedup added against existing transactions (merge with accumulated set if provided).
+      const existingFitids = accFitids ?? new Set(existingTxs.map(t => t.fitid).filter(Boolean));
+      const existingIds    = accIds    ?? new Set(existingTxs.map(t => t.id));
 
       const newTxs = allAdded
         .map(pt => mapPlaidTransaction(pt, accountMap))
@@ -589,7 +592,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
           : '✅ All up to date — no new transactions.') + balNote,
       }));
 
-      return true;
+      return markedNewTxs;
     } catch (e) {
       setSyncStatus(s => ({ ...s, [item.itemId]: 'error' }));
       setSyncMsg(s => ({ ...s, [item.itemId]: '❌ ' + String(e) }));
@@ -602,11 +605,22 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
     if (syncingAll || !items.length) return;
     setSyncingAll(true);
     setSyncAllMsg('');
+    // Accumulate seen fitids/ids across items so a tx imported from item N
+    // is not re-imported as a duplicate when item N+1 syncs (M10).
+    const seenFitids = new Set(existingTxs.map(t => t.fitid).filter(Boolean));
+    const seenIds    = new Set(existingTxs.map(t => t.id));
     let errorCount = 0;
     for (let i = 0; i < items.length; i++) {
       setSyncAllMsg(`Syncing ${items[i].institutionName} (${i + 1}/${items.length})…`);
-      const ok = await handleSync(items[i]);
-      if (!ok) errorCount++;
+      const imported = await handleSync(items[i], seenFitids, seenIds);
+      if (imported === false) {
+        errorCount++;
+      } else if (imported?.length) {
+        imported.forEach(t => {
+          if (t.fitid) seenFitids.add(t.fitid);
+          seenIds.add(t.id);
+        });
+      }
     }
     setSyncAllMsg(
       errorCount > 0
