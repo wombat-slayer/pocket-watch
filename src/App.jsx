@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './App.css';
 import {
-  LayoutDashboard, ArrowRightLeft, Landmark, Target, BarChart2, Briefcase, Settings,
+  LayoutDashboard, ArrowRightLeft, Landmark, Target, BarChart2, Briefcase, Settings as SettingsIcon,
   Sun, Moon, Eye, EyeOff, Clock, FolderOpen, FolderInput, AlertTriangle,
   Check, X, Info, ChevronRight, ChevronLeft, Keyboard,
 } from 'lucide-react';
@@ -671,7 +671,7 @@ export default function App() {
     { id:'budgets',      Icon: Target,          label:'Budgets'      },
     { id:'reports',      Icon: BarChart2,        label:'Reports'      },
     { id:'business',     Icon: Briefcase,        label:'Business'     },
-    { id:'settings',     Icon: Settings,        label:'Settings'     },
+    { id:'settings',     Icon: SettingsIcon,    label:'Settings'     },
   ];
 
   // ── Render: Loading ──────────────────────────────────────────────────────────
