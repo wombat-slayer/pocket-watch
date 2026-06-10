@@ -147,11 +147,12 @@ export const freqLabel = (v) => FREQUENCIES.find(f => f.value === v)?.label ?? v
 // Auto-categorize by merchant keyword matching
 export function autoCategory(desc, amount) {
   const d = desc.replace(/^aplpay\s+/i, '').toLowerCase();
+  if (/mobile payment|online payment|autopay|payment - thank you|payment thank you/i.test(d)) return 'Transfer';
   if (amount > 0) return 'Income';
   if (/rent|mortgage|hoa|apartment|condo|lease/i.test(d))                              return 'Housing';
   if (/grocery|safeway|whole foods|trader joe|kroger|publix|aldi|wegmans|instacart|buc-ee|buc ee|365 market|five star food|canteen vend/i.test(d)) return 'Food & Dining';
-  if (/restaurant|cafe|pizza|burger|sushi|taco|chipotle|mcdonald|starbucks|dunkin|doordash|grubhub|uber eats|chick-fil|panera|subway|domino/i.test(d)) return 'Food & Dining';
-  if (/shell|chevron|\bbp\b|exxon|mobil|sunoco|circle k|speedway|gas station/i.test(d)) return 'Transportation';
+  if (/restaurant|cafe|pizza|burger|sushi|taco|chipotle|mcdonald|starbucks|dunkin|doordash|grubhub|uber eats|chick-fil|panera|subway|domino|public hou|panca|ihop|waffle house|cracker barrel/i.test(d)) return 'Food & Dining';
+  if (/shell|chevron|\bbp\b|exxon|mobil|sunoco|circle k|speedway|caseys|casey's general|gas station/i.test(d)) return 'Transportation';
   if (/uber|lyft|parking|metro|transit|mta |bart |fare|toll|zipcar|enterprise rent/i.test(d)) return 'Transportation';
   if (/auto |car insurance|geico|state farm|allstate|progressive|jiffy lube|oil change/i.test(d)) return 'Transportation';
   if (/netflix|hulu|disney|spotify|youtube premium|youtubepremi|amazon prime|hbo|apple tv|peacock|paramount|crunchyroll/i.test(d)) return 'Subscriptions';
@@ -164,8 +165,9 @@ export function autoCategory(desc, amount) {
   if (/hotel|airbnb|vrbo|flight|airline|united|delta|american air|southwest|spirit|expedia|booking.com|kayak/i.test(d)) return 'Travel';
   if (/payroll|direct deposit|salary|paycheck|employer|freelance|consulting|client payment/i.test(d)) return 'Income';
   if (/venmo|zelle|cashapp|paypal/i.test(d)) return amount > 0 ? 'Income' : 'Other';
-  if (/tuition|university|college|student loan|coursera|udemy|skillshare/i.test(d)) return 'Education';
+  if (/tuition|university|college|student loan|coursera|udemy|skillshare|psi exam|prometric|pearson vue|testing center/i.test(d)) return 'Education';
   if (/salon|haircut|spa|massage|barber|nail|beauty/i.test(d)) return 'Personal Care';
+  if (/^store [a-z]|^the store/i.test(d)) return 'Shopping';
   return 'Other';
 }
 

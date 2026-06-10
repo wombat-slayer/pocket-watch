@@ -158,6 +158,42 @@ describe('autoCategory()', () => {
   it('Wal-Mart → Shopping', () => {
     expect(autoCategory('WAL-MART SUPERCENTERINDIANAPOLIS IN', -89)).toBe('Shopping');
   });
+
+  it('credit card payment → Transfer (not Income, even though amount is positive)', () => {
+    expect(autoCategory('MOBILE PAYMENT - THANK YOU', 250)).toBe('Transfer');
+  });
+
+  it('online payment → Transfer', () => {
+    expect(autoCategory('ONLINE PAYMENT', 100)).toBe('Transfer');
+  });
+
+  it('autopay → Transfer', () => {
+    expect(autoCategory('AUTOPAY CONFIRMATION', -50)).toBe('Transfer');
+  });
+
+  it("Casey's convenience store → Transportation", () => {
+    expect(autoCategory('AplPay CASEYS #3928 GREENWOOD IN', -45)).toBe('Transportation');
+  });
+
+  it("Public house → Food & Dining", () => {
+    expect(autoCategory('PARKSIDE PUBLIC HOUS INDIANAPOLIS IN', -18)).toBe('Food & Dining');
+  });
+
+  it('Pancake house → Food & Dining', () => {
+    expect(autoCategory('LINCOLN SQUARE PANCA INDIANAPOLIS IN', -22)).toBe('Food & Dining');
+  });
+
+  it('PSI Exams → Education', () => {
+    expect(autoCategory('PSI EXAMS OLATHE KS', -200)).toBe('Education');
+  });
+
+  it('Prometric testing center → Education', () => {
+    expect(autoCategory('PROMETRIC TEST CENTER', -150)).toBe('Education');
+  });
+
+  it('generic STORE [city] after AplPay strip → Shopping', () => {
+    expect(autoCategory('AplPay STORE GREENWOOD IN', -30)).toBe('Shopping');
+  });
 });
 
 // ─── parseCSVLine ─────────────────────────────────────────────────────────────
