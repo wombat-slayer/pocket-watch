@@ -22,7 +22,8 @@ import { detectAndMarkTransferPairs, autoCategoryBusiness } from '../constants.j
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // ── Transfer pattern matching ─────────────────────────────────────────────────
@@ -405,8 +406,6 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
         cursor = page.next_cursor;
         hasMore = page.has_more === true;
       }
-      await setCursor(item.itemId, cursor);
-
       // Handle removed: delete matching transactions by Plaid transaction_id
       if (allRemoved.length > 0) {
         const removedIds = allRemoved.map(r => r.transaction_id);
@@ -470,6 +469,12 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       if (markedNewTxs.length > 0) {
         onImport(markedNewTxs);
       }
+
+      // Cursor is saved after onImport so a crash before import completes
+      // will re-fetch the same page on the next sync rather than silently
+      // losing transactions. True atomicity would require storing the cursor
+      // in the main data file alongside transactions (tracked in BACKLOG.md).
+      await setCursor(item.itemId, cursor);
 
       onSyncComplete?.(markedNewTxs.length, markedNewTxs.filter(t => t.category === 'Other').length);
       if (balanceUpdates.length > 0) onUpdateBalances?.(balanceUpdates);

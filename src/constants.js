@@ -74,8 +74,8 @@ export const acctEmoji = (t) => ({ checking:'🏦', savings:'💰', credit:'💳
 // ─── Formatting helpers ───────────────────────────────────────────────────────
 export const fmt     = (n, opts = {}) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', ...opts }).format(n ?? 0);
 export const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-export const today   = () => new Date().toISOString().split('T')[0];
-export const thisMonth  = () => new Date().toISOString().slice(0, 7);
+export const today   = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+export const thisMonth  = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 export const nextMonth  = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 7); };
 export const prevMonth  = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); };
 export const uid     = () => self.crypto.randomUUID();

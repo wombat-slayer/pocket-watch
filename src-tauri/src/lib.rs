@@ -188,6 +188,8 @@ fn get_default_data_path(app: tauri::AppHandle) -> Result<String, String> {
 // Receipts live in a `receipts/` folder next to the data file.
 // Filenames are [txId]-[timestamp].[ext], validated against path traversal.
 
+const ALLOWED_RECEIPT_EXTS: &[&str] = &["png", "jpg", "jpeg", "pdf"];
+
 fn validate_receipt_filename(filename: &str) -> Result<(), String> {
     if filename.is_empty() {
         return Err("Filename must not be empty".to_string());
@@ -195,31 +197,34 @@ fn validate_receipt_filename(filename: &str) -> Result<(), String> {
     if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
         return Err("Invalid receipt filename".to_string());
     }
-    Ok(())
+    let ext = filename.rsplit_once('.').map(|(_, e)| e.to_lowercase());
+    match ext {
+        Some(ref e) if ALLOWED_RECEIPT_EXTS.contains(&e.as_str()) => Ok(()),
+        _ => Err("Receipt file extension not allowed; must be png, jpg, jpeg, or pdf".to_string()),
+    }
 }
 
-fn receipts_dir(data_path: &str) -> Result<PathBuf, String> {
-    let p = PathBuf::from(data_path);
-    if !p.is_absolute() {
-        return Err("Data path must be absolute".to_string());
-    }
-    let parent = p.parent().ok_or_else(|| "Data path has no parent directory".to_string())?;
-    Ok(parent.join("receipts"))
+fn receipts_dir(allowed_dir: &PathBuf) -> PathBuf {
+    allowed_dir.join("receipts")
 }
 
 #[tauri::command]
-fn save_receipt(data_path: String, filename: String, bytes: Vec<u8>) -> Result<String, String> {
+fn save_receipt(data_path: String, filename: String, bytes: Vec<u8>, state: State<DataDirState>) -> Result<String, String> {
     validate_receipt_filename(&filename)?;
-    let dir = receipts_dir(&data_path)?;
+    let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    resolve_data_path(&data_path, &allowed)?;
+    let dir = receipts_dir(&allowed);
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     fs::write(dir.join(&filename), &bytes).map_err(|e| e.to_string())?;
     Ok(filename)
 }
 
 #[tauri::command]
-fn delete_receipt(data_path: String, filename: String) -> Result<(), String> {
+fn delete_receipt(data_path: String, filename: String, state: State<DataDirState>) -> Result<(), String> {
     validate_receipt_filename(&filename)?;
-    let path = receipts_dir(&data_path)?.join(&filename);
+    let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    resolve_data_path(&data_path, &allowed)?;
+    let path = receipts_dir(&allowed).join(&filename);
     if path.exists() {
         fs::remove_file(path).map_err(|e| e.to_string())?;
     }
@@ -227,9 +232,11 @@ fn delete_receipt(data_path: String, filename: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn open_receipt(data_path: String, filename: String, app: tauri::AppHandle) -> Result<(), String> {
+async fn open_receipt(data_path: String, filename: String, app: tauri::AppHandle, state: State<'_, DataDirState>) -> Result<(), String> {
     validate_receipt_filename(&filename)?;
-    let path = receipts_dir(&data_path)?.join(&filename);
+    let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    resolve_data_path(&data_path, &allowed)?;
+    let path = receipts_dir(&allowed).join(&filename);
     if !path.exists() {
         return Err(format!("Receipt file not found: {}", filename));
     }
@@ -731,6 +738,31 @@ mod tests {
         assert!(validate_secret_key("plaid-token-abc123", true).is_ok());
         assert!(validate_secret_key("plaid-token-", true).is_err()); // empty suffix
         assert!(validate_secret_key("arbitrary", true).is_err());     // unknown key, still rejected
+    }
+
+    #[test]
+    fn receipt_filename_accepts_valid_extensions() {
+        assert!(validate_receipt_filename("receipt-abc.png").is_ok());
+        assert!(validate_receipt_filename("receipt-abc.jpg").is_ok());
+        assert!(validate_receipt_filename("receipt-abc.jpeg").is_ok());
+        assert!(validate_receipt_filename("receipt-abc.pdf").is_ok());
+        assert!(validate_receipt_filename("receipt-abc.PNG").is_ok()); // case-insensitive
+    }
+
+    #[test]
+    fn receipt_filename_rejects_disallowed_extensions() {
+        assert!(validate_receipt_filename("evil.exe").is_err());
+        assert!(validate_receipt_filename("script.sh").is_err());
+        assert!(validate_receipt_filename("data.json").is_err());
+        assert!(validate_receipt_filename("noext").is_err());
+        assert!(validate_receipt_filename("").is_err());
+    }
+
+    #[test]
+    fn receipt_filename_rejects_path_traversal() {
+        assert!(validate_receipt_filename("../evil.png").is_err());
+        assert!(validate_receipt_filename("sub/evil.png").is_err());
+        assert!(validate_receipt_filename("sub\\evil.png").is_err());
     }
 
     #[test]

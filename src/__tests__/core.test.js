@@ -7,7 +7,7 @@
  *         computeBalance, archive roundtrip logic
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 // Polyfill crypto.randomUUID for Node (available from Node 19+; vitest usually brings it)
 if (!globalThis.self) globalThis.self = globalThis;
@@ -25,6 +25,7 @@ import {
   computeUnvestedRSUValue,
   computeVestEvents,
   today,
+  thisMonth,
   parseCSVLine,
   parseAmount,
   monthlyEquivalent,
@@ -1418,5 +1419,38 @@ describe('Wave 1 regressions', () => {
     // update.id is undefined; !existingKeys.has(undefined) === true → row IS inserted
     const toInsert = updates.filter(u => !existingKeys.has(u.id));
     expect(toInsert).toHaveLength(1);
+  });
+});
+
+// ─── H1 regression: today() / thisMonth() use local time, not UTC ────────────
+describe('H1 — today() and thisMonth() local-time correctness', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('today() returns YYYY-MM-DD in local time, not UTC', () => {
+    // 2026-06-15 at 23:30 UTC = 2026-06-15 in UTC but 2026-06-16 in UTC+1.
+    // We fake the local clock to 2026-06-15T10:00:00 local — today() must return '2026-06-15'.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 15, 10, 0, 0)); // month is 0-indexed: 5 = June
+    expect(today()).toBe('2026-06-15');
+  });
+
+  it('today() zero-pads single-digit months and days', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 5, 8, 0, 0)); // Jan 5
+    expect(today()).toBe('2026-01-05');
+  });
+
+  it('thisMonth() returns YYYY-MM in local time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 11, 1, 23, 59, 0)); // Dec 1
+    expect(thisMonth()).toBe('2026-12');
+  });
+
+  it('thisMonth() zero-pads single-digit months', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 15, 12, 0, 0)); // March
+    expect(thisMonth()).toBe('2026-03');
   });
 });
