@@ -24,6 +24,6 @@ Items too small for a sprint ticket but worth tracking. Severity: Critical / Hig
 
 **File:** `src/components/PlaidSync.jsx` — `syncItem`
 
-**Context:** `setCursor` is now saved after `onImport` (v0.15.3 H2 fix), which prevents losing transactions on a mid-sync crash. However, there is still a window: if the app crashes between `onImport` and `setCursor`, the next sync will re-fetch and re-import the same transactions (benign duplicates if `detectImportDuplicates` is applied, but currently it's not applied to the Plaid path).
+**Context:** `setCursor` is now saved after `onImport` (v0.15.3 H2 fix), which prevents the cursor advancing before processing starts. However, `onImport` only enqueues an in-memory state update (App.jsx 600ms debounced save). A crash between `setCursor` returning and the debounce flushing to disk still leaves the cursor advanced but the transactions not persisted.
 
-**Fix direction:** Store the Plaid cursor inside the main data file as `account.plaidCursor`, so it is written atomically with the transactions in the same `save_data` call. This eliminates both the window and the separate `plaid.json` store dependency for cursors.
+**Fix direction:** Store the Plaid cursor inside the main data file as `account.plaidCursor`, so it is written atomically with the transactions in the same `save_data` call. This eliminates the debounce window entirely.

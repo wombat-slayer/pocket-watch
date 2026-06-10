@@ -29,6 +29,17 @@ export default defineConfig(async () => ({
     },
   },
 
+  test: {
+    globals: true,
+    environment: 'node',
+    env: {
+      // Pin to Eastern Time so today()/thisMonth() UTC-vs-local boundary tests
+      // actually exercise the difference — UTC CI environments have local == UTC
+      // and can't distinguish getDate() from toISOString().split('T')[0].
+      TZ: 'America/New_York',
+    },
+  },
+
   optimizeDeps: {
     include: ['pdfjs-dist'],
   },

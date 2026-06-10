@@ -1423,16 +1423,20 @@ describe('Wave 1 regressions', () => {
 });
 
 // ─── H1 regression: today() / thisMonth() use local time, not UTC ────────────
+// These tests rely on TZ=America/New_York (set in vite.config.js test.env).
+// With that TZ, 11:30 PM on June 15 is UTC+4h = June 16 UTC.
+// toISOString().split('T')[0] would return '2026-06-16'; getDate() returns '15'.
 describe('H1 — today() and thisMonth() local-time correctness', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('today() returns YYYY-MM-DD in local time, not UTC', () => {
-    // 2026-06-15 at 23:30 UTC = 2026-06-15 in UTC but 2026-06-16 in UTC+1.
-    // We fake the local clock to 2026-06-15T10:00:00 local — today() must return '2026-06-15'.
+  it('today() returns local date at 11:30 PM ET, not the UTC next-day date', () => {
+    // In America/New_York (UTC-4 in summer), June 15 at 23:30 local = June 16 at 03:30 UTC.
+    // toISOString().split('T')[0] would give '2026-06-16' (UTC date — wrong).
+    // getDate()-based implementation gives '2026-06-15' (local date — correct).
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 5, 15, 10, 0, 0)); // month is 0-indexed: 5 = June
+    vi.setSystemTime(new Date(2026, 5, 15, 23, 30, 0)); // June 15 at 11:30 PM local ET
     expect(today()).toBe('2026-06-15');
   });
 
@@ -1442,10 +1446,11 @@ describe('H1 — today() and thisMonth() local-time correctness', () => {
     expect(today()).toBe('2026-01-05');
   });
 
-  it('thisMonth() returns YYYY-MM in local time', () => {
+  it('thisMonth() returns local month at 11:30 PM ET on Dec 31 (not UTC Jan 1)', () => {
+    // Dec 31 at 23:30 ET = Jan 1 UTC. toISOString() returns '2026-01'; getMonth() returns '2025-12'.
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 11, 1, 23, 59, 0)); // Dec 1
-    expect(thisMonth()).toBe('2026-12');
+    vi.setSystemTime(new Date(2025, 11, 31, 23, 30, 0)); // Dec 31 at 11:30 PM local ET
+    expect(thisMonth()).toBe('2025-12');
   });
 
   it('thisMonth() zero-pads single-digit months', () => {

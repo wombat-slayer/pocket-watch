@@ -470,10 +470,13 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
         onImport(markedNewTxs);
       }
 
-      // Cursor is saved after onImport so a crash before import completes
-      // will re-fetch the same page on the next sync rather than silently
-      // losing transactions. True atomicity would require storing the cursor
-      // in the main data file alongside transactions (tracked in BACKLOG.md).
+      // Cursor is saved after onImport so a crash DURING onImport processing
+      // re-fetches the same page on the next sync rather than losing transactions.
+      // However onImport only updates in-memory state (600ms debounced save), so
+      // a crash between this setCursor and the debounce flush still loses the
+      // transactions while the cursor has advanced. True atomicity requires storing
+      // the cursor in the main data file in the same atomic write as the transactions
+      // (tracked in BACKLOG.md).
       await setCursor(item.itemId, cursor);
 
       onSyncComplete?.(markedNewTxs.length, markedNewTxs.filter(t => t.category === 'Other').length);

@@ -224,9 +224,17 @@ fn delete_receipt(data_path: String, filename: String, state: State<DataDirState
     validate_receipt_filename(&filename)?;
     let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
     resolve_data_path(&data_path, &allowed)?;
-    let path = receipts_dir(&allowed).join(&filename);
+    let receipts = receipts_dir(&allowed);
+    let path = receipts.join(&filename);
     if path.exists() {
-        fs::remove_file(path).map_err(|e| e.to_string())?;
+        // Canonicalize to guard against the receipts/ dir or file being a symlink
+        // that escapes the allowed directory before we remove anything.
+        let canonical = friendly_canonical(&path)?;
+        let canonical_receipts = friendly_canonical(&receipts)?;
+        if !canonical.starts_with(&canonical_receipts) {
+            return Err("Receipt path resolves outside the receipts directory".to_string());
+        }
+        fs::remove_file(canonical).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -236,13 +244,22 @@ async fn open_receipt(data_path: String, filename: String, app: tauri::AppHandle
     validate_receipt_filename(&filename)?;
     let allowed = state.0.lock().unwrap_or_else(|p| p.into_inner()).clone();
     resolve_data_path(&data_path, &allowed)?;
-    let path = receipts_dir(&allowed).join(&filename);
+    let receipts = receipts_dir(&allowed);
+    let path = receipts.join(&filename);
     if !path.exists() {
         return Err(format!("Receipt file not found: {}", filename));
     }
+    // Canonicalize the full path and verify it stays inside the receipts dir.
+    // This catches the case where receipts/ or the file itself is a symlink
+    // pointing outside the allowed directory — the OS opener follows symlinks.
+    let canonical = friendly_canonical(&path)?;
+    let canonical_receipts = friendly_canonical(&receipts)?;
+    if !canonical.starts_with(&canonical_receipts) {
+        return Err("Receipt path resolves outside the receipts directory".to_string());
+    }
     use tauri_plugin_opener::OpenerExt;
     app.opener()
-        .open_path(path.to_str().ok_or_else(|| "Invalid path encoding".to_string())?, None::<&str>)
+        .open_path(canonical.to_str().ok_or_else(|| "Invalid path encoding".to_string())?, None::<&str>)
         .map_err(|e| e.to_string())
 }
 
