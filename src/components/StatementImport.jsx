@@ -111,13 +111,17 @@ export default function StatementImport({ account, existingTransactions, onImpor
     let allParsed = [];
     const skipped = [];
 
+    // H5: track format so OFX/QFX (already correctly signed) don't get double-flipped
+    let anyOFX = false;
+    let anyCSV = false;
+
     for (const file of files) {
       try {
         const text = await file.text();
         const lower = file.name.toLowerCase();
-        const parsed = (lower.endsWith('.ofx') || lower.endsWith('.qfx') || /<OFX/i.test(text))
-          ? parseOFX(text)
-          : parseStatementCSV(text);
+        const isOFX = lower.endsWith('.ofx') || lower.endsWith('.qfx') || /<OFX/i.test(text);
+        if (isOFX) anyOFX = true; else anyCSV = true;
+        const parsed = isOFX ? parseOFX(text) : parseStatementCSV(text);
         allParsed = allParsed.concat(parsed);
       } catch (e) {
         skipped.push(file.name);
@@ -131,6 +135,13 @@ export default function StatementImport({ account, existingTransactions, onImpor
       return;
     }
 
+    // OFX/QFX amounts are already correctly signed per the OFX spec (debits negative).
+    // Only auto-enable flip for CSV imports on debt accounts. Use a local variable so
+    // autoCategory and dupe detection are consistent within this call (setFlipSign is
+    // async and won't update flipSign until the next render).
+    const effectiveFlip = anyOFX && !anyCSV ? false : flipSign;
+    if (effectiveFlip !== flipSign) setFlipSign(effectiveFlip);
+
     // Deduplicate within the batch (same date + amount + description prefix)
     const seen = new Set();
     const deduped = allParsed.filter(r => {
@@ -140,13 +151,15 @@ export default function StatementImport({ account, existingTransactions, onImpor
       return true;
     });
 
+    // H3: pass the effective (post-flip) amount to autoCategory so credit card charges
+    // (positive in CSV) aren't passed as +amount and incorrectly assigned 'Income'.
     const annotated = deduped.map(r => ({
       ...r,
       id:       uid(),
-      category: autoCategory(r.description, r.amount),
+      category: autoCategory(r.description, effectiveFlip ? -r.amount : r.amount),
     }));
 
-    const effectiveForDup = annotated.map(r => ({ ...r, amount: flipSign ? -r.amount : r.amount }));
+    const effectiveForDup = annotated.map(r => ({ ...r, amount: effectiveFlip ? -r.amount : r.amount }));
     const dupIds = new Set(detectImportDuplicates(effectiveForDup, existingTransactions, account.id).map(r => r.id));
     const withDups = annotated.map(r => ({ ...r, isDup: dupIds.has(r.id) }));
 

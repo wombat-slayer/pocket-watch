@@ -451,10 +451,18 @@ export default function App() {
   const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); setTxImportKey(k => k + 1); showToast(`${rows.length} transaction${rows.length!==1?'s':''} imported`); };
   const plaidModifyTxs = (updates) => {
     if (!updates?.length) return;
-    setTransactions(ts => ts.map(t => {
-      const u = updates.find(u => u.id === t.fitid || u.id === t.id);
-      return u ? { ...t, ...u } : t;
-    }));
+    setTransactions(ts => {
+      // H6: upsert — a pending tx that was never imported arrives in 'modified'
+      // when it posts; insert it rather than silently dropping it.
+      const existingKeys = new Set(ts.flatMap(t => [t.id, t.fitid].filter(Boolean)));
+      const toInsert = updates.filter(u => !existingKeys.has(u.id));
+      const updated = ts.map(t => {
+        const u = updates.find(u => u.id === t.fitid || u.id === t.id);
+        return u ? { ...t, ...u } : t;
+      });
+      if (!toInsert.length) return updated;
+      return [...toInsert, ...updated].sort((a, b) => b.date.localeCompare(a.date));
+    });
   };
   const plaidRemoveTxs = (ids) => {
     if (!ids?.length) return;

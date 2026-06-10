@@ -1331,3 +1331,73 @@ describe('detectImportDuplicates()', () => {
     expect(dupes).toHaveLength(1);
   });
 });
+
+// ─── Wave 1 regressions: H3 / H5 / H6 ───────────────────────────────────────
+describe('Wave 1 regressions', () => {
+  // H3 — autoCategory must receive the effective (post-flip) amount
+  it('H3: positive raw amount → Income (demonstrates why pre-flip call is wrong)', () => {
+    // Credit card CSV exports charges as +5.50; without flip applied first,
+    // autoCategory returns Income instead of Food & Dining.
+    expect(autoCategory('STARBUCKS COFFEE', 5.50)).toBe('Income');
+  });
+
+  it('H3: negative effective amount → correct expense category (fix verifier)', () => {
+    // After effectiveFlip applied: -5.50 → autoCategory returns correct category.
+    expect(autoCategory('STARBUCKS COFFEE', -5.50)).toBe('Food & Dining');
+  });
+
+  it('H3: double-flip guard — Amazon charge correctly categorized after flip', () => {
+    expect(autoCategory('AMAZON.COM ORDER', -89)).toBe('Shopping');
+    expect(autoCategory('AMAZON.COM ORDER', +89)).toBe('Income'); // pre-flip (wrong)
+  });
+
+  // H5 — OFX amounts are already correctly signed; double-flip corrupts them
+  it('H5: OFX charge (-50) correctly categorizes without flip', () => {
+    // OFX TRNAMT is negative for debits per the OFX spec — no flip should be applied.
+    expect(autoCategory('STARBUCKS', -50.00)).toBe('Food & Dining');
+  });
+
+  it('H5: double-flip of OFX charge (+50 after flip) incorrectly becomes Income', () => {
+    // If flip were (wrongly) applied to already-correct OFX amount, +50 → Income.
+    expect(autoCategory('STARBUCKS', +50.00)).toBe('Income');
+  });
+
+  // H6 — plaidModifyTxs upsert: pending→posted transaction must be inserted
+  it('H6: upsert inserts a modified tx absent from existing rows (pending→posted path)', () => {
+    const existing = [{ id: 'tx-a', fitid: 'tx-a', amount: -10 }];
+    const updates  = [{ id: 'tx-new', fitid: 'tx-new', amount: -50, date: '2026-01-15', description: 'Posted charge' }];
+    const existingKeys = new Set(existing.flatMap(t => [t.id, t.fitid].filter(Boolean)));
+    const toInsert = updates.filter(u => !existingKeys.has(u.id));
+    expect(toInsert).toHaveLength(1);
+    expect(toInsert[0].id).toBe('tx-new');
+  });
+
+  it('H6: upsert updates (does not duplicate) a tx that already exists', () => {
+    const existing = [{ id: 'tx-123', fitid: 'tx-123', amount: -50, description: 'Pending name' }];
+    const updates  = [{ id: 'tx-123', amount: -50.25, description: 'Posted name — updated' }];
+    const existingKeys = new Set(existing.flatMap(t => [t.id, t.fitid].filter(Boolean)));
+    const toInsert = updates.filter(u => !existingKeys.has(u.id));
+    expect(toInsert).toHaveLength(0);
+    const updated = existing.map(t => {
+      const u = updates.find(u => u.id === t.fitid || u.id === t.id);
+      return u ? { ...t, ...u } : t;
+    });
+    expect(updated[0].description).toBe('Posted name — updated');
+    expect(updated[0].amount).toBe(-50.25);
+  });
+
+  it('H6: upsert preserves existing rows when only some updates are new', () => {
+    const existing = [
+      { id: 'tx-old', fitid: 'tx-old', amount: -10, description: 'Old tx' },
+      { id: 'tx-pend', fitid: 'tx-pend', amount: -30, description: 'Posted already' },
+    ];
+    const updates = [
+      { id: 'tx-pend', amount: -30, description: 'Posted already — final' }, // update
+      { id: 'tx-brand-new', fitid: 'tx-brand-new', amount: -99, date: '2026-02-01', description: 'Never seen' }, // insert
+    ];
+    const existingKeys = new Set(existing.flatMap(t => [t.id, t.fitid].filter(Boolean)));
+    const toInsert = updates.filter(u => !existingKeys.has(u.id));
+    expect(toInsert).toHaveLength(1);
+    expect(toInsert[0].id).toBe('tx-brand-new');
+  });
+});
