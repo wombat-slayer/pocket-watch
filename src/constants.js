@@ -154,7 +154,7 @@ export const freqLabel = (v) => FREQUENCIES.find(f => f.value === v)?.label ?? v
 // Auto-categorize by merchant keyword matching
 export function autoCategory(desc, amount) {
   const d = desc.replace(/^aplpay\s+/i, '').toLowerCase();
-  if (/mobile payment|online payment|autopay|payment - thank you|payment thank you/i.test(d)) return 'Transfer';
+  if (/mobile payment|online payment|autopay|payment - thank you|payment thank you|payment to [\w\s]* card ending|payment to chase|payment to amex/i.test(d)) return 'Transfer';
   if (amount > 0) return 'Income';
   if (/rent|mortgage|hoa|apartment|condo|lease/i.test(d))                              return 'Housing';
   if (/grocery|safeway|whole foods|trader joe|kroger|publix|aldi|wegmans|instacart|buc-ee|buc ee|365 market|five star food|canteen vend/i.test(d)) return 'Food & Dining';

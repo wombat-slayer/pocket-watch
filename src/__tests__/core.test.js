@@ -195,6 +195,22 @@ describe('autoCategory()', () => {
   it('generic STORE [city] after AplPay strip → Shopping', () => {
     expect(autoCategory('AplPay STORE GREENWOOD IN', -30)).toBe('Shopping');
   });
+
+  it('Chase credit card payment → Transfer', () => {
+    expect(autoCategory('Payment to Chase card ending in 6766 07/31', -5959.01)).toBe('Transfer');
+  });
+
+  it('Chase payment without "card ending in" → Transfer', () => {
+    expect(autoCategory('Payment to Chase', -500)).toBe('Transfer');
+  });
+
+  it('AMEX payment → Transfer', () => {
+    expect(autoCategory('Payment to AMEX', -1200)).toBe('Transfer');
+  });
+
+  it('Chase credit card payment with positive amount (refund) → Transfer before Income check', () => {
+    expect(autoCategory('Payment to Chase card ending in 1234', 5959.01)).toBe('Transfer');
+  });
 });
 
 // ─── parseCSVLine ─────────────────────────────────────────────────────────────
