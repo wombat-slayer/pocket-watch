@@ -353,10 +353,40 @@ export function checkBudgetAlerts(budgets, transactions, month, warnAt = 80, ale
   return results;
 }
 
+export function computeVestEvents(grant) {
+  const { grantDate, totalShares, cliffMonths, vestingMonths, vestFrequency, grantPrice, currentPrice } = grant;
+  if (!grantDate || !totalShares || !vestingMonths) return [];
+
+  const start = new Date(grantDate + 'T00:00:00');
+  const cliff = new Date(start);
+  cliff.setMonth(cliff.getMonth() + (cliffMonths ?? 12));
+
+  const freqMonths = vestFrequency === 'quarterly' ? 3 : 1;
+  const periods    = Math.floor(vestingMonths / freqMonths);
+  const perPeriod  = totalShares / periods;
+  const events     = [];
+
+  for (let i = 1; i <= periods; i++) {
+    const d = new Date(start);
+    d.setMonth(d.getMonth() + i * freqMonths);
+    if (d < cliff) continue;
+    const dateStr   = d.toISOString().split('T')[0];
+    const costBasis = perPeriod * (grantPrice ?? 0);
+    const mktValue  = perPeriod * (currentPrice ?? grantPrice ?? 0);
+    events.push({ date: dateStr, shares: perPeriod, costBasis, mktValue, vested: dateStr <= today() });
+  }
+
+  return events;
+}
+
 export function computeUnvestedRSUValue(grants) {
-  return (grants || []).reduce((sum, g) => {
-    const unvested = Math.max(0, (g.totalShares || 0) - (g.vestedShares || 0));
-    return sum + unvested * (g.currentPrice || 0);
+  if (!grants || !grants.length) return 0;
+  return grants.reduce((sum, g) => {
+    const events       = computeVestEvents(g);
+    const vestedShares = events.filter(e => e.vested).reduce((s, e) => s + e.shares, 0);
+    const unvested     = Math.max(0, (g.totalShares || 0) - vestedShares);
+    const price        = g.currentPrice || g.grantPrice || 0;
+    return sum + unvested * price;
   }, 0);
 }
 

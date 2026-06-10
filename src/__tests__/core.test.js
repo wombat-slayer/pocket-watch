@@ -23,6 +23,8 @@ import {
   autoCategoryBusiness,
   SCHEDULE_C_LINES,
   computeUnvestedRSUValue,
+  computeVestEvents,
+  today,
   parseCSVLine,
   parseAmount,
   monthlyEquivalent,
@@ -841,36 +843,61 @@ describe('parseRSUStatement()', () => {
 
 // ─── computeUnvestedRSUValue ──────────────────────────────────────────────────
 describe('computeUnvestedRSUValue()', () => {
-  it('computes unvested value from grants', () => {
-    expect(computeUnvestedRSUValue([{ totalShares: 100, vestedShares: 40, currentPrice: 50 }])).toBe(3000);
-  });
-
-  it('sums unvested value across multiple grants', () => {
-    const grants = [
-      { totalShares: 200, vestedShares: 100, currentPrice: 50 },
-      { totalShares: 400, vestedShares: 300, currentPrice: 100 },
-    ];
-    expect(computeUnvestedRSUValue(grants)).toBe(15000);
-  });
-
-  it('returns 0 when all shares are vested', () => {
-    expect(computeUnvestedRSUValue([{ totalShares: 100, vestedShares: 100, currentPrice: 50 }])).toBe(0);
-  });
-
-  it('clamps to 0 when vestedShares exceeds totalShares', () => {
-    expect(computeUnvestedRSUValue([{ totalShares: 100, vestedShares: 120, currentPrice: 50 }])).toBe(0);
-  });
-
-  it('treats missing fields as 0', () => {
-    expect(computeUnvestedRSUValue([{ totalShares: 100, currentPrice: 20 }])).toBe(2000);
-  });
-
   it('returns 0 for an empty grants array', () => {
     expect(computeUnvestedRSUValue([])).toBe(0);
   });
 
   it('handles null/undefined input gracefully', () => {
     expect(computeUnvestedRSUValue(null)).toBe(0);
+    expect(computeUnvestedRSUValue(undefined)).toBe(0);
+  });
+
+  it('returns totalShares × price when cliff has not passed yet (all unvested)', () => {
+    const grant = {
+      grantDate: today(), totalShares: 1200, cliffMonths: 12,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 50,
+    };
+    expect(computeUnvestedRSUValue([grant])).toBe(60000);
+  });
+
+  it('returns 0 when grant is fully vested (no cliff so all periods generate events)', () => {
+    const grant = {
+      grantDate: '2018-01-01', totalShares: 960, cliffMonths: 0,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 25,
+    };
+    expect(computeUnvestedRSUValue([grant])).toBe(0);
+  });
+
+  it('computes correct unvested value for partially vested grant', () => {
+    const grant = {
+      grantDate: '2025-01-01', totalShares: 480, cliffMonths: 0,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 100,
+    };
+    const events = computeVestEvents(grant);
+    const vestedShares = events.filter(e => e.vested).reduce((s, e) => s + e.shares, 0);
+    const expectedUnvestedValue = Math.max(0, 480 - vestedShares) * 100;
+    expect(computeUnvestedRSUValue([grant])).toBeCloseTo(expectedUnvestedValue, 5);
+    expect(computeUnvestedRSUValue([grant])).toBeGreaterThan(0);
+  });
+
+  it('sums unvested value across multiple grants', () => {
+    const fullyVested = {
+      grantDate: '2018-01-01', totalShares: 480, cliffMonths: 0,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 100,
+    };
+    const fullyUnvested = {
+      grantDate: today(), totalShares: 200, cliffMonths: 12,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 75,
+    };
+    expect(computeUnvestedRSUValue([fullyVested, fullyUnvested])).toBe(15000);
+  });
+
+  it('uses grantPrice as fallback when currentPrice is absent', () => {
+    const grant = {
+      grantDate: today(), totalShares: 100, cliffMonths: 12,
+      vestingMonths: 48, vestFrequency: 'monthly', grantPrice: 30,
+    };
+    expect(computeUnvestedRSUValue([grant])).toBe(3000);
   });
 });
 
@@ -900,19 +927,24 @@ describe('migrateData v7 — unvestedRSUValue backfill', () => {
 // ─── Dashboard net worth split ────────────────────────────────────────────────
 describe('Dashboard net worth split logic', () => {
   it('vestedNetWorth = total minus unvested when unvestedRSU > 0', () => {
-    const grants = [{ totalShares: 1000, vestedShares: 170, currentPrice: 100 }];
-    const netWorth    = 134000; // accounts total in this fixture
-    const unvestedRSU = computeUnvestedRSUValue(grants);
+    const grant = {
+      grantDate: today(), totalShares: 1000, cliffMonths: 12,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 100,
+    };
+    const netWorth = 200000;
+    const unvestedRSU = computeUnvestedRSUValue([grant]);
     const vestedNetWorth = netWorth - unvestedRSU;
-    expect(unvestedRSU).toBe(83000);
-    expect(vestedNetWorth).toBe(netWorth - 83000);
+    expect(unvestedRSU).toBe(100000);
+    expect(vestedNetWorth).toBe(100000);
+    expect(unvestedRSU > 0).toBe(true);
   });
 
   it('shows no split UI when all grants are fully vested', () => {
-    const grants = [
-      { totalShares: 100, vestedShares: 100, currentPrice: 50 },
-    ];
-    const unvestedRSU = computeUnvestedRSUValue(grants);
+    const grant = {
+      grantDate: '2018-01-01', totalShares: 480, cliffMonths: 0,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 50,
+    };
+    const unvestedRSU = computeUnvestedRSUValue([grant]);
     expect(unvestedRSU).toBe(0);
     // UI condition: unvestedRSU > 0 → false → standard net worth label shown
     expect(unvestedRSU > 0).toBe(false);

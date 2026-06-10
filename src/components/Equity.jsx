@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, Fragment } from 'react';
-import { fmt, fmtDate, today, uid, CHART } from '../constants.js';
+import { fmt, fmtDate, today, uid, CHART, computeVestEvents } from '../constants.js';
 import Modal from './Modal.jsx';
 import { useMarketData, isCryptoTicker } from '../hooks/useMarketData.js';
 import { useChart } from '../hooks/useChart.js';
@@ -156,32 +156,6 @@ function VestAccountModal({ vestLabel, vestValue, investmentAccounts, onConfirm,
   );
 }
 
-// --- Vesting calculation -----------------------------------------------------
-function computeVestEvents(grant) {
-  const { grantDate, totalShares, cliffMonths, vestingMonths, vestFrequency, grantPrice, currentPrice } = grant;
-  if (!grantDate || !totalShares || !vestingMonths) return [];
-
-  const start = new Date(grantDate + 'T00:00:00');
-  const cliff = new Date(start);
-  cliff.setMonth(cliff.getMonth() + (cliffMonths ?? 12));
-
-  const freqMonths = vestFrequency === 'quarterly' ? 3 : 1;
-  const periods    = Math.floor(vestingMonths / freqMonths);
-  const perPeriod  = totalShares / periods;
-  const events     = [];
-
-  for (let i = 1; i <= periods; i++) {
-    const d = new Date(start);
-    d.setMonth(d.getMonth() + i * freqMonths);
-    if (d < cliff) continue;
-    const dateStr   = d.toISOString().split('T')[0];
-    const costBasis = perPeriod * (grantPrice ?? 0);
-    const mktValue  = perPeriod * (currentPrice ?? grantPrice ?? 0);
-    events.push({ date: dateStr, shares: perPeriod, costBasis, mktValue, vested: dateStr <= today() });
-  }
-
-  return events;
-}
 
 // --- Grant Form --------------------------------------------------------------
 function GrantForm({ initial, onSave, onClose }) {

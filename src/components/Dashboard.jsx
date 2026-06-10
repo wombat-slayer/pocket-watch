@@ -65,7 +65,7 @@ export default function Dashboard({
   // ── Net worth ─────────────────────────────────────────────────────────────
   const assets     = accounts.filter(a => !isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
   const debts      = accounts.filter(a =>  isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
-  const equityValue    = useMemo(() => (grants || []).reduce((s,g) => s + (g.vestedShares||0) * (g.currentPrice||0), 0), [grants]);
+  const equityValue    = useMemo(() => (grants || []).reduce((s,g) => s + (g.totalShares||0) * (g.currentPrice || g.grantPrice || 0), 0), [grants]);
   const netWorth       = assets - debts + equityValue;
   const unvestedRSU    = useMemo(() => computeUnvestedRSUValue(grants), [grants]);
   const vestedNetWorth = netWorth - unvestedRSU;
