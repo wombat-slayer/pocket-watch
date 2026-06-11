@@ -7,7 +7,7 @@ import Equity from './Equity.jsx';
 import PayStubImportModal from './PayStubImportModal.jsx';
 import { CheckCircle2, AlertTriangle, XCircle, Download, Archive, HeartPulse, Upload, RefreshCw, Trash2, FolderOpen, FolderInput, Loader2, Key, Landmark, Folder, BarChart2, TrendingUp, Tag, Bell, Briefcase } from 'lucide-react';
 
-export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile, budgetAlerts = { enabled: true, warnAt: 80, alertAt: 100 }, onSaveBudgetAlerts, onScanTransfers }) {
+export default function Settings({ transactions, accounts, budgets, goals, netWorthHistory, dataPath, onReset, onClearDemo, onImport, onChangeDataFile, userCategories, onAddUserCategory, onDeleteUserCategory, apiKeys = {}, onSaveApiKeys, archivedTransactions = [], onArchive, onRestoreArchive, onImportNetWorthHistory, onPlaidImport, onPlaidBalances, onToast, onPlaidSyncComplete, onPlaidModify, onPlaidRemove, recurrences = [], onAddRecurrence, onEditRecurrence, onDeleteRecurrence, onToggleRecurrence, grants = [], onAddGrant, onEditGrant, onDeleteGrant, onAddTx, onVestToAccount, onUpdateGrantPrice, compensationProfile, onSetCompensationProfile, budgetAlerts = { enabled: true, warnAt: 80, alertAt: 100 }, onSaveBudgetAlerts, onScanTransfers, plaidCursors = {}, onPlaidSetCursor }) {
   const [confirmReset,     setConfirmReset]     = useState(false);
   const [confirmDemo,      setConfirmDemo]      = useState(false);
   const [showPayStubModal, setShowPayStubModal] = useState(false);
@@ -312,6 +312,8 @@ export default function Settings({ transactions, accounts, budgets, goals, netWo
           onSyncComplete={onPlaidSyncComplete}
           onModifyTxs={onPlaidModify}
           onRemoveTxs={onPlaidRemove}
+          plaidCursors={plaidCursors}
+          onSetCursor={onPlaidSetCursor}
         />
       </div>
 

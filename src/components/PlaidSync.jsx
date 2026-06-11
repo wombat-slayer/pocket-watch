@@ -13,8 +13,6 @@ import {
   removeLinkedItem,
   mapPlaidTransaction,
   extractBalanceUpdates,
-  getCursor,
-  setCursor,
 } from '../plaidLayer.js';
 import { useCategoryMemory } from '../hooks/useCategoryMemory.js';
 import { detectAndMarkTransferPairs, autoCategoryBusiness } from '../constants.js';
@@ -102,7 +100,7 @@ function PlaidLinkButton({ linkToken, receivedRedirectUri, onSuccess, onExit, on
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function PlaidSync({ accounts, existingTxs, onImport, onToast, onSyncComplete, onUpdateBalances, onModifyTxs, onRemoveTxs }) {
+export default function PlaidSync({ accounts, existingTxs, onImport, onToast, onSyncComplete, onUpdateBalances, onModifyTxs, onRemoveTxs, plaidCursors = {}, onSetCursor }) {
   // ── Credentials state ──────────────────────────────────────────────────────
   const [creds, setCreds] = useState({ clientId: '', secret: '', env: 'sandbox' });
   const [credInput, setCredInput] = useState({ clientId: '', secret: '', env: 'sandbox' });
@@ -388,7 +386,7 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
       // Cursor-based /transactions/sync loop.
       // First call (cursor = null) pulls all available history; subsequent
       // calls are incremental — only added/modified/removed since last cursor.
-      let cursor = await getCursor(item.itemId);
+      let cursor = plaidCursors[item.itemId] ?? null;
       const allAdded    = [];
       const allModified = [];
       const allRemoved  = [];
@@ -473,14 +471,12 @@ export default function PlaidSync({ accounts, existingTxs, onImport, onToast, on
         onImport(markedNewTxs);
       }
 
-      // Cursor is saved after onImport so a crash DURING onImport processing
-      // re-fetches the same page on the next sync rather than losing transactions.
-      // However onImport only updates in-memory state (600ms debounced save), so
-      // a crash between this setCursor and the debounce flush still loses the
-      // transactions while the cursor has advanced. True atomicity requires storing
-      // the cursor in the main data file in the same atomic write as the transactions
-      // (tracked in BACKLOG.md).
-      await setCursor(item.itemId, cursor);
+      // Cursor is updated via onSetCursor, which updates React state in App.jsx.
+      // The cursor state and the transaction state are both included in the same
+      // 600ms debounced saveAppData call, so they persist atomically (H2). If the
+      // save is interrupted, neither the new transactions nor the advanced cursor
+      // reach disk, and the next sync re-pulls the same delta.
+      onSetCursor?.(item.itemId, cursor);
 
       onSyncComplete?.(markedNewTxs.length, markedNewTxs.filter(t => t.category === 'Other').length);
       if (balanceUpdates.length > 0) onUpdateBalances?.(balanceUpdates);

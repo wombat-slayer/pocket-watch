@@ -14,6 +14,7 @@ import {
   loadAppData, saveAppData, dataFileExists, setAllowedDataDir,
   promptNewDataFile, promptOpenDataFile,
 } from './dataLayer.js';
+import { getLinkedItems, getCursor } from './plaidLayer.js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
@@ -94,6 +95,7 @@ export default function App() {
   const [reportsInitialTab, setReportsInitialTab] = useState('trend');
   const [compensationProfile, setCompensationProfile] = useState(DEFAULT_COMPENSATION_PROFILE);
   const [budgetAlerts, setBudgetAlerts] = useState({ enabled: true, warnAt: 80, alertAt: 100 });
+  const [plaidCursors, setPlaidCursors] = useState({});
   const [privacyMode,  setPrivacyMode]  = useState(() => localStorage.getItem('pw_privacy') === '1');
   const [theme, setTheme] = useState(() => localStorage.getItem('pw-theme') ?? 'dark');
   useEffect(() => {
@@ -195,6 +197,7 @@ export default function App() {
       ...data, accounts, transactions, budgets, goals,
       compensationProfile: { ...DEFAULT_COMPENSATION_PROFILE, ...(data.compensationProfile ?? {}) },
       budgetAlerts: data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 },
+      plaidCursors: data.plaidCursors ?? {},
       version: 10,
     };
   };
@@ -246,6 +249,22 @@ export default function App() {
         setCompensationProfile(data.compensationProfile ?? DEFAULT_COMPENSATION_PROFILE);
         setBudgetAlerts(data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 });
         setOnboardingDone(data.onboardingComplete !== false);
+        // Plaid cursors live in the main data file for atomicity (H2).
+        // On first load after upgrade from a version where cursors were stored in
+        // plaid.json, migrate them so the user doesn't re-fetch all history.
+        if (data.plaidCursors) {
+          setPlaidCursors(data.plaidCursors);
+        } else {
+          try {
+            const items = await getLinkedItems();
+            const migrated = {};
+            for (const item of items) {
+              const c = await getCursor(item.itemId);
+              if (c) migrated[item.itemId] = c;
+            }
+            setPlaidCursors(migrated);
+          } catch { /* non-fatal — full re-sync on next connect is acceptable */ }
+        }
       } else {
         // New file location — seed demo data
         setTransactions(seedTransactions());
@@ -324,11 +343,11 @@ export default function App() {
     if (appStatus !== 'ready' || !dataPath) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 })
+      saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, plaidCursors, onboardingComplete: onboardingDone, version: 10 })
         .catch(err => console.error('Auto-save failed:', err));
     }, 600);
     return () => clearTimeout(saveTimer.current);
-  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingDone, dataPath, appStatus]);
+  }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, plaidCursors, onboardingDone, dataPath, appStatus]);
 
   // ── Graceful quit flush (L7) ──────────────────────────────────────────────
   // When the tray "Quit" item is clicked, Rust emits pw:before-quit. We cancel
@@ -340,16 +359,16 @@ export default function App() {
     listen('pw:before-quit', async () => {
       clearTimeout(saveTimer.current);
       try {
-        await saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 });
+        await saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, plaidCursors, onboardingComplete: onboardingDone, version: 10 });
       } catch (_) { /* non-fatal — exit regardless */ }
       await invoke('confirm_quit').catch(() => {});
     }).then(fn => { unlisten = fn; });
     return () => { unlisten?.(); };
-  }, [appStatus, dataPath, transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingDone]);
+  }, [appStatus, dataPath, transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, plaidCursors, onboardingDone]);
 
   // ── Move data file ────────────────────────────────────────────────────────
   const handleChangeDataFile = async (newPath) => {
-    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, onboardingComplete: onboardingDone, version: 10 });
+    await saveAppData(newPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, plaidCursors, onboardingComplete: onboardingDone, version: 10 });
     await setDataPath(newPath);
     setDataPathState(newPath);
   };
@@ -621,6 +640,14 @@ export default function App() {
     setLastSyncResult(count > 0 ? { count, uncategorized } : null);
   }, []);
 
+  // ── Plaid cursor — updated after each successful sync (H2) ───────────────────
+  // Stored in the main data file so cursor and transactions persist in the same
+  // atomic write. If saveAppData fails, neither the new transactions nor the
+  // advanced cursor reach disk, ensuring the next sync re-pulls the same delta.
+  const handleSetPlaidCursor = useCallback((itemId, cursor) => {
+    setPlaidCursors(prev => ({ ...prev, [itemId]: cursor }));
+  }, []);
+
   // ── Settings handlers ────────────────────────────────────────────────────────
   // ── Net worth history import ──────────────────────────────────────────────────
   const handleImportNetWorthHistory = (rows) => {
@@ -780,7 +807,7 @@ export default function App() {
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
         {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} budgets={budgets} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} initialTab={reportsInitialTab} />}
         {page==='business'     && <Business     accounts={accounts} transactions={transactions} onUpdateTransaction={editTx} />}
-        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} budgetAlerts={budgetAlerts} onSaveBudgetAlerts={handleSaveBudgetAlerts} onScanTransfers={handleScanTransfers} />}
+        {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} budgetAlerts={budgetAlerts} onSaveBudgetAlerts={handleSaveBudgetAlerts} onScanTransfers={handleScanTransfers} plaidCursors={plaidCursors} onPlaidSetCursor={handleSetPlaidCursor} />}
       </div>
 
       {showAdd && (
