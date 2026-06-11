@@ -2720,7 +2720,7 @@ dependencies = [
 
 [[package]]
 name = "pocket-watch"
-version = "0.15.3"
+version = "0.15.4"
 dependencies = [
  "keyring",
  "reqwest",
