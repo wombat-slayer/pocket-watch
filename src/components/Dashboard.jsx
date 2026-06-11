@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeUnvestedRSUValue, CHART } from '../constants.js';
+import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeNetWorth, computeUnvestedTotal, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { usePrivacy } from '../context/PrivacyContext.jsx';
@@ -63,12 +63,9 @@ export default function Dashboard({
   const spendDelta    = pctDelta(monthSpend, prevSpend);
 
   // ── Net worth ─────────────────────────────────────────────────────────────
-  const assets     = accounts.filter(a => !isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
-  const debts      = accounts.filter(a =>  isDebtType(a.type)).reduce((s,a) => s + a.balance, 0);
-  const equityValue    = useMemo(() => (grants || []).reduce((s,g) => s + (g.totalShares||0) * (g.currentPrice || g.grantPrice || 0), 0), [grants]);
-  const netWorth       = assets - debts + equityValue;
-  const unvestedRSU    = useMemo(() => computeUnvestedRSUValue(grants), [grants]);
-  const vestedNetWorth = netWorth - unvestedRSU;
+  const equityValue   = useMemo(() => (grants || []).reduce((s,g) => s + (g.totalShares||0) * (g.currentPrice || g.grantPrice || 0), 0), [grants]);
+  const netWorth      = useMemo(() => computeNetWorth(accounts, grants), [accounts, grants]);
+  const unvestedTotal = useMemo(() => computeUnvestedTotal(accounts, grants), [accounts, grants]);
 
   const checkingBal  = accounts.filter(a => a.type === 'checking').reduce((s,a) => s + a.balance, 0);
   const savingsBal   = accounts.filter(a => a.type === 'savings').reduce((s,a) => s + a.balance, 0);
@@ -318,7 +315,7 @@ export default function Dashboard({
       <div className="card" style={{ marginBottom:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12, flexWrap:'wrap', gap:8 }}>
           <div>
-            {unvestedRSU > 0 && isCurrentMonth ? (
+            {unvestedTotal > 0 && isCurrentMonth ? (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
                   <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Vested Net Worth</div>
@@ -327,9 +324,9 @@ export default function Dashboard({
                     style={{ fontSize:12, color:'var(--text-muted)', cursor:'help' }}
                   >ⓘ</span>
                 </div>
-                <div style={{ fontSize:30, fontWeight:700, color: vestedNetWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{cfmt(vestedNetWorth)}</div>
+                <div style={{ fontSize:30, fontWeight:700, color: netWorth >= 0 ? 'var(--green)' : 'var(--red)' }}>{cfmt(netWorth)}</div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>
-                  + {cfmt(unvestedRSU)} <span style={{ color:'var(--text-muted)' }}>locked (unvested RSUs)</span>
+                  + {cfmt(unvestedTotal)} <span style={{ color:'var(--text-muted)' }}>locked (unvested RSUs)</span>
                 </div>
               </>
             ) : displayedNW === null ? (

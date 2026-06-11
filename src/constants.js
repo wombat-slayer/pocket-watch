@@ -437,6 +437,31 @@ export function computeUnvestedRSUValue(grants) {
   }, 0);
 }
 
+// Canonical vested net worth. Each non-debt account contributes (balance − unvestedRSUValue)
+// so locked RSU value parked in an investment balance is excluded from the headline figure.
+// Vested grant equity (totalGrantValue − computeUnvestedRSUValue) is added on top.
+// No-double-count rule: account.unvestedRSUValue and grant shares are mutually exclusive
+// representations — a position must appear in one place, never both.
+export function computeNetWorth(accounts, grants) {
+  const vestedAssets = (accounts || [])
+    .filter(a => !isDebtType(a.type))
+    .reduce((s, a) => s + a.balance - (a.unvestedRSUValue || 0), 0);
+  const debts = (accounts || [])
+    .filter(a => isDebtType(a.type))
+    .reduce((s, a) => s + a.balance, 0);
+  const totalGrantEquity = (grants || []).reduce(
+    (s, g) => s + (g.totalShares || 0) * (g.currentPrice || g.grantPrice || 0), 0,
+  );
+  return vestedAssets - debts + (totalGrantEquity - computeUnvestedRSUValue(grants));
+}
+
+// Total locked (unvested) value shown as a separate breakout below the headline figure.
+// Sums per-account unvestedRSUValue fields plus unvested grant equity.
+export function computeUnvestedTotal(accounts, grants) {
+  const accountUnvested = (accounts || []).reduce((s, a) => s + (a.unvestedRSUValue || 0), 0);
+  return accountUnvested + computeUnvestedRSUValue(grants);
+}
+
 export function suggestBudgetsFromActuals(transactions, referenceMonths) {
   const totals = {};
   referenceMonths.forEach(m => {

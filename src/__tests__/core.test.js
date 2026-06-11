@@ -45,6 +45,8 @@ import {
   migrateData,
   computeEffectiveFlip,
   applyPlaidModifications,
+  computeNetWorth,
+  computeUnvestedTotal,
 } from '../constants.js';
 
 import { parsePayStub, toMonthly, calcEffectiveTaxRate } from '../utils/parsePayStub.js';
@@ -1739,5 +1741,64 @@ describe('applyPlaidModifications()', () => {
     const result = applyPlaidModifications(txs, updates);
     expect(result[0].date).toBe('2026-02-01');
     expect(result[1].date).toBe('2026-01-01');
+  });
+});
+
+// ─── computeNetWorth / computeUnvestedTotal (Wave 1 — vested-only basis) ────
+describe('computeNetWorth()', () => {
+  // Diagnosis-pinning test: the user's real account data.
+  // Before the fix the formula returned ~$204,148.05 (unvested RSUs counted as spendable).
+  // After the fix it must return ~$63,879.70 (unvested excluded).
+  it('diagnosis pin: excludes account.unvestedRSUValue — returns ~$63,879.70 not ~$204,148', () => {
+    const accounts = [
+      { id: '1', type: 'checking',   balance: 9670.03,   unvestedRSUValue: 0 },
+      { id: '2', type: 'savings',    balance: 34869.28,  unvestedRSUValue: 0 },
+      { id: '3', type: 'investment', balance: 159896.61, unvestedRSUValue: 140268.35 },
+      { id: '4', type: 'credit',     balance: 287.87 },  // debt
+    ];
+    expect(computeNetWorth(accounts, [])).toBeCloseTo(63879.70, 2);
+  });
+
+  it('diagnosis pin: computeUnvestedTotal returns ~$140,268.35 locked', () => {
+    const accounts = [
+      { id: '1', type: 'checking',   balance: 9670.03,   unvestedRSUValue: 0 },
+      { id: '2', type: 'savings',    balance: 34869.28,  unvestedRSUValue: 0 },
+      { id: '3', type: 'investment', balance: 159896.61, unvestedRSUValue: 140268.35 },
+      { id: '4', type: 'credit',     balance: 287.87 },
+    ];
+    expect(computeUnvestedTotal(accounts, [])).toBeCloseTo(140268.35, 2);
+  });
+
+  it('account with unvestedRSUValue === balance contributes 0 to net worth', () => {
+    const accounts = [{ id: '1', type: 'investment', balance: 50000, unvestedRSUValue: 50000 }];
+    expect(computeNetWorth(accounts, [])).toBeCloseTo(0, 5);
+  });
+
+  it('fully unvested grant contributes 0 vested equity; unvested shows in computeUnvestedTotal', () => {
+    const fullyUnvested = {
+      grantDate: today(), totalShares: 100, cliffMonths: 12,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 100,
+    };
+    const accounts = [{ id: '1', type: 'checking', balance: 5000, unvestedRSUValue: 0 }];
+    expect(computeNetWorth(accounts, [fullyUnvested])).toBeCloseTo(5000, 5);
+    expect(computeUnvestedTotal(accounts, [fullyUnvested])).toBe(10000);
+  });
+
+  it('no-double-count: account.unvestedRSUValue and grant unvested sum independently', () => {
+    // These represent different positions, not the same position tracked twice.
+    const accounts = [{ id: '1', type: 'investment', balance: 120000, unvestedRSUValue: 20000 }];
+    const fullyUnvested = {
+      grantDate: today(), totalShares: 100, cliffMonths: 12,
+      vestingMonths: 48, vestFrequency: 'monthly', currentPrice: 50, // 100×50=5000 all unvested
+    };
+    expect(computeUnvestedTotal(accounts, [fullyUnvested])).toBe(25000); // 20000 + 5000
+    // vestedAssets = 120000-20000 = 100000; grantEquity=5000, unvestedGrant=5000 → vestedGrant=0
+    expect(computeNetWorth(accounts, [fullyUnvested])).toBeCloseTo(100000, 5);
+  });
+
+  it('handles null/empty accounts and grants gracefully', () => {
+    expect(computeNetWorth(null, null)).toBe(0);
+    expect(computeNetWorth([], [])).toBe(0);
+    expect(computeUnvestedTotal(null, null)).toBe(0);
   });
 });
