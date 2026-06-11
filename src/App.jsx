@@ -216,7 +216,9 @@ export default function App() {
         // Plaid cursors live in the main data file for atomicity (H2).
         // On first load after upgrade from a version where cursors were stored in
         // plaid.json, migrate them so the user doesn't re-fetch all history.
-        if (data.plaidCursors) {
+        // Must check raw (pre-migration) — migrateData always sets plaidCursors:{},
+        // so data.plaidCursors is always truthy and the else branch would be dead code.
+        if (raw.plaidCursors) {
           setPlaidCursors(data.plaidCursors);
         } else {
           try {
