@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeNetWorth, computeUnvestedTotal, CHART } from '../constants.js';
+import { catColor, catIcon, isDebtType, fmt, fmtDate, thisMonth, monthlyEquivalent, computeNetWorth, computeUnvestedTotal, buildSnapMap, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { usePrivacy } from '../context/PrivacyContext.jsx';
@@ -75,14 +75,9 @@ export default function Dashboard({
   const isCurrentMonth = selMonth === thisMonth();
 
   // Backward-walk reconstruction: NW[m-1] = NW[m] - netFlow[m], adjustments excluded.
-  // Walks months newest-first from current vested NW, re-anchoring on actual snapshots when found.
-  // Pre-Wave-1 snapshots may use bare assets−debts; used as-is (grant state unrecoverable).
+  // Only vested-basis snapshots (h.unvested != null) anchor the walk; legacy rows are skipped.
   const nwByMonth = useMemo(() => {
-    const snapMap = {};
-    netWorthHistory.forEach(h => {
-      const mo = h.date.slice(0, 7);
-      if (!snapMap[mo] || h.date > snapMap[mo].date) snapMap[mo] = h;
-    });
+    const snapMap = buildSnapMap(netWorthHistory);
     const netFlowByMonth = {};
     transactions.filter(t => t.type !== 'adjustment').forEach(t => {
       const mo = t.date.slice(0, 7);
@@ -383,6 +378,11 @@ export default function Dashboard({
             </div>
           )}
         </div>
+        {!isCurrentMonth && (
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:6, fontStyle:'italic' }}>
+            Balances below are current — not as of {new Date(selMonth + '-01').toLocaleDateString('en-US', { month:'long', year:'numeric' })}
+          </div>
+        )}
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
           {checkingBal !== 0 && (
             <div style={{ background:'var(--bg-page)', borderRadius:8, padding:'6px 12px', fontSize:12 }}>

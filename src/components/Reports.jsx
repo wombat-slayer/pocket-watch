@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import { catColor, catIcon, fmt, thisMonth, isDebtType, computeNetWorth, CHART } from '../constants.js';
+import { catColor, catIcon, fmt, thisMonth, isDebtType, computeNetWorth, buildSnapMap, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { usePrivacy } from '../context/PrivacyContext.jsx';
@@ -122,12 +122,9 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
 
   // ── Net worth history (actual snapshots + backward reconstruction) ─────────
   const nwHistoryData = useMemo(() => {
-    // Step 1: build map of actual daily snapshots → collapse to month-end
-    const snapMap = {};
-    netWorthHistory.forEach(h => {
-      const mo = h.date.slice(0, 7);
-      if (!snapMap[mo] || h.date > snapMap[mo].date) snapMap[mo] = h;
-    });
+    // Step 1: build map of vested-basis snapshots → collapse to month-end.
+    // Legacy rows (no unvested field) are excluded so they can't re-anchor the trend at the old inflated value.
+    const snapMap = buildSnapMap(netWorthHistory);
 
     // Step 2: compute current vested net worth (excludes account.unvestedRSUValue and grant-unvested)
     const currentNW = computeNetWorth(accounts, grants);

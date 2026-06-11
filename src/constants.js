@@ -462,6 +462,21 @@ export function computeUnvestedTotal(accounts, grants) {
   return accountUnvested + computeUnvestedRSUValue(grants);
 }
 
+// Build a month → latest-snapshot map from netWorthHistory, excluding legacy rows that
+// lack the `unvested` field. Rows without `unvested` were written before the vested-basis
+// change (Wave 1) and their netWorth includes unvested RSU value — using them as
+// reconstruction anchors would re-introduce the inflated figure into the NW trend.
+// Vested-basis rows (h.unvested != null) are used normally.
+export function buildSnapMap(netWorthHistory) {
+  const map = {};
+  (netWorthHistory || []).forEach(h => {
+    if (h.unvested == null) return; // legacy pre-vested-basis — not a reliable anchor
+    const mo = h.date.slice(0, 7);
+    if (!map[mo] || h.date > map[mo].date) map[mo] = h;
+  });
+  return map;
+}
+
 export function suggestBudgetsFromActuals(transactions, referenceMonths) {
   const totals = {};
   referenceMonths.forEach(m => {

@@ -47,6 +47,7 @@ import {
   applyPlaidModifications,
   computeNetWorth,
   computeUnvestedTotal,
+  buildSnapMap,
 } from '../constants.js';
 
 import { parsePayStub, toMonthly, calcEffectiveTaxRate } from '../utils/parsePayStub.js';
@@ -1800,5 +1801,62 @@ describe('computeNetWorth()', () => {
     expect(computeNetWorth(null, null)).toBe(0);
     expect(computeNetWorth([], [])).toBe(0);
     expect(computeUnvestedTotal(null, null)).toBe(0);
+  });
+});
+
+// ─── buildSnapMap (Wave 3 — legacy-row anchor filter) ────────────────────────
+describe('buildSnapMap()', () => {
+  it('regression: legacy row (no unvested field) is excluded — reconstruction uses vested basis not inflated value', () => {
+    // A pre-Wave-1 snapshot has netWorth ~$204k (unvested RSUs counted). If used as
+    // an anchor it would propagate that inflated value into the NW trend. buildSnapMap
+    // must filter it out so the backward walk starts from computeNetWorth instead.
+    const history = [
+      { id: '1', date: '2026-05-20', netWorth: 204148, assets: 204436, debts: 287 }, // legacy — no unvested
+    ];
+    const map = buildSnapMap(history);
+    expect(Object.keys(map)).toHaveLength(0); // no anchor: reconstruction uses current vested NW
+  });
+
+  it('vested-basis row (has unvested field) is included as an anchor', () => {
+    const history = [
+      { id: '2', date: '2026-06-10', netWorth: 63879, assets: 204436, debts: 287, unvested: 140268 },
+    ];
+    const map = buildSnapMap(history);
+    expect(map['2026-06']).toBeDefined();
+    expect(map['2026-06'].netWorth).toBe(63879);
+  });
+
+  it('mixed history: only vested-basis rows enter the map', () => {
+    const history = [
+      { id: '1', date: '2026-05-20', netWorth: 204148, assets: 204436, debts: 287 },            // legacy
+      { id: '2', date: '2026-06-10', netWorth: 63879,  assets: 204436, debts: 287, unvested: 140268 }, // vested
+    ];
+    const map = buildSnapMap(history);
+    expect(map['2026-05']).toBeUndefined(); // legacy excluded
+    expect(map['2026-06']).toBeDefined();   // vested included
+    expect(map['2026-06'].netWorth).toBe(63879);
+  });
+
+  it('uses the latest snapshot per month when multiple vested rows exist', () => {
+    const history = [
+      { id: '1', date: '2026-06-05', netWorth: 60000, unvested: 140000 },
+      { id: '2', date: '2026-06-15', netWorth: 63879, unvested: 140268 },
+    ];
+    const map = buildSnapMap(history);
+    expect(map['2026-06'].netWorth).toBe(63879); // June 15 wins
+  });
+
+  it('treats unvested: 0 as a valid vested-basis row (zero locked value is still vested-basis)', () => {
+    const history = [
+      { id: '1', date: '2026-06-01', netWorth: 50000, unvested: 0 },
+    ];
+    const map = buildSnapMap(history);
+    expect(map['2026-06']).toBeDefined();
+    expect(map['2026-06'].netWorth).toBe(50000);
+  });
+
+  it('handles null/empty history gracefully', () => {
+    expect(buildSnapMap(null)).toEqual({});
+    expect(buildSnapMap([])).toEqual({});
   });
 });
