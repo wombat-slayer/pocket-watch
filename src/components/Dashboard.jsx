@@ -72,18 +72,47 @@ export default function Dashboard({
   const investBal    = accounts.filter(a => a.type === 'investment').reduce((s,a) => s + a.balance, 0);
   const creditBal    = accounts.filter(a => a.type === 'credit').reduce((s,a) => s + a.balance, 0);
 
-  const prevMonthNW = useMemo(() => {
-    const pm = prevMonth;
-    const snapshots = netWorthHistory.filter(h => h.date.slice(0,7) === pm);
-    if (!snapshots.length) return null;
-    return snapshots[snapshots.length - 1].netWorth;
-  }, [netWorthHistory, prevMonth]);
   const isCurrentMonth = selMonth === thisMonth();
-  const selMonthNWSnap = useMemo(() => {
-    const snaps = netWorthHistory.filter(h => h.date.slice(0,7) === selMonth);
-    return snaps.length ? snaps[snaps.length - 1].netWorth : null;
-  }, [netWorthHistory, selMonth]);
-  const displayedNW = isCurrentMonth ? netWorth : selMonthNWSnap;
+
+  // Backward-walk reconstruction: NW[m-1] = NW[m] - netFlow[m], adjustments excluded.
+  // Walks months newest-first from current vested NW, re-anchoring on actual snapshots when found.
+  // Pre-Wave-1 snapshots may use bare assets−debts; used as-is (grant state unrecoverable).
+  const nwByMonth = useMemo(() => {
+    const snapMap = {};
+    netWorthHistory.forEach(h => {
+      const mo = h.date.slice(0, 7);
+      if (!snapMap[mo] || h.date > snapMap[mo].date) snapMap[mo] = h;
+    });
+    const netFlowByMonth = {};
+    transactions.filter(t => t.type !== 'adjustment').forEach(t => {
+      const mo = t.date.slice(0, 7);
+      netFlowByMonth[mo] = (netFlowByMonth[mo] || 0) + t.amount;
+    });
+    const allMonths = [...new Set([
+      ...transactions.map(t => t.date.slice(0, 7)),
+      thisMonth(),
+    ])].sort().reverse();
+    const map = {};
+    let running = netWorth;
+    for (const mo of allMonths) {
+      if (mo === thisMonth()) {
+        map[mo] = { value: netWorth, isEstimated: false };
+        running = netWorth;
+      } else if (snapMap[mo]) {
+        running = snapMap[mo].netWorth;
+        map[mo] = { value: running, isEstimated: false };
+      } else {
+        map[mo] = { value: running, isEstimated: true };
+      }
+      running = running - (netFlowByMonth[mo] || 0);
+    }
+    return map;
+  }, [netWorthHistory, transactions, netWorth]);
+
+  const displayedEntry         = isCurrentMonth ? { value: netWorth, isEstimated: false } : (nwByMonth[selMonth] ?? null);
+  const displayedNW            = displayedEntry?.value ?? null;
+  const displayedNWIsEstimated = displayedEntry?.isEstimated ?? false;
+  const prevMonthNW            = nwByMonth[prevMonth]?.value ?? null;
   const nwDelta = (displayedNW != null && prevMonthNW != null) ? displayedNW - prevMonthNW : null;
 
   // ── True Savings Rate ─────────────────────────────────────────────────────
@@ -333,11 +362,14 @@ export default function Dashboard({
               <>
                 <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
                 <div style={{ fontSize:30, fontWeight:700, color:'var(--text-secondary)' }}>—</div>
-                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>No snapshot for this month</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>No data for this month</div>
               </>
             ) : (
               <>
-                <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Net Worth</div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
+                  <div style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Net Worth</div>
+                  {displayedNWIsEstimated && <span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:400 }}>estimated</span>}
+                </div>
                 <div style={{ fontSize:30, fontWeight:700, color: displayedNW >= 0 ? 'var(--green)' : 'var(--red)' }}>{cfmt(displayedNW)}</div>
               </>
             )}

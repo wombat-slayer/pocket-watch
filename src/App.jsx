@@ -6,7 +6,7 @@ import {
   Check, X, Info, ChevronRight, ChevronLeft, Keyboard,
 } from 'lucide-react';
 
-import { isDebtType, today, uid, fmt, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE, checkBudgetAlerts, migrateData, applyPlaidModifications } from './constants.js';
+import { isDebtType, today, uid, fmt, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE, checkBudgetAlerts, migrateData, applyPlaidModifications, computeNetWorth, computeUnvestedTotal } from './constants.js';
 import { PrivacyContext } from './context/PrivacyContext.jsx';
 import { seedTransactions, seedAccounts, seedBudgets, seedGoals } from './seed.js';
 import {
@@ -351,8 +351,10 @@ export default function App() {
     if (netWorthHistory.some(h=>h.date===todayStr)) return;
     const assets = accounts.filter(a=>!isDebtType(a.type)).reduce((s,a)=>s+a.balance,0);
     const debts  = accounts.filter(a=> isDebtType(a.type)).reduce((s,a)=>s+a.balance,0);
-    setNetWorthHistory(h=>[...h,{ id:uid(), date:todayStr, netWorth:assets-debts, assets, debts }]);
-  }, [accounts, appStatus]); // eslint-disable-line
+    // Keep assets/debts for legacy readers. New rows gain netWorth (vested) and unvested fields.
+    // Pre-Wave-1 rows without the unvested field are left as-is (grant state unrecoverable).
+    setNetWorthHistory(h=>[...h,{ id:uid(), date:todayStr, netWorth:computeNetWorth(accounts,grants), assets, debts, unvested:computeUnvestedTotal(accounts,grants) }]);
+  }, [accounts, grants, appStatus]); // eslint-disable-line
 
   // ── Recurring auto-generation (runs once when app becomes ready) ──────────
   useEffect(() => {
@@ -765,7 +767,7 @@ export default function App() {
         {page==='transactions' && <Transactions transactions={transactions} accounts={accounts} onAdd={addTx} onEdit={editTx} onDelete={deleteTx} onBulkDelete={bulkDelete} onCSVImport={importTxs} existingTxs={transactions} initialCatFilter={txCatFilter} onClearCatFilter={()=>setTxCatFilter('All')} userCategories={userCategories} archivedTransactions={archivedTransactions} onRestoreArchive={handleRestoreArchive} recurrences={recurrences} lastSyncResult={lastSyncResult} onDismissSyncResult={()=>setLastSyncResult(null)} dataPath={dataPath} importKey={txImportKey} />}
         {page==='budgets'      && <Budgets      transactions={transactions} budgets={budgets} onAdd={addBudget} onEdit={editBudget} onDelete={deleteBudget} userCategories={userCategories} budgetTemplates={budgetTemplates} onSaveTemplate={handleSaveTemplate} onLoadTemplate={handleLoadTemplate} onBudgetAlert={handleBudgetAlert} onToggleTemplateAutoApply={handleToggleTemplateAutoApply} onCloseMonth={()=>setShowMonthClose(true)} />}
         {page==='accounts'     && <Accounts     accounts={accounts} transactions={transactions} netWorthHistory={netWorthHistory} recurrences={recurrences} onAdd={addAcct} onEdit={editAcct} onDelete={deleteAcct} onToggleCleared={toggleCleared} onReconcile={handleReconcile} onUpdateStatementDate={handleUpdateStatementDate} onImportStatement={importTxs} />}
-        {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} budgets={budgets} netWorthHistory={netWorthHistory} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} initialTab={reportsInitialTab} />}
+        {page==='reports'      && <Reports      transactions={transactions} accounts={accounts} budgets={budgets} netWorthHistory={netWorthHistory} grants={grants} onCategoryDrillDown={cat => { setTxCatFilter(cat); setPage('transactions'); }} initialTab={reportsInitialTab} />}
         {page==='business'     && <Business     accounts={accounts} transactions={transactions} onUpdateTransaction={editTx} />}
         {page==='settings'     && <Settings     transactions={transactions} accounts={accounts} budgets={budgets} goals={goals} netWorthHistory={netWorthHistory} dataPath={dataPath} onReset={handleReset} onClearDemo={handleClearDemo} onImport={handleImport} onChangeDataFile={handleChangeDataFile} userCategories={userCategories} onAddUserCategory={addUserCategory} onDeleteUserCategory={deleteUserCategory} apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} archivedTransactions={archivedTransactions} onArchive={handleArchive} onRestoreArchive={handleRestoreArchive} onImportNetWorthHistory={handleImportNetWorthHistory} onPlaidImport={importTxs} onPlaidBalances={updateAcctBalances} onToast={showToast} onPlaidSyncComplete={handleSyncComplete} onPlaidModify={plaidModifyTxs} onPlaidRemove={plaidRemoveTxs} recurrences={recurrences} onAddRecurrence={addRecurrence} onEditRecurrence={editRecurrence} onDeleteRecurrence={deleteRecurrence} onToggleRecurrence={toggleRecurrence} grants={grants} onAddGrant={addGrant} onEditGrant={editGrant} onDeleteGrant={deleteGrant} onAddTx={addTx} onVestToAccount={vestToAccount} onUpdateGrantPrice={updateGrantPrice} compensationProfile={compensationProfile} onSetCompensationProfile={setCompensationProfile} budgetAlerts={budgetAlerts} onSaveBudgetAlerts={handleSaveBudgetAlerts} onScanTransfers={handleScanTransfers} plaidCursors={plaidCursors} onPlaidSetCursor={handleSetPlaidCursor} />}
       </div>

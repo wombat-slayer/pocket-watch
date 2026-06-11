@@ -1,12 +1,12 @@
 import { useRef, useState, useMemo } from 'react';
-import { catColor, catIcon, fmt, thisMonth, isDebtType, CHART } from '../constants.js';
+import { catColor, catIcon, fmt, thisMonth, isDebtType, computeNetWorth, CHART } from '../constants.js';
 import { useChart } from '../hooks/useChart.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { usePrivacy } from '../context/PrivacyContext.jsx';
 import CategoryIcon from './CategoryIcon.jsx';
 import { AlertTriangle } from 'lucide-react';
 
-export default function Reports({ transactions, accounts = [], netWorthHistory = [], budgets = [], onCategoryDrillDown, initialTab }) {
+export default function Reports({ transactions, accounts = [], netWorthHistory = [], budgets = [], grants = [], onCategoryDrillDown, initialTab }) {
   const cfmt = useCurrency();
   const privacy = usePrivacy();
   const fmtK = v => privacy ? '••••' : '$' + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : v);
@@ -129,8 +129,8 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       if (!snapMap[mo] || h.date > snapMap[mo].date) snapMap[mo] = h;
     });
 
-    // Step 2: compute current net worth from accounts
-    const currentNW = accounts.reduce((s, a) => isDebtType(a.type) ? s - a.balance : s + a.balance, 0);
+    // Step 2: compute current vested net worth (excludes account.unvestedRSUValue and grant-unvested)
+    const currentNW = computeNetWorth(accounts, grants);
 
     // Step 3: get all months we have transaction data for (that predate history)
     const allTxMonths = [...new Set(transactions.map(t => t.date.slice(0, 7)))].sort();
@@ -172,7 +172,7 @@ export default function Reports({ transactions, accounts = [], netWorthHistory =
       value:      snapMap[mo]?.netWorth ?? reconstructed[mo] ?? currentNW,
       isActual:   !!snapMap[mo],
     }));
-  }, [netWorthHistory, accounts, transactions]);
+  }, [netWorthHistory, accounts, transactions, grants]);
 
   // ── Tax summary data ───────────────────────────────────────────────────────
   const taxYears = useMemo(() => {
