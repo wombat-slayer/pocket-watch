@@ -460,3 +460,66 @@ export function computeMortgagePI(principal, annualRatePct, years) {
   const n = years * 12;
   return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
+
+// ── Import helpers (extracted for testability) ────────────────────────────────
+
+// H5: pure OFX/QFX batches are already correctly signed per the OFX spec
+// (debits negative) so they must not be flipped again. A mixed OFX+CSV batch
+// falls back to flipSign, which applies to all rows — per-file flip is BACKLOG.
+export function computeEffectiveFlip(anyOFX, anyCSV, flipSign) {
+  return anyOFX && !anyCSV ? false : flipSign;
+}
+
+// H6: upsert Plaid modifications against existing transactions.
+// Unmatched updates (pending→posted) are inserted; matched updates patch in-place.
+// The u.id guard prevents a keyless update (id=undefined/null) from false-matching
+// transactions that also lack a fitid.
+export function applyPlaidModifications(existingTxs, updates) {
+  if (!updates?.length) return existingTxs;
+  const existingKeys = new Set(existingTxs.flatMap(t => [t.id, t.fitid].filter(Boolean)));
+  const toInsert = updates.filter(u => !existingKeys.has(u.id));
+  const updated = existingTxs.map(t => {
+    const u = updates.find(u => u.id && (u.id === t.fitid || u.id === t.id));
+    return u ? { ...t, ...u } : t;
+  });
+  if (!toInsert.length) return updated;
+  return [...toInsert, ...updated].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// Data-model migration — applies backfill defaults for fields added across versions.
+// Extracted from App.jsx for unit-testability. Pure function; no side effects.
+export function migrateData(data) {
+  const accounts = (data.accounts ?? []).map(a => ({
+    holdings: [],
+    isBusiness: false,
+    unvestedRSUValue: 0,
+    ...a,
+  }));
+  const transactions = (data.transactions ?? []).map(t => ({
+    tags: [],
+    splits: undefined,
+    recurringId: undefined,
+    transferId: undefined,
+    transferDirection: undefined,
+    transferPairId: undefined,
+    type: t.amount >= 0 ? 'income' : 'expense',
+    cleared: false,
+    receipts: [],
+    ...t,
+  }));
+  const budgets = (data.budgets ?? []).map(b => ({
+    rollover: false,
+    ...b,
+  }));
+  const goals = (data.goals ?? []).map(g => ({
+    linkedAccountId: null,
+    ...g,
+  }));
+  return {
+    ...data, accounts, transactions, budgets, goals,
+    compensationProfile: { ...DEFAULT_COMPENSATION_PROFILE, ...(data.compensationProfile ?? {}) },
+    budgetAlerts: data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 },
+    plaidCursors: data.plaidCursors ?? {},
+    version: 10,
+  };
+}

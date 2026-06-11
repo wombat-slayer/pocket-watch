@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { autoCategory, parseCSVLine, parseAmount, uid, sanitizeText, safeDate, shouldFlipImportAmounts, detectImportDuplicates } from '../constants.js';
+import { autoCategory, parseCSVLine, parseAmount, uid, sanitizeText, safeDate, shouldFlipImportAmounts, detectImportDuplicates, computeEffectiveFlip } from '../constants.js';
 
 const fmt = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(n ?? 0);
 
@@ -162,7 +162,7 @@ export default function StatementImport({ account, existingTransactions, onImpor
     // Known limitation: when a batch mixes OFX and CSV files, effectiveFlip falls back
     // to flipSign and applies to ALL rows — including OFX rows that don't need it.
     // Per-file-flip is tracked in BACKLOG.md as a Medium improvement.
-    const effectiveFlip = anyOFX && !anyCSV ? false : flipSign;
+    const effectiveFlip = computeEffectiveFlip(anyOFX, anyCSV, flipSign);
     if (effectiveFlip !== flipSign) setFlipSign(effectiveFlip);
 
     // Deduplicate within the batch (same date + amount + description prefix)

@@ -6,7 +6,7 @@ import {
   Check, X, Info, ChevronRight, ChevronLeft, Keyboard,
 } from 'lucide-react';
 
-import { isDebtType, today, uid, fmt, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE, checkBudgetAlerts } from './constants.js';
+import { isDebtType, today, uid, fmt, getNextRecurDate, detectAndMarkTransferPairs, DEFAULT_COMPENSATION_PROFILE, checkBudgetAlerts, migrateData, applyPlaidModifications } from './constants.js';
 import { PrivacyContext } from './context/PrivacyContext.jsx';
 import { seedTransactions, seedAccounts, seedBudgets, seedGoals } from './seed.js';
 import {
@@ -162,45 +162,6 @@ export default function App() {
       }
     })();
   }, []);
-
-  const migrateData = (data) => {
-    // Backfill transaction fields added in v2/v3
-    const accounts = (data.accounts ?? []).map(a => ({
-      holdings: [],
-      isBusiness: false,
-      unvestedRSUValue: 0,
-      ...a,
-    }));
-    const transactions = (data.transactions ?? []).map(t => ({
-      tags: [],
-      splits: undefined,
-      recurringId: undefined,
-      transferId: undefined,
-      transferDirection: undefined,
-      transferPairId: undefined,
-      type: t.amount >= 0 ? 'income' : 'expense',
-      cleared: false,
-      receipts: [],
-      ...t,
-    }));
-    // Backfill budget fields
-    const budgets = (data.budgets ?? []).map(b => ({
-      rollover: false,
-      ...b,
-    }));
-    // Backfill goal fields
-    const goals = (data.goals ?? []).map(g => ({
-      linkedAccountId: null,
-      ...g,
-    }));
-    return {
-      ...data, accounts, transactions, budgets, goals,
-      compensationProfile: { ...DEFAULT_COMPENSATION_PROFILE, ...(data.compensationProfile ?? {}) },
-      budgetAlerts: data.budgetAlerts ?? { enabled: true, warnAt: 80, alertAt: 100 },
-      plaidCursors: data.plaidCursors ?? {},
-      version: 10,
-    };
-  };
 
   const initFromPath = async (path) => {
     setDataPathState(path);
@@ -488,18 +449,7 @@ export default function App() {
   const importTxs  = (rows)=> { pushUndo(); setTransactions(ts=>[...rows,...ts].sort((a,b)=>b.date.localeCompare(a.date))); setTxImportKey(k => k + 1); showToast(`${rows.length} transaction${rows.length!==1?'s':''} imported`); };
   const plaidModifyTxs = (updates) => {
     if (!updates?.length) return;
-    setTransactions(ts => {
-      // H6: upsert — a pending tx that was never imported arrives in 'modified'
-      // when it posts; insert it rather than silently dropping it.
-      const existingKeys = new Set(ts.flatMap(t => [t.id, t.fitid].filter(Boolean)));
-      const toInsert = updates.filter(u => !existingKeys.has(u.id));
-      const updated = ts.map(t => {
-        const u = updates.find(u => u.id === t.fitid || u.id === t.id);
-        return u ? { ...t, ...u } : t;
-      });
-      if (!toInsert.length) return updated;
-      return [...toInsert, ...updated].sort((a, b) => b.date.localeCompare(a.date));
-    });
+    setTransactions(ts => applyPlaidModifications(ts, updates));
   };
   const plaidRemoveTxs = (ids) => {
     if (!ids?.length) return;

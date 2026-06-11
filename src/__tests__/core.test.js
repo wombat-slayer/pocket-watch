@@ -42,7 +42,9 @@ import {
   fmt,
   shouldFlipImportAmounts,
   detectImportDuplicates,
-  checkBudgetAlerts,
+  migrateData,
+  computeEffectiveFlip,
+  applyPlaidModifications,
 } from '../constants.js';
 
 import { parsePayStub, toMonthly, calcEffectiveTaxRate } from '../utils/parsePayStub.js';
@@ -1551,5 +1553,187 @@ describe('H1 — today() and thisMonth() local-time correctness', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 2, 15, 12, 0, 0)); // March
     expect(thisMonth()).toBe('2026-03');
+  });
+});
+
+// ─── migrateData (extracted to constants.js) ─────────────────────────────────
+describe('migrateData()', () => {
+  it('backfills plaidCursors to empty object when absent', () => {
+    const result = migrateData({ accounts: [], transactions: [], budgets: [], goals: [] });
+    expect(result.plaidCursors).toEqual({});
+  });
+
+  it('preserves existing plaidCursors', () => {
+    const input = { accounts: [], transactions: [], budgets: [], goals: [], plaidCursors: { 'item-abc': 'cursor-xyz' } };
+    const result = migrateData(input);
+    expect(result.plaidCursors).toEqual({ 'item-abc': 'cursor-xyz' });
+  });
+
+  it('sets version to 10', () => {
+    const result = migrateData({ accounts: [], transactions: [], budgets: [], goals: [], version: 7 });
+    expect(result.version).toBe(10);
+  });
+
+  it('backfills account fields (holdings, isBusiness, unvestedRSUValue)', () => {
+    const raw = [{ id: 'a1', name: 'Chase', type: 'checking', balance: 500 }];
+    const result = migrateData({ accounts: raw, transactions: [], budgets: [], goals: [] });
+    expect(result.accounts[0].holdings).toEqual([]);
+    expect(result.accounts[0].isBusiness).toBe(false);
+    expect(result.accounts[0].unvestedRSUValue).toBe(0);
+  });
+
+  it('preserves non-zero unvestedRSUValue in existing accounts', () => {
+    const raw = [{ id: 'a1', type: 'investment', unvestedRSUValue: 83000 }];
+    const result = migrateData({ accounts: raw, transactions: [], budgets: [], goals: [] });
+    expect(result.accounts[0].unvestedRSUValue).toBe(83000);
+  });
+
+  it('backfills transaction fields (tags, type, cleared, receipts)', () => {
+    const raw = [{ id: 't1', date: '2026-01-01', amount: -50, description: 'Coffee' }];
+    const result = migrateData({ accounts: [], transactions: raw, budgets: [], goals: [] });
+    const t = result.transactions[0];
+    expect(t.tags).toEqual([]);
+    expect(t.cleared).toBe(false);
+    expect(t.receipts).toEqual([]);
+    expect(t.type).toBe('expense');
+  });
+
+  it('infers type:income for positive transaction amount', () => {
+    const raw = [{ id: 't1', date: '2026-01-01', amount: 2000, description: 'Paycheck' }];
+    const result = migrateData({ accounts: [], transactions: raw, budgets: [], goals: [] });
+    expect(result.transactions[0].type).toBe('income');
+  });
+
+  it('preserves existing type when already set', () => {
+    const raw = [{ id: 't1', date: '2026-01-01', amount: -50, type: 'adjustment' }];
+    const result = migrateData({ accounts: [], transactions: raw, budgets: [], goals: [] });
+    expect(result.transactions[0].type).toBe('adjustment');
+  });
+
+  it('backfills budget rollover field', () => {
+    const raw = [{ id: 'b1', month: '2026-06', category: 'Food & Dining', amount: 300 }];
+    const result = migrateData({ accounts: [], transactions: [], budgets: raw, goals: [] });
+    expect(result.budgets[0].rollover).toBe(false);
+  });
+
+  it('backfills goal linkedAccountId field', () => {
+    const raw = [{ id: 'g1', name: 'Emergency Fund', target: 10000 }];
+    const result = migrateData({ accounts: [], transactions: [], budgets: [], goals: raw });
+    expect(result.goals[0].linkedAccountId).toBeNull();
+  });
+
+  it('handles missing top-level arrays gracefully', () => {
+    const result = migrateData({});
+    expect(result.accounts).toEqual([]);
+    expect(result.transactions).toEqual([]);
+    expect(result.budgets).toEqual([]);
+    expect(result.goals).toEqual([]);
+    expect(result.plaidCursors).toEqual({});
+  });
+
+  it('backfills budgetAlerts with defaults', () => {
+    const result = migrateData({});
+    expect(result.budgetAlerts).toMatchObject({ enabled: true, warnAt: 80, alertAt: 100 });
+  });
+
+  it('preserves existing budgetAlerts', () => {
+    const input = { budgetAlerts: { enabled: false, warnAt: 90, alertAt: 110 } };
+    const result = migrateData(input);
+    expect(result.budgetAlerts).toEqual({ enabled: false, warnAt: 90, alertAt: 110 });
+  });
+});
+
+// ─── computeEffectiveFlip (H5 — OFX amounts already signed) ──────────────────
+describe('computeEffectiveFlip()', () => {
+  it('pure OFX batch: ignores flipSign, always returns false', () => {
+    expect(computeEffectiveFlip(true, false, true)).toBe(false);
+    expect(computeEffectiveFlip(true, false, false)).toBe(false);
+  });
+
+  it('pure CSV batch: uses flipSign as-is', () => {
+    expect(computeEffectiveFlip(false, true, true)).toBe(true);
+    expect(computeEffectiveFlip(false, true, false)).toBe(false);
+  });
+
+  it('mixed OFX+CSV batch: uses flipSign (CSV present so not pure-OFX)', () => {
+    expect(computeEffectiveFlip(true, true, true)).toBe(true);
+    expect(computeEffectiveFlip(true, true, false)).toBe(false);
+  });
+
+  it('no files: anyOFX=false, anyCSV=false → uses flipSign', () => {
+    expect(computeEffectiveFlip(false, false, true)).toBe(true);
+    expect(computeEffectiveFlip(false, false, false)).toBe(false);
+  });
+});
+
+// ─── applyPlaidModifications (H6 — pending→posted upsert) ────────────────────
+describe('applyPlaidModifications()', () => {
+  it('returns existingTxs unchanged when updates is empty', () => {
+    const txs = [{ id: 'tx1', fitid: 'tx1', amount: -10 }];
+    expect(applyPlaidModifications(txs, [])).toBe(txs);
+  });
+
+  it('returns existingTxs unchanged when updates is null/undefined', () => {
+    const txs = [{ id: 'tx1', fitid: 'tx1', amount: -10 }];
+    expect(applyPlaidModifications(txs, null)).toBe(txs);
+    expect(applyPlaidModifications(txs, undefined)).toBe(txs);
+  });
+
+  it('inserts a new transaction when its id is not in existing rows', () => {
+    const txs = [{ id: 'tx-old', fitid: 'tx-old', amount: -10, date: '2026-01-05' }];
+    const updates = [{ id: 'tx-new', amount: -50, date: '2026-01-10', description: 'New posted' }];
+    const result = applyPlaidModifications(txs, updates);
+    expect(result).toHaveLength(2);
+    expect(result.some(t => t.id === 'tx-new')).toBe(true);
+  });
+
+  it('updates (not duplicates) an existing transaction matched by id', () => {
+    const txs = [{ id: 'tx-123', fitid: 'tx-123', amount: -50, description: 'Pending' }];
+    const updates = [{ id: 'tx-123', amount: -50.25, description: 'Posted' }];
+    const result = applyPlaidModifications(txs, updates);
+    expect(result).toHaveLength(1);
+    expect(result[0].description).toBe('Posted');
+    expect(result[0].amount).toBe(-50.25);
+  });
+
+  it('updates an existing transaction matched by fitid', () => {
+    const txs = [{ id: 'local-uuid', fitid: 'plaid-pending-xyz', amount: -30 }];
+    const updates = [{ id: 'plaid-pending-xyz', amount: -30.99, description: 'Final posted' }];
+    const result = applyPlaidModifications(txs, updates);
+    expect(result).toHaveLength(1);
+    expect(result[0].description).toBe('Final posted');
+  });
+
+  it('does not false-match keyless rows (u.id guard prevents undefined===undefined)', () => {
+    const txs = [{ amount: -10, date: '2026-01-10', description: 'Keyless A' }]; // no id, no fitid
+    const updates = [{ amount: -20, date: '2026-01-11', description: 'Keyless B' }]; // no id either
+    const result = applyPlaidModifications(txs, updates);
+    // keyless update has no id → not in existingKeys → inserted, not merged
+    expect(result).toHaveLength(2);
+    expect(result.some(t => t.description === 'Keyless A')).toBe(true);
+    expect(result.some(t => t.description === 'Keyless B')).toBe(true);
+  });
+
+  it('handles mixed batch: some updates insert, some update existing', () => {
+    const txs = [
+      { id: 'tx-existing', fitid: 'tx-existing', amount: -10, date: '2026-01-01', description: 'Old' },
+    ];
+    const updates = [
+      { id: 'tx-existing', amount: -10, description: 'Updated' },
+      { id: 'tx-brand-new', amount: -99, date: '2026-02-01', description: 'New' },
+    ];
+    const result = applyPlaidModifications(txs, updates);
+    expect(result).toHaveLength(2);
+    const existing = result.find(t => t.id === 'tx-existing');
+    expect(existing.description).toBe('Updated');
+    expect(result.some(t => t.id === 'tx-brand-new')).toBe(true);
+  });
+
+  it('sorts result by date descending after inserting new rows', () => {
+    const txs = [{ id: 'tx-old', fitid: 'tx-old', amount: -10, date: '2026-01-01' }];
+    const updates = [{ id: 'tx-new', amount: -50, date: '2026-02-01' }];
+    const result = applyPlaidModifications(txs, updates);
+    expect(result[0].date).toBe('2026-02-01');
+    expect(result[1].date).toBe('2026-01-01');
   });
 });
