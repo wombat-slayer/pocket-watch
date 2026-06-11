@@ -191,11 +191,15 @@ describe('autoCategory()', () => {
     expect(autoCategory('MOBILE PAYMENT - THANK YOU', 250)).toBe('Transfer');
   });
 
-  it('online payment → Transfer', () => {
-    expect(autoCategory('ONLINE PAYMENT', 100)).toBe('Transfer');
+  it('L3: online payment with negative amount → Transfer (debit)', () => {
+    expect(autoCategory('ONLINE PAYMENT', -100)).toBe('Transfer');
   });
 
-  it('autopay → Transfer', () => {
+  it('L3: online payment with positive amount → Income (refund, not a transfer)', () => {
+    expect(autoCategory('ONLINE PAYMENT', 100)).toBe('Income');
+  });
+
+  it('autopay → Transfer (negative amount)', () => {
     expect(autoCategory('AUTOPAY CONFIRMATION', -50)).toBe('Transfer');
   });
 
@@ -1295,8 +1299,8 @@ describe('shouldFlipImportAmounts()', () => {
     expect(shouldFlipImportAmounts('credit')).toBe(true);
   });
 
-  it('returns true for loan account', () => {
-    expect(shouldFlipImportAmounts('loan')).toBe(true);
+  it('returns false for loan account (loan amortization exports are already signed)', () => {
+    expect(shouldFlipImportAmounts('loan')).toBe(false);
   });
 
   it('returns false for checking account', () => {

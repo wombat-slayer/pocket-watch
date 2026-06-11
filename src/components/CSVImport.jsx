@@ -56,6 +56,10 @@ function parseOFX(text) {
   }).filter(t => t.date && t.description !== '(Unknown)');
 }
 
+// Intentionally separate from detectImportDuplicates in constants.js: this version
+// uses fuzzy description matching and fitid dedup for the generic CSV import flow,
+// while detectImportDuplicates uses exact date+amount (count-based) for per-account
+// statement import. Merging them would change the behavior of one or both flows.
 function findDuplicates(newTxs, existingTxs, isOFX) {
   const existingFitids = new Set(existingTxs.map(t => t.fitid).filter(Boolean));
   return newTxs.map(newTx => {

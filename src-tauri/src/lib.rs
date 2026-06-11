@@ -1,12 +1,17 @@
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use tauri::{Manager, State, Emitter};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 use serde_json::{json, Value};
+
+static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+fn http_client() -> &'static reqwest::Client {
+    HTTP_CLIENT.get_or_init(reqwest::Client::new)
+}
 
 // ── App state ─────────────────────────────────────────────────────────────────
 //
@@ -412,7 +417,7 @@ async fn plaid_create_link_token(
     user_id: String,
     redirect_uri: Option<String>,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = http_client();
     let base = plaid_base_url(&env)?;
     let mut payload = json!({
         "client_id": client_id,
@@ -455,7 +460,7 @@ async fn plaid_exchange_token(
     env: String,
     public_token: String,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = http_client();
     let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/item/public_token/exchange", base))
@@ -488,7 +493,7 @@ async fn plaid_fetch_transactions(
     start_date:   String,
     end_date:     String,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = http_client();
     let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/transactions/get", base))
@@ -525,7 +530,7 @@ async fn plaid_fetch_accounts(
     env:          String,
     access_token: String,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = http_client();
     let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/accounts/get", base))
@@ -560,7 +565,7 @@ async fn plaid_sync_transactions(
     access_token: String,
     cursor:       Option<String>,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    let client = http_client();
     let base = plaid_base_url(&env)?;
     let mut payload = json!({
         "client_id":    client_id,
@@ -594,7 +599,7 @@ async fn plaid_remove_item(
     env:          String,
     access_token: String,
 ) -> Result<(), String> {
-    let client = reqwest::Client::new();
+    let client = http_client();
     let base = plaid_base_url(&env)?;
     let resp = client
         .post(format!("{}/item/remove", base))
@@ -633,7 +638,8 @@ const POPUP_BRIDGE_SCRIPT: &str = r#"
   window.open = function (url) {
     try {
       if (typeof url === 'string' && /^https:\/\//.test(url)) {
-        window.top.postMessage({ __pocket_watch_open_external: true, url: url }, '*');
+        var topOrigin = (window.location.ancestorOrigins && window.location.ancestorOrigins[0]) || '*';
+        window.top.postMessage({ __pocket_watch_open_external: true, url: url }, topOrigin);
       }
     } catch (e) {}
     return null; // callers must treat the popup as fire-and-forget

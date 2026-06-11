@@ -114,6 +114,7 @@ export default function App() {
   const redoStack = useRef([]);
   const recurGenerated = useRef(false);
   const transferPairFixRef = useRef(false);
+  const isInitializing = useRef(false);
   const [undoLen, setUndoLen] = useState(0);
   const snapshot = useCallback(() => ({ transactions, accounts, budgets, goals }), [transactions, accounts, budgets, goals]);
 
@@ -164,6 +165,8 @@ export default function App() {
   }, []);
 
   const initFromPath = async (path) => {
+    if (isInitializing.current) return;
+    isInitializing.current = true;
     setDataPathState(path);
     // Register the allowed directory before any I/O, including the direct invoke
     // calls for the pre-migration backup below.
@@ -249,6 +252,8 @@ export default function App() {
       setGrants([]);
       setUserCategories([]);
       setBudgetTemplates([]);
+    } finally {
+      isInitializing.current = false;
     }
     setAppStatus('ready');
   };

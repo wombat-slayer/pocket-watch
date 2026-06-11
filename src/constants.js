@@ -61,7 +61,7 @@ export const catIcon   = (n) => CATEGORIES.find(c => c.name === n)?.icon    ?? '
 export const acctColor = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.color ?? '#94a3b8';
 export const acctLabel = (t) => ACCOUNT_TYPES.find(a => a.value === t)?.label ?? t;
 export const isDebtType= (t) => ACCOUNT_TYPES.find(a => a.value === t)?.isDebt ?? false;
-export const shouldFlipImportAmounts = (accountType) => isDebtType(accountType);
+export const shouldFlipImportAmounts = (accountType) => accountType === 'credit';
 
 // Returns [{imported, existing}] pairs — only the surplus duplicates (M2a).
 // If the import contains 2 rows with the same date+amount and only 1 existing
@@ -186,7 +186,8 @@ export const freqLabel = (v) => FREQUENCIES.find(f => f.value === v)?.label ?? v
 // Auto-categorize by merchant keyword matching
 export function autoCategory(desc, amount) {
   const d = (desc ?? '').replace(/^aplpay\s*/i, '').toLowerCase();
-  if (/mobile payment|online payment|autopay|payment - thank you|payment thank you|payment to [\w\s]* card ending|payment to chase|payment to amex/i.test(d)) return 'Transfer';
+  if (/payment - thank you|payment thank you|payment to [\w\s]* card ending|payment to chase|payment to amex/i.test(d)) return 'Transfer';
+  if (amount < 0 && /mobile payment|online payment|autopay/i.test(d)) return 'Transfer';
   if (amount > 0) return 'Income';
   if (/grocery|safeway|whole foods|trader joe|kroger|publix|aldi|wegmans|instacart|buc-ee|buc ee|365 market|five star food|canteen vend/i.test(d)) return 'Food & Dining';
   if (/restaurant|cafe|pizza|burger|sushi|taco|chipotle|mcdonald|starbucks|dunkin|doordash|grubhub|uber eats|chick-fil|panera|subway|domino|public hou|panca|ihop|waffle house|cracker barrel/i.test(d)) return 'Food & Dining';
@@ -216,7 +217,7 @@ export function autoCategory(desc, amount) {
 
 // Auto-categorize business transactions by merchant keyword matching
 export function autoCategoryBusiness(desc) {
-  const d = desc.toLowerCase();
+  const d = (desc ?? '').toLowerCase();
   if (/facebook ads|google ads|meta ads|linkedin ads|twitter ads|advertising|mailchimp|constant contact|klaviyo/i.test(d))                                   return 'Business - Advertising';
   if (/staples|office depot|officemax|amazon business|paper|printer|toner|binder|folder|whiteboard/i.test(d))                                                  return 'Business - Office Supplies';
   if (/adobe|github|atlassian|salesforce|hubspot|quickbooks|slack|notion|figma|zoom |dropbox|aws |google cloud|azure|digitalocean|heroku|vercel|netlify|linear |jira|confluence|1password|lastpass|namecheap|godaddy|cloudflare|twilio|stripe|sendgrid/i.test(d)) return 'Business - Software & SaaS';
