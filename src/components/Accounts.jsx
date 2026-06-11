@@ -635,6 +635,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
             <button className="btn btn-primary btn-sm" onClick={()=>setReconcileAllMode(false)}>Done</button>
           </div>
           {accounts.map(acct => {
+            if (isDebtType(acct.type)) return null;
             const acctTxs = transactions.filter(t => t.account === acct.id && !t.cleared);
             const computed = transactions.filter(t => t.account === acct.id && t.type !== 'adjustment').reduce((s,t) => s+t.amount, 0);
             const discrepancy = Math.abs(acct.balance - computed);
@@ -717,6 +718,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                           <div style={{ textAlign:'right', marginRight:8 }}>
                             <div style={{ fontSize:17,fontWeight:700,color:'var(--text-primary)' }}>{cfmt(a.balance)}</div>
                             {(() => {
+                              if (isDebtType(a.type)) return null;
                               const computed = computeBalance(a.id, transactions, a.type);
                               if (computed === null) return null;
                               const diff = Math.abs(computed - a.balance);
@@ -834,6 +836,7 @@ export default function Accounts({ accounts, transactions, netWorthHistory, recu
                                 </div>
                               );
                             }
+                            if (isDebtType(a.type)) return null;
                             const computed = computeBalance(a.id, transactions, a.type);
                             if (computed === null) return null;
                             const diff = Math.abs(computed - a.balance);

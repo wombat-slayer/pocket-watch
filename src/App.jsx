@@ -305,7 +305,10 @@ export default function App() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveAppData(dataPath, { transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, plaidCursors, onboardingComplete: onboardingDone, version: 10 })
-        .catch(err => console.error('Auto-save failed:', err));
+        .catch(err => {
+          console.error('Auto-save failed:', err);
+          showToast('Auto-save failed — disk may be full', 'error');
+        });
     }, 600);
     return () => clearTimeout(saveTimer.current);
   }, [transactions, accounts, budgets, goals, recurrences, grants, userCategories, netWorthHistory, budgetTemplates, archivedTransactions, compensationProfile, budgetAlerts, plaidCursors, onboardingDone, dataPath, appStatus]);
